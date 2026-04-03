@@ -10,12 +10,42 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 ---
 
 ## Current Phase: 0.5 — Test New Papers Analysis
-**Status:** Starting
+**Status:** Complete — awaiting manual review
 **Goal:** Verify Claude can analyze recent (2024-2025) papers as well as canonical ones.
+
+### Phase 0.5 Results
+- **Script**: `test_new_papers.py` — fetches from OpenAlex, analyzes with Claude (Sonnet)
+- **Results file**: `phase05_results.json`
+- **Papers tested**: 10 recent (2024-2025) anthropology articles from OpenAlex topic `T10149`
+- **Success rate**: 10/10 analyses parsed successfully
+- **Papers analyzed**:
+  1. The Disappearance of Rituals (Reklis, 2024)
+  2. Decolonial research methodology (2024)
+  3. When decolonization is hijacked (2024)
+  4. Decolonising Research for Justice (2024)
+  5. Transculturality and the Eco-Logic of Memory (2024)
+  6. Decolonizing biodiversity conservation (2024)
+  7. Ethical futures in biological anthropology (2024)
+  8. Endogenous Colonial Borders (Paine et al., 2024)
+  9. Doing migration studies with an accent (2024)
+  10. Refusal (and Repair) (2024)
+- **Quality observations**:
+  - Concept extraction: Good — identifies 4-7 concepts per paper with types and novelty
+  - Relationship mapping: Good — correctly uses BUILDS_ON, CONTRADICTS, EXTENDS, APPLIES
+  - Claims: Solid — distinguishes evidence types and strength
+  - Cross-references: Claude connects to known works (Barthes, colonial studies, etc.)
+  - Issue: "paradigm_shift" flagged too often (6/10) — may need prompt calibration
+- **Next**: Manual scoring (accuracy, depth, relationships, insights — 1-10 each). Target: 8/10 avg to proceed.
 
 ---
 
 ## Completed
+
+### 2026-04-03 — Phase 0.5: New Papers Test
+- [x] Created `test_new_papers.py` script
+- [x] Configured OpenAlex API (topic T10149 = Anthropological Studies)
+- [x] Ran Claude analysis on 10 papers — 10/10 success
+- [x] Saved results to `phase05_results.json`
 
 ### 2026-04-03 — Project Setup
 - [x] Read all 7 spec documents (5 PDFs + 2 markdown files)
@@ -36,6 +66,8 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 | Pre-project | No syllabi in MVP | No public API, defer to Phase 2 |
 | Pre-project | Bilingual (HE/EN) | AI responds in user's language, technical terms in English |
 | Pre-project | Multi-source validation | 7+ sources, dual-LLM, cross-validation, disagreements as features |
+| 2026-04-03 | OpenAlex topic T10149 for anthropology | Concept-based filtering was too broad; topic gives clean anthropology results |
+| 2026-04-03 | Claude Sonnet for paper analysis | Good quality/cost tradeoff for batch analysis |
 
 ---
 
