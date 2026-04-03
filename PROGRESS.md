@@ -20,7 +20,10 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] Prompt files: paper_analysis (v2), navigator system prompt
 - [x] Next.js frontend skeleton (chat UI, zustand store, API lib)
 - [x] Both backend and frontend build successfully
-- [ ] Supabase project setup (need to create project + run migrations)
+- [x] Supabase project created (bgrdmydbrtnucunbpobl, PostgreSQL 17.6)
+- [x] All 3 migrations run — 15 tables live in Supabase
+- [x] Supabase client tested — reads/writes working
+- [x] FastAPI server boots on port 8000
 - [ ] Wire API endpoints to Supabase (currently return placeholders)
 - [ ] Frontend → Backend connection test
 
