@@ -31,5 +31,5 @@ out/
 .DS_Store
 Thumbs.db
 
-# Zip files in root
+# Zip files in root (spec archives already extracted to files/)
 *.zip
