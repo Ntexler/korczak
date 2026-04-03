@@ -30,8 +30,13 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] Seeding pipeline created (`backend/pipeline/seed_graph.py`)
 - [x] Two domains configured: anthropology (T10149) + sleep/cognition (T10985)
 - [x] Test run: 10 papers seeded (5 anthro + 5 sleep) — 70 concepts, 44 claims, 18 relationships
-- [x] Pipeline handles: OpenAlex fetch → Claude analysis → Supabase insert (papers, concepts, claims, relationships)
-- [ ] Full seeding run: 2,500 per domain (5,000 total)
+- [x] Full seeding run in progress: 218 papers, 1,160 concepts, 387 relationships (and counting)
+- [x] Multi-source enrichment pipeline (`backend/pipeline/enrich_sources.py`)
+  - Semantic Scholar: 104 papers enriched (citations, influential count, TLDR)
+  - CrossRef: 100 papers enriched (publisher, references, metadata verification)
+  - Retraction Watch: 27 papers checked (0 retracted)
+  - 14 citation count disagreements detected (OpenAlex vs S2)
+- [ ] Continue seeding until credits exhausted
 - [ ] Entity resolution (embedding-based dedup)
 - [ ] Manual validation: 50 nodes, 100 edges
 

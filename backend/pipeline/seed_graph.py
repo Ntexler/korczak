@@ -120,10 +120,8 @@ def normalize_paper(raw: dict) -> dict:
         "doi": raw.get("doi"),
         "cited_by_count": raw.get("cited_by_count", 0),
         "source_journal": (
-            raw.get("primary_location", {}).get("source", {}).get("display_name")
-            if raw.get("primary_location")
-            else None
-        ),
+            (raw.get("primary_location") or {}).get("source") or {}
+        ).get("display_name"),
     }
 
 
@@ -151,6 +149,17 @@ def analyze_paper(title: str, authors_str: str, year: int, abstract: str) -> dic
 
     try:
         resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=60)
+
+        # Handle credit/rate limit errors
+        if resp.status_code == 429:
+            retry_after = int(resp.headers.get("retry-after", 30))
+            print(f"    Rate limited — waiting {retry_after}s...")
+            time.sleep(retry_after)
+            resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=60)
+        if resp.status_code in (402, 529):
+            print(f"\n*** CREDITS EXHAUSTED (HTTP {resp.status_code}) — stopping gracefully ***")
+            return "STOP"
+
         resp.raise_for_status()
         text = resp.json()["content"][0]["text"]
 
@@ -160,6 +169,12 @@ def analyze_paper(title: str, authors_str: str, year: int, abstract: str) -> dic
         elif "```" in text:
             text = text.split("```")[1].split("```")[0]
         return json.loads(text.strip())
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code in (402, 529):
+            print(f"\n*** CREDITS EXHAUSTED — stopping gracefully ***")
+            return "STOP"
+        print(f"    Analysis error: {e}")
+        return None
     except Exception as e:
         print(f"    Analysis error: {e}")
         return None
@@ -228,10 +243,19 @@ def get_or_create_concept(concept_data: dict) -> str | None:
 
 def insert_paper_and_analysis(paper: dict, analysis: dict) -> str | None:
     """Insert paper + its concepts, claims, relationships into Supabase."""
+    try:
+        return _insert_paper_and_analysis(paper, analysis)
+    except Exception as e:
+        print(f"    Insert error: {e}")
+        return None
+
+
+def _insert_paper_and_analysis(paper: dict, analysis: dict) -> str | None:
+    """Inner insert logic."""
 
     # 1. Insert paper
     authors_str = ", ".join(a["name"] for a in paper["authors"][:5])
-    paper_type = analysis.get("paper_type", {})
+    paper_type = analysis.get("paper_type") or {}
     paper_row = {
         "openalex_id": paper["openalex_id"],
         "doi": paper.get("doi"),
@@ -380,7 +404,11 @@ def seed_domain(domain_key: str, limit: int, skip_analysis: bool = False):
                     paper["publication_year"], paper["abstract"],
                 )
 
-                if analysis and not analysis.get("parse_error"):
+                if analysis == "STOP":
+                    print(f"\nStopping — credits exhausted after {total_inserted} papers.")
+                    return total_inserted
+
+                if analysis and not isinstance(analysis, str) and not analysis.get("parse_error"):
                     total_analyzed += 1
                     pid = insert_paper_and_analysis(paper, analysis)
                     if pid:
