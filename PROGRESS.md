@@ -10,7 +10,7 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 ---
 
 ## Current Phase: 0.5 — Test New Papers Analysis
-**Status:** Complete — awaiting manual review
+**Status:** PASSED (8.5/10)
 **Goal:** Verify Claude can analyze recent (2024-2025) papers as well as canonical ones.
 
 ### Phase 0.5 Results
@@ -35,7 +35,8 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
   - Claims: Solid — distinguishes evidence types and strength
   - Cross-references: Claude connects to known works (Barthes, colonial studies, etc.)
   - Issue: "paradigm_shift" flagged too often (6/10) — may need prompt calibration
-- **Next**: Manual scoring (accuracy, depth, relationships, insights — 1-10 each). Target: 8/10 avg to proceed.
+- **Prompt iteration**: v1 had paradigm_shift inflation (6/10), flat concept types, no paper classification. v2 fixed all issues.
+- **Result**: 8.5/10 average — PASSED. Proceeding to Phase 1a.
 
 ---
 
@@ -68,12 +69,14 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 | Pre-project | Multi-source validation | 7+ sources, dual-LLM, cross-validation, disagreements as features |
 | 2026-04-03 | OpenAlex topic T10149 for anthropology | Concept-based filtering was too broad; topic gives clean anthropology results |
 | 2026-04-03 | Claude Sonnet for paper analysis | Good quality/cost tradeoff for batch analysis |
+| 2026-04-03 | Improved prompt v2 | Added paper_type, calibrated paradigm_shift, varied concept types, confidence bounds |
 
 ---
 
 ## Phase Roadmap
 - [x] Phase 0: Prompt validation (8/10 on canonical works)
-- [ ] **Phase 0.5: Test new papers** ← WE ARE HERE
+- [x] Phase 0.5: Test new papers (8.5/10, prompt v2)
+- [ ] **Phase 1a: Infrastructure** ← WE ARE HERE
 - [ ] Phase 1a: Infrastructure (Supabase, FastAPI, Next.js skeletons)
 - [ ] Phase 1b: Graph Seeding (5K papers, entity resolution)
 - [ ] Phase 1c: Navigator (context builder, system prompt, chat UI)

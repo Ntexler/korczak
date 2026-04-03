@@ -9,100 +9,85 @@
       "abstract_preview": "The first time I bought something at the Japanese clothing retailer Uniqlo, I casually handed the cashier my credit card, barely grasped in one hand, while I riffled through my bag with the other. He ..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "commentary",
+        "subfield": "cultural criticism",
+        "summary": "A critique of Byung-Chul Han's conception of ritual that challenges his nostalgic view and argues that longing for lost rituals obscures how ritual aesthetics function within contemporary capitalism."
+      },
       "concepts": [
-        {
-          "name": "topology of the present",
-          "type": "framework",
-          "definition": "A spatial-analytical approach to understanding contemporary cultural and social formations, particularly around ritual practices",
-          "novelty_at_time": "medium"
-        },
-        {
-          "name": "disappearance of rituals",
-          "type": "phenomenon",
-          "definition": "The observed decline or transformation of traditional ritual practices in contemporary society",
-          "novelty_at_time": "low"
-        },
         {
           "name": "liturgy of emptiness",
           "type": "theory",
-          "definition": "Han's concept describing formalistic practices that overwhelm meaning through excessive signification",
-          "novelty_at_time": "medium"
+          "definition": "Han's concept describing how intense formalism in ritual practices displaces longing for meaning through overabundance of signifiers",
+          "novelty_at_time": "low",
+          "well_established": false
         },
         {
-          "name": "overabundance of the signifier",
-          "type": "theory",
-          "definition": "A condition where formal elements (signifiers) overwhelm and displace the search for underlying meaning (signified)",
-          "novelty_at_time": "medium"
-        },
-        {
-          "name": "commodified ritual",
+          "name": "deritualized present",
           "type": "phenomenon",
-          "definition": "The transformation of ritual practices into commercial experiences that maintain formal elements while serving capitalist consumption",
-          "novelty_at_time": "medium"
+          "definition": "The contemporary condition characterized by the absence or loss of meaningful ritual practices",
+          "novelty_at_time": "low",
+          "well_established": true
+        },
+        {
+          "name": "ritual nostalgia as colonial lever",
+          "type": "critique",
+          "definition": "The argument that nostalgia for ritual and attempts to capture its affects served as mechanisms for early modern European colonialism and global economic expansion",
+          "novelty_at_time": "medium",
+          "well_established": false
         }
       ],
       "relationships": [
         {
-          "from": "The Disappearance of Rituals",
-          "to": "Han's ritual theory",
+          "from": "Reklis's analysis",
+          "to": "Byung-Chul Han's ritual theory",
           "type": "CONTRADICTS",
-          "confidence": 0.85,
-          "explanation": "Reklis directly challenges Han's binary opposition between ritual and commodity, showing how they can coexist in capitalist contexts"
+          "confidence": 0.9,
+          "explanation": "Reklis directly challenges Han's conception of ritual by arguing that his Uniqlo experience contradicts Han's claim that Japanese ritual formalism dispels capitalist commodity logic"
         },
         {
-          "from": "The Disappearance of Rituals",
-          "to": "Roland Barthes semiotics",
-          "type": "BUILDS_ON",
-          "confidence": 0.7,
-          "explanation": "Uses Barthesian concepts of signifier/signified to analyze contemporary ritual practices"
-        },
-        {
-          "from": "commodified ritual",
-          "to": "European colonial nostalgia",
-          "type": "EXTENDS",
-          "confidence": 0.75,
-          "explanation": "Links contemporary commodification of ritual to historical patterns of colonial appropriation and romanticization"
-        },
-        {
-          "from": "topology of the present",
-          "to": "postmodern cultural criticism",
-          "type": "APPLIES",
-          "confidence": 0.6,
-          "explanation": "Applies spatial and temporal analysis to contemporary cultural phenomena"
+          "from": "Reklis's argument",
+          "to": "Roland Barthes",
+          "type": "RESPONDS_TO",
+          "confidence": 0.8,
+          "explanation": "Reklis critiques Han's reliance on Barthes's experience of Japanese parcels rather than contemporary direct experience"
         }
       ],
       "claims": [
         {
-          "claim": "Contemporary capitalism does not eliminate ritual but transforms it into commodified experiences that maintain formal elements while serving commercial purposes",
-          "evidence_type": "ethnographic observation and theoretical analysis",
-          "strength": "moderate"
+          "claim": "Han's conception of ritual is based on nostalgia and historical distance rather than contemporary observation",
+          "evidence_type": "comparative",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "The assumption that ritual is 'already always lost' obscures how longing for ritual itself becomes a mechanism of capitalist exploitation",
-          "evidence_type": "critical theoretical analysis",
-          "strength": "moderate"
+          "claim": "Corporate entities like Uniqlo deliberately exploit ritual aesthetics and formalism for commercial purposes",
+          "evidence_type": "empirical",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "Han's theory of ritual as opposed to commodity fails to account for how ritual and commerce intersect in contemporary consumer culture",
-          "evidence_type": "counterexample and theoretical critique",
-          "strength": "strong"
+          "claim": "Nostalgia for ritual served as a mechanism for early modern European colonialism and global economic expansion",
+          "evidence_type": "theoretical",
+          "strength": "weak",
+          "testable": false
         },
         {
-          "claim": "Nostalgia for ritual has historical roots in European colonial enterprises and continues to operate in global consumer capitalism",
-          "evidence_type": "historical analysis",
-          "strength": "moderate"
+          "claim": "The assumption that ritual is lost obscures how longing for ritual functions in contemporary capitalism",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         }
       ],
       "historical_significance": {
         "paradigm_shift": false,
         "influenced_fields": [
-          "religious studies",
-          "consumer culture studies",
-          "critical theory",
-          "anthropology of capitalism"
+          "cultural studies",
+          "ritual studies",
+          "critical theory"
         ],
-        "controversy_generated": "Challenges popular critical theory assumptions about the incompatibility of authentic ritual and capitalist commodity relations",
-        "lasting_impact": "Provides framework for understanding how traditional practices persist and transform within contemporary consumer capitalism rather than simply disappearing"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "Contributes to critical examination of contemporary ritual theory and its relationship to capitalist aesthetics"
       }
     }
   },
@@ -116,94 +101,78 @@
       "abstract_preview": "The decolonization project challenges the hegemony of Western knowledge and colonial ways of thinking. This article explores this challenge specifically in relation to research methodology. It notes h..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "theoretical",
+        "subfield": "research methodology",
+        "summary": "This paper analyzes how decolonization challenges Western research methodology and proposes alternative approaches for indigenous and minority group research."
+      },
       "concepts": [
         {
           "name": "decolonial research methodology",
           "type": "framework",
-          "definition": "Research approaches that challenge Western knowledge hegemony and protect interests of indigenous and minority groups through alternative methodological practices",
-          "novelty_at_time": "medium"
-        },
-        {
-          "name": "decolonization project",
-          "type": "framework",
-          "definition": "Academic and social movement that challenges the hegemony of Western knowledge and colonial ways of thinking",
-          "novelty_at_time": "low"
+          "definition": "Research approaches that challenge Western knowledge hegemony and better protect the interests of indigenous and 'Other' minority groups",
+          "novelty_at_time": "medium",
+          "well_established": true
         },
         {
           "name": "positivistic/modernist/universalist approaches",
-          "type": "framework",
-          "definition": "Traditional Western research methodologies characterized by objectivity claims and universal applicability assumptions",
-          "novelty_at_time": "low"
+          "type": "paradigm",
+          "definition": "Western research approaches criticized for inappropriate use when studying indigenous and minority communities",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
           "name": "transformational paradigm",
-          "type": "framework",
-          "definition": "Research paradigm that emphasizes social change and empowerment of marginalized communities through research practice",
-          "novelty_at_time": "low"
+          "type": "paradigm",
+          "definition": "Research paradigm that typically involves qualitative methods and participatory action research as alternatives to Western approaches",
+          "novelty_at_time": "low",
+          "well_established": true
         }
       ],
       "relationships": [
         {
           "from": "decolonial research methodology",
-          "to": "positivistic/modernist/universalist approaches",
+          "to": "Western research methodology",
           "type": "CONTRADICTS",
-          "confidence": 0.9,
-          "explanation": "Decolonial methodology explicitly challenges and opposes traditional Western positivistic approaches"
+          "confidence": 0.8,
+          "explanation": "The abstract explicitly states that decolonization 'challenges the hegemony of Western knowledge' and exposes 'inappropriate use' of Western approaches"
         },
         {
           "from": "decolonial research methodology",
           "to": "constructivist principles",
           "type": "BUILDS_ON",
-          "confidence": 0.8,
-          "explanation": "Alternative decolonial approaches are generally based on constructivist principles"
-        },
-        {
-          "from": "decolonial research methodology",
-          "to": "participatory action research",
-          "type": "APPLIES",
-          "confidence": 0.8,
-          "explanation": "Decolonial approaches typically involve qualitative methods such as participatory action research"
-        },
-        {
-          "from": "decolonial research methodology",
-          "to": "transformational paradigm",
-          "type": "EXTENDS",
           "confidence": 0.7,
-          "explanation": "Decolonial methodology operates within and extends transformational paradigm principles"
+          "explanation": "The abstract states that alternative approaches 'are generally based on constructivist principles'"
         }
       ],
       "claims": [
         {
-          "claim": "Decolonization exposes inappropriate use of positivistic/modernist/universalist approaches by Western researchers",
-          "evidence_type": "theoretical analysis",
-          "strength": "moderate"
+          "claim": "Decolonization challenges the hegemony of Western knowledge and colonial ways of thinking in research methodology",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
-          "claim": "Alternative decolonial approaches better protect the interests of indigenous and 'Other' minority groups",
-          "evidence_type": "comparative analysis",
-          "strength": "moderate"
+          "claim": "Alternative decolonial approaches are generally based on constructivist principles and involve qualitative methods",
+          "evidence_type": "comparative",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "Decolonial research methodology represents a distinct challenge to Western research methodology, particularly in research involving Indigenous communities",
-          "evidence_type": "assessment and discussion",
-          "strength": "moderate"
-        },
-        {
-          "claim": "Decolonial approaches are generally based on constructivist principles and involve qualitative methods",
-          "evidence_type": "methodological analysis",
-          "strength": "moderate"
+          "claim": "Western positivistic approaches are inappropriately used by researchers studying indigenous and minority groups",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": true
         }
       ],
       "historical_significance": {
         "paradigm_shift": false,
         "influenced_fields": [
           "research methodology",
-          "indigenous studies",
-          "postcolonial studies",
-          "qualitative research"
+          "indigenous studies"
         ],
-        "controversy_generated": "Assessment of established Western research practices and their appropriateness for diverse populations",
-        "lasting_impact": "Contributes to ongoing methodological debates about culturally appropriate research practices and the need for alternative approaches in cross-cultural research contexts"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "unclear from abstract alone"
       }
     }
   },
@@ -217,100 +186,92 @@
       "abstract_preview": "Abstract This article asks how we should reconceptualize decolonization when it is hijacked by authoritarian/fascist forces. It focuses on the notorious Bhima Koregaon case in India in which 16 intell..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "theoretical",
+        "subfield": "political anthropology",
+        "summary": "This paper reconceptualizes decolonization theory by examining how authoritarian regimes hijack decolonial language, using the Bhima Koregaon case in India as an empirical example."
+      },
       "concepts": [
         {
           "name": "hijacked decolonization",
           "type": "phenomenon",
-          "definition": "The appropriation of decolonization discourse by authoritarian/fascist forces to legitimize oppression rather than liberation",
-          "novelty_at_time": "high"
+          "definition": "The appropriation of decolonization discourse by authoritarian or fascist forces for their own political ends",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
           "name": "resymbolization of colonial artifacts",
           "type": "phenomenon",
-          "definition": "The process by which colonized peoples reinterpret colonial symbols and monuments to resist oppression by native elites",
-          "novelty_at_time": "medium"
+          "definition": "The process by which colonized peoples reinterpret colonial symbols and artifacts to resist oppression by native elites",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
           "name": "state and global capital nexus",
           "type": "framework",
-          "definition": "The interconnected system of state power and global capitalism that creates cultural, psychological, political, and economic domination",
-          "novelty_at_time": "medium"
+          "definition": "The interconnected processes of domination involving state power and global capitalism that create cultural, psychological, political, and economic oppression",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
-          "name": "street-based anticolonial intellectualism",
-          "type": "theory",
-          "definition": "The concept that the most important anticolonial thinkers operate outside universities, in social movements and activism rather than academic institutions",
-          "novelty_at_time": "medium"
-        },
-        {
-          "name": "differentiated indigenous communities",
-          "type": "theory",
-          "definition": "A framework rejecting unitary concepts of indigenous ontology in favor of recognizing internal stratification and elite co-optation within marginalized communities",
-          "novelty_at_time": "medium"
+          "name": "internal differentiation within marginalized communities",
+          "type": "phenomenon",
+          "definition": "The creation of hierarchies and divisions within oppressed groups that complicate unified concepts of indigenous identity",
+          "novelty_at_time": "low",
+          "well_established": true
         }
       ],
       "relationships": [
         {
-          "from": "hijacked decolonization",
-          "to": "traditional decolonization theory",
-          "type": "CONTRADICTS",
-          "confidence": 0.9,
-          "explanation": "Shows how decolonization discourse can be perverted to serve oppressive rather than liberatory ends"
+          "from": "When decolonization is hijacked",
+          "to": "decolonizing anthropology literature",
+          "type": "RESPONDS_TO",
+          "confidence": 0.7,
+          "explanation": "The paper explicitly calls for emancipatory politics such as 'decolonizing anthropology' to center global processes and local nuances"
         },
         {
-          "from": "state and global capital nexus",
-          "to": "postcolonial studies",
+          "from": "When decolonization is hijacked",
+          "to": "decolonization debates",
           "type": "EXTENDS",
           "confidence": 0.8,
-          "explanation": "Expands postcolonial analysis to include contemporary forms of domination beyond traditional colonialism"
-        },
-        {
-          "from": "street-based anticolonial intellectualism",
-          "to": "academic decolonization movements",
-          "type": "RESPONDS_TO",
-          "confidence": 0.85,
-          "explanation": "Challenges university-centered approaches to decolonization by locating real anticolonial work in grassroots movements"
-        },
-        {
-          "from": "differentiated indigenous communities",
-          "to": "essentialist indigenous studies",
-          "type": "CONTRADICTS",
-          "confidence": 0.8,
-          "explanation": "Rejects unified concepts of indigenous worldviews in favor of recognizing internal hierarchies and elite capture"
+          "explanation": "The paper explicitly proposes that 'contemporary decolonization debates center processes of domination and oppression'"
         }
       ],
       "claims": [
         {
-          "claim": "Decolonization discourse can be hijacked by authoritarian regimes to legitimize oppression, as demonstrated in the Hindu nationalist appropriation in the Bhima Koregaon case",
-          "evidence_type": "case study analysis",
-          "strength": "strong"
+          "claim": "Authoritarian regimes can hijack decolonization discourse while colonized peoples simultaneously resymbolize colonial artifacts to oppose native elite oppression",
+          "evidence_type": "empirical",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "The most important anticolonial intellectuals operate outside universities, in social movements and often face imprisonment",
-          "evidence_type": "empirical observation",
-          "strength": "moderate"
+          "claim": "The most important anticolonial intellectuals may not use decolonization language and are found in social movements and prisons rather than universities",
+          "evidence_type": "empirical",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "Contemporary decolonization must center the state-global capital nexus rather than focusing solely on historical colonialism",
-          "evidence_type": "theoretical argument",
-          "strength": "moderate"
+          "claim": "Contemporary decolonization should focus on domination processes created by the state and global capital nexus that entrench casteist/racist hierarchies",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
-          "claim": "Indigenous and marginalized communities contain internal hierarchies and elite co-optation that must be acknowledged rather than romanticized",
-          "evidence_type": "ethnographic observation",
-          "strength": "strong"
+          "claim": "Decolonization processes work through Indigenous elites and create internal differentiation within marginalized communities",
+          "evidence_type": "empirical",
+          "strength": "moderate",
+          "testable": true
         }
       ],
       "historical_significance": {
-        "paradigm_shift": true,
+        "paradigm_shift": false,
         "influenced_fields": [
+          "political anthropology",
           "decolonial studies",
-          "critical anthropology",
-          "postcolonial theory",
-          "social movement studies"
+          "South Asian studies"
         ],
-        "controversy_generated": "Challenges both mainstream decolonization discourse and essentialist approaches to indigenous studies, potentially controversial for questioning romanticized views of indigenous unity",
-        "lasting_impact": "Provides critical framework for analyzing contemporary appropriations of decolonial discourse and emphasizes need for more nuanced understanding of power dynamics within marginalized communities"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "Contributes to theoretical refinement of decolonization discourse by highlighting its potential appropriation by authoritarian forces"
       }
     }
   },
@@ -324,93 +285,99 @@
       "abstract_preview": "This article examines coloniality of research and discusses the theoretical foundations, ethical imperatives, and practical ways for conducting decolonial research for justice. It emphasises the need ..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "theoretical",
+        "subfield": "decolonial research methodology",
+        "summary": "This paper provides theoretical foundations and practical frameworks for conducting decolonial research that challenges Western knowledge hegemony and promotes epistemic justice."
+      },
       "concepts": [
         {
           "name": "coloniality of research",
-          "type": "phenomenon",
-          "definition": "The persistence of colonial power structures and Western dominance within research paradigms and knowledge production systems",
-          "novelty_at_time": "medium"
+          "type": "critique",
+          "definition": "The perpetuation of colonial power structures and Western knowledge dominance within research paradigms and approaches",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
           "name": "decolonial research",
-          "type": "framework",
-          "definition": "Research approaches that challenge Western epistemological dominance and center Indigenous and marginalized knowledge systems",
-          "novelty_at_time": "medium"
+          "type": "paradigm",
+          "definition": "Research approaches that actively resist colonial structures and center non-Western epistemologies and voices",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
           "name": "transformative decolonial praxis",
-          "type": "method",
-          "definition": "Practical implementation of decolonial principles through action-oriented research that challenges colonial structures",
-          "novelty_at_time": "medium"
+          "type": "framework",
+          "definition": "Practical application of decolonial principles that transforms research practice through defiance of hierarchical and extractive approaches",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
           "name": "disobedient and defiant research",
           "type": "method",
-          "definition": "Research practices that deliberately resist and challenge dominant Western research paradigms and methodologies",
-          "novelty_at_time": "medium"
+          "definition": "Research approaches that actively resist and challenge dominant Western research paradigms and methodologies",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
           "name": "epistemic justice",
           "type": "theory",
-          "definition": "The fair recognition and inclusion of diverse ways of knowing and knowledge systems, particularly those historically marginalized",
-          "novelty_at_time": "low"
+          "definition": "Justice that addresses the marginalization and delegitimization of non-Western knowledge systems and epistemological traditions",
+          "novelty_at_time": "low",
+          "well_established": true
         }
       ],
       "relationships": [
         {
-          "from": "decolonial research",
-          "to": "epistemic justice",
-          "type": "EXTENDS",
-          "confidence": 0.9,
-          "explanation": "Decolonial research practices work towards achieving epistemic justice by centering marginalized knowledge systems"
-        },
-        {
-          "from": "transformative decolonial praxis",
-          "to": "disobedient and defiant research",
+          "from": "this work",
+          "to": "scholars addressing disobedient and defiant research",
           "type": "BUILDS_ON",
           "confidence": 0.8,
-          "explanation": "The author draws on existing scholarship on disobedient research to develop transformative decolonial praxis"
+          "explanation": "The abstract explicitly states the article draws on the works of scholars addressing disobedient and defiant research"
         },
         {
-          "from": "decolonial research",
-          "to": "coloniality of research",
-          "type": "RESPONDS_TO",
-          "confidence": 0.95,
-          "explanation": "Decolonial research emerges as a direct response to addressing the coloniality embedded in traditional research practices"
+          "from": "this work",
+          "to": "broader discourse on decolonising knowledge production",
+          "type": "EXTENDS",
+          "confidence": 0.7,
+          "explanation": "The abstract states the article contributes to the broader discourse on decolonising knowledge production"
         }
       ],
       "claims": [
         {
-          "claim": "Western knowledge systems maintain hegemony and marginalize other epistemological traditions in research",
-          "evidence_type": "theoretical analysis",
-          "strength": "moderate"
+          "claim": "Research paradigms and approaches perpetuate coloniality and should be shifted away from",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
-          "claim": "Decolonial research requires defiance against non-relational, hierarchical, and extractive practices",
-          "evidence_type": "conceptual framework",
-          "strength": "moderate"
+          "claim": "Western knowledge systems maintain hegemony and dominance while marginalizing other epistemological traditions",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
-          "claim": "Research paradigms perpetuate coloniality and need to be fundamentally reimagined",
-          "evidence_type": "critical analysis",
-          "strength": "moderate"
+          "claim": "Decolonial research requires defiance and resistance against non-relational, hierarchical, and extractive practices",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
-          "claim": "Centering non-Western voices and perspectives is essential for anti-oppressive research practice",
-          "evidence_type": "normative argument",
-          "strength": "moderate"
+          "claim": "Researchers should integrate decolonial principles and frameworks into their research practices",
+          "evidence_type": "methodological",
+          "strength": "moderate",
+          "testable": true
         }
       ],
       "historical_significance": {
         "paradigm_shift": false,
         "influenced_fields": [
           "research methodology",
-          "postcolonial studies",
-          "Indigenous studies",
-          "social justice research"
+          "decolonial studies",
+          "Indigenous studies"
         ],
-        "controversy_generated": "moderate - challenges established Western research paradigms",
-        "lasting_impact": "Contributes to growing movement toward decolonizing academia and research practices, providing practical frameworks for implementation"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "contributes to ongoing methodological discussions in decolonial research but impact unclear from abstract alone"
       }
     }
   },
@@ -424,119 +391,106 @@
       "abstract_preview": "Abstract This article asks how memory studies might use the conceptual insights gained during its “third transcultural phase” for the challenges of its “fourth phase” – heralded in this Special Issue ..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "theoretical",
+        "subfield": "transcultural memory studies",
+        "summary": "This paper proposes conceptual frameworks for integrating transcultural memory studies with environmental concerns through an 'eco-logical' approach to collective memory."
+      },
       "concepts": [
         {
           "name": "eco-logical memory",
           "type": "theory",
-          "definition": "A conceptual framework that views memory as fundamentally ecological, incorporating more-than-human elements into collective memory studies",
-          "novelty_at_time": "high"
+          "definition": "A theoretical approach positioning memory as fundamentally ecological and relational, extending beyond human-centered perspectives",
+          "novelty_at_time": "high",
+          "well_established": false
         },
         {
           "name": "transcultural memory",
           "type": "framework",
-          "definition": "An approach to memory studies that examines memory processes across cultural boundaries and their relational dynamics",
-          "novelty_at_time": "medium"
+          "definition": "An approach to memory studies that examines memory across cultural boundaries and emphasizes relational dynamics",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
-          "name": "relationality of the remembered",
-          "type": "theory",
-          "definition": "A conceptual building block for eco-logical mnemohistories focusing on the relational aspects of what is remembered",
-          "novelty_at_time": "high"
+          "name": "the relationality of the remembered",
+          "type": "framework",
+          "definition": "One of three conceptual building blocks for eco-logical mnemohistories, focusing on relational aspects of remembered content",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
           "name": "relational remembering",
-          "type": "theory",
-          "definition": "A conceptual building block examining the relational processes involved in acts of remembering",
-          "novelty_at_time": "high"
+          "type": "framework",
+          "definition": "A conceptual building block for eco-logical mnemohistories emphasizing the relational processes of memory formation",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
           "name": "mnemonic relationality",
-          "type": "theory",
-          "definition": "A conceptual framework exploring the inherently relational nature of memory itself",
-          "novelty_at_time": "high"
-        },
-        {
-          "name": "eco-logical mnemohistories",
-          "type": "method",
-          "definition": "A methodological approach to studying memory that incorporates ecological and environmental dimensions",
-          "novelty_at_time": "high"
-        },
-        {
-          "name": "fourth phase of memory studies",
           "type": "framework",
-          "definition": "An emerging phase of memory studies research focused on questions about memory and the environment",
-          "novelty_at_time": "high"
+          "definition": "A conceptual building block for eco-logical mnemohistories focusing on the relational nature of memory itself",
+          "novelty_at_time": "medium",
+          "well_established": false
+        },
+        {
+          "name": "more-than-human collective memory",
+          "type": "paradigm",
+          "definition": "An approach to collective memory that extends beyond human-centered perspectives to include environmental and non-human elements",
+          "novelty_at_time": "high",
+          "well_established": false
         }
       ],
       "relationships": [
         {
-          "from": "eco-logical memory",
-          "to": "transcultural memory",
-          "type": "BUILDS_ON",
-          "confidence": 0.9,
-          "explanation": "The work argues that relational dynamics from transcultural memory research can enable understanding of eco-logical memory"
-        },
-        {
-          "from": "fourth phase of memory studies",
-          "to": "third transcultural phase",
+          "from": "Transculturality and the Eco-Logic of Memory",
+          "to": "transcultural memory studies",
           "type": "EXTENDS",
-          "confidence": 0.95,
-          "explanation": "The fourth phase uses conceptual insights from the third transcultural phase to address environmental challenges"
+          "confidence": 0.9,
+          "explanation": "The paper explicitly states it uses insights from transcultural memory research to address new environmental challenges"
         },
         {
-          "from": "transcultural studies",
-          "to": "postcolonialism",
+          "from": "Transculturality and the Eco-Logic of Memory",
+          "to": "postcolonial studies",
           "type": "BUILDS_ON",
-          "confidence": 0.8,
-          "explanation": "The work traces transcultural studies' roots in research on colonialism and postcolonialism"
+          "confidence": 0.7,
+          "explanation": "The abstract mentions that transcultural studies has roots in research on colonialism and postcolonialism"
         },
         {
-          "from": "transcultural studies",
-          "to": "cultural globalisation",
+          "from": "Transculturality and the Eco-Logic of Memory",
+          "to": "cultural globalization studies",
           "type": "BUILDS_ON",
-          "confidence": 0.8,
-          "explanation": "Transcultural studies emerged from research on cultural globalisation processes"
-        },
-        {
-          "from": "eco-logical mnemohistories",
-          "to": "relationality of the remembered",
-          "type": "APPLIES",
-          "confidence": 0.85,
-          "explanation": "The three relational concepts serve as conceptual building blocks for eco-logical mnemohistories"
+          "confidence": 0.7,
+          "explanation": "The abstract identifies cultural globalization as one of the roots of transcultural studies that this work draws upon"
         }
       ],
       "claims": [
         {
-          "claim": "Memory is fundamentally eco-logical",
-          "evidence_type": "theoretical argument",
-          "strength": "moderate"
+          "claim": "Memory is fundamentally 'eco-logical'",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
           "claim": "Relational dynamics from transcultural memory research can enable understanding of the more-than-human in collective memory",
-          "evidence_type": "conceptual synthesis",
-          "strength": "moderate"
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": true
         },
         {
           "claim": "Memory studies experienced a transcultural turn around 2010",
-          "evidence_type": "historical analysis",
-          "strength": "strong"
-        },
-        {
-          "claim": "Memory studies is entering a fourth phase focused on environmental questions",
-          "evidence_type": "field observation",
-          "strength": "moderate"
+          "evidence_type": "meta_analytic",
+          "strength": "moderate",
+          "testable": true
         }
       ],
       "historical_significance": {
-        "paradigm_shift": true,
+        "paradigm_shift": false,
         "influenced_fields": [
           "memory studies",
-          "environmental humanities",
-          "transcultural studies",
-          "postcolonial studies"
+          "environmental humanities"
         ],
-        "controversy_generated": "moderate - challenges anthropocentric approaches to memory studies",
-        "lasting_impact": "potentially significant as it proposes a new eco-logical framework that could reshape how memory studies approaches environmental questions and more-than-human agency"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "Proposes new theoretical frameworks for integrating environmental concerns into memory studies, but impact assessment requires full text analysis"
       }
     }
   },
@@ -550,120 +504,107 @@
       "abstract_preview": "Decolonizing biodiversity conservation science and practice involves a transition towards more locally rooted, plural, socially just, and convivial forms of conservation, moving away from mainstream c..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "review",
+        "subfield": "conservation science",
+        "summary": "This paper introduces and reviews contributions to a special issue on decolonizing biodiversity conservation, identifying six principles for moving away from Eurocentric conservation approaches."
+      },
       "concepts": [
         {
-          "name": "Decolonizing biodiversity conservation",
-          "type": "framework",
+          "name": "decolonizing conservation",
+          "type": "paradigm",
           "definition": "A transition towards more locally rooted, plural, socially just, and convivial forms of conservation, moving away from mainstream conservation approaches rooted in Eurocentric ontologies and epistemologies",
-          "novelty_at_time": "medium"
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
-          "name": "Recognition principle",
-          "type": "theory",
-          "definition": "A foundational principle for decolonizing conservation that acknowledges Indigenous and local knowledge systems and rights",
-          "novelty_at_time": "low"
+          "name": "recognition principle",
+          "type": "framework",
+          "definition": "One of six principles identified as starting points for decolonizing conservation efforts",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
-          "name": "Reparation principle",
-          "type": "theory",
-          "definition": "A principle addressing historical injustices and seeking to repair damages caused by colonial conservation practices",
-          "novelty_at_time": "medium"
+          "name": "reparation principle",
+          "type": "framework",
+          "definition": "One of six principles identified as starting points for decolonizing conservation efforts",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
-          "name": "Epistemic disobedience",
-          "type": "theory",
-          "definition": "Resistance to dominant Western knowledge systems and validation of alternative ways of knowing in conservation",
-          "novelty_at_time": "medium"
+          "name": "epistemic disobedience",
+          "type": "framework",
+          "definition": "One of six principles identified as starting points for decolonizing conservation efforts",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
-          "name": "Relationality principle",
-          "type": "theory",
-          "definition": "Emphasis on interconnected relationships between humans, nature, and spiritual dimensions in conservation practice",
-          "novelty_at_time": "medium"
+          "name": "relationality principle",
+          "type": "framework",
+          "definition": "One of six principles identified as starting points for decolonizing conservation efforts",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
-          "name": "Power subversion",
-          "type": "theory",
-          "definition": "Challenging and redistributing power structures within conservation institutions and practices",
-          "novelty_at_time": "medium"
+          "name": "power subversion principle",
+          "type": "framework",
+          "definition": "One of six principles identified as starting points for decolonizing conservation efforts",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
-          "name": "Limits principle",
-          "type": "theory",
-          "definition": "Recognition of boundaries and constraints in decolonizing efforts within conservation",
-          "novelty_at_time": "medium"
+          "name": "limits principle",
+          "type": "framework",
+          "definition": "One of six principles identified as starting points for decolonizing conservation efforts",
+          "novelty_at_time": "medium",
+          "well_established": false
         }
       ],
       "relationships": [
         {
-          "from": "Decolonizing biodiversity conservation",
-          "to": "Protected areas",
+          "from": "decolonizing conservation",
+          "to": "mainstream conservation approaches",
           "type": "CONTRADICTS",
-          "confidence": 0.8,
-          "explanation": "The framework explicitly moves away from mainstream protected area approaches as Eurocentric"
+          "confidence": 0.9,
+          "explanation": "The abstract explicitly states this approach moves away from mainstream conservation approaches like protected areas and market-based instruments"
         },
         {
-          "from": "Decolonizing biodiversity conservation",
-          "to": "Market-based conservation instruments",
+          "from": "decolonizing conservation",
+          "to": "Eurocentric ontologies and epistemologies",
           "type": "CONTRADICTS",
-          "confidence": 0.8,
-          "explanation": "Challenges market-based approaches as rooted in Eurocentric epistemologies"
-        },
-        {
-          "from": "Epistemic disobedience",
-          "to": "Decolonial theory",
-          "type": "BUILDS_ON",
           "confidence": 0.9,
-          "explanation": "The concept draws from broader decolonial theoretical frameworks challenging Western knowledge dominance"
-        },
-        {
-          "from": "Recognition principle",
-          "to": "Indigenous rights discourse",
-          "type": "BUILDS_ON",
-          "confidence": 0.9,
-          "explanation": "Builds on established frameworks for recognizing Indigenous knowledge and rights"
-        },
-        {
-          "from": "Decolonizing biodiversity conservation",
-          "to": "Environmental justice",
-          "type": "EXTENDS",
-          "confidence": 0.8,
-          "explanation": "Extends environmental justice concerns into biodiversity conservation practice"
+          "explanation": "The abstract states that decolonizing conservation moves away from approaches strongly rooted in Eurocentric ontologies and epistemologies"
         }
       ],
       "claims": [
         {
-          "claim": "Mainstream conservation approaches are strongly rooted in Eurocentric ontologies and epistemologies",
-          "evidence_type": "theoretical analysis",
-          "strength": "moderate"
+          "claim": "Decolonizing biodiversity conservation involves transitioning towards more locally rooted, plural, socially just, and convivial forms of conservation",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": true
         },
         {
           "claim": "Six principles (recognition, reparation, epistemic disobedience, relationality, power subversion, and limits) can serve as starting points for decolonizing conservation",
-          "evidence_type": "systematic review of special issue contributions",
-          "strength": "moderate"
+          "evidence_type": "comparative",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "Implementation of decolonizing principles can result in subtler and less universalizing conservation approaches",
-          "evidence_type": "theoretical synthesis",
-          "strength": "weak"
-        },
-        {
-          "claim": "There can be differences over meaning and emphasis regarding decolonizing principles among different stakeholders",
-          "evidence_type": "empirical observation",
-          "strength": "moderate"
+          "claim": "Implementation of these principles can result in subtler and less universalizing conservation approaches",
+          "evidence_type": "theoretical",
+          "strength": "weak",
+          "testable": true
         }
       ],
       "historical_significance": {
-        "paradigm_shift": true,
+        "paradigm_shift": false,
         "influenced_fields": [
-          "conservation biology",
-          "environmental studies",
-          "development studies",
-          "Indigenous studies",
-          "political ecology"
+          "conservation science",
+          "environmental policy",
+          "postcolonial studies"
         ],
-        "controversy_generated": "Challenges established conservation institutions and Western-dominated approaches, potentially creating resistance from traditional conservation organizations",
-        "lasting_impact": "Contributes to growing movement to decolonize environmental sciences and provides framework for more inclusive and socially just conservation practices"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "Provides framework for critiquing and reforming conservation practice, though long-term impact unclear from abstract alone"
       }
     }
   },
@@ -677,87 +618,72 @@
       "abstract_preview": "Although ethical reforms in biological anthropology have gained ground in recent years, there is still a scarcity of ethical standards for work involving historical documented collections (HDCs) at US..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "commentary",
+        "subfield": "biological anthropology",
+        "summary": "This paper summarizes workshop discussions on ethical guidelines for research, teaching, and curation involving historical documented collections of deceased individuals in biological anthropology."
+      },
       "concepts": [
         {
-          "name": "Historical Documented Collections (HDCs)",
+          "name": "historical documented collections (HDCs)",
           "type": "phenomenon",
-          "definition": "Collections of deceased individuals created in late 19th to mid-20th centuries under anatomy laws targeting socially marginalized communities, containing extensive documentation used for biological anthropology research",
-          "novelty_at_time": "low"
+          "definition": "Collections of deceased individuals created in the late 19th to mid-20th centuries under anatomy laws that targeted socially marginalized communities and allowed for dissection without consent",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
-          "name": "Ethical standards for HDC research",
+          "name": "ethical standards for HDCs",
           "type": "framework",
-          "definition": "Guidelines for ethical conduct in research, teaching, community engagement, and curation involving historical documented collections of human remains",
-          "novelty_at_time": "high"
+          "definition": "Proposed ethical guidelines for research, teaching, community engagement, and curation involving historical documented collections",
+          "novelty_at_time": "medium",
+          "well_established": false
         },
         {
-          "name": "Anatomy laws targeting marginalized communities",
+          "name": "anatomy laws targeting marginalized communities",
           "type": "phenomenon",
-          "definition": "Legal frameworks from late 19th to mid-20th centuries that allowed dissection of individuals from socially marginalized communities without their consent",
-          "novelty_at_time": "low"
-        },
-        {
-          "name": "Multi-stakeholder ethical workshop approach",
-          "type": "method",
-          "definition": "Collaborative workshop methodology bringing together researchers, curators, and community members to develop ethical consensus for biological anthropology practices",
-          "novelty_at_time": "medium"
+          "definition": "Late 19th to mid-20th century legal frameworks that allowed dissection of socially marginalized individuals without their consent",
+          "novelty_at_time": "low",
+          "well_established": true
         }
       ],
       "relationships": [
         {
-          "from": "Ethical standards for HDC research",
-          "to": "NAGPRA and repatriation movements",
-          "type": "EXTENDS",
-          "confidence": 0.8,
-          "explanation": "This work extends beyond NAGPRA to address collections not covered by existing repatriation laws"
-        },
-        {
-          "from": "Multi-stakeholder ethical workshop approach",
-          "to": "Community-based participatory research methods",
-          "type": "APPLIES",
+          "from": "this work",
+          "to": "recent ethical reforms in biological anthropology",
+          "type": "BUILDS_ON",
           "confidence": 0.7,
-          "explanation": "Applies participatory principles to develop ethical guidelines through community engagement"
-        },
-        {
-          "from": "Ethical standards for HDC research",
-          "to": "Traditional biological anthropology research practices",
-          "type": "RESPONDS_TO",
-          "confidence": 0.9,
-          "explanation": "Directly responds to problematic historical practices in biological anthropology that lacked ethical oversight"
+          "explanation": "The abstract states this work recognizes and builds upon recent ethical reforms that have gained ground in the field"
         }
       ],
       "claims": [
         {
           "claim": "There is still a scarcity of ethical standards for work involving historical documented collections at US museums and universities",
-          "evidence_type": "expert consensus and literature review",
-          "strength": "strong"
+          "evidence_type": "comparative",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "HDCs were created under anatomy laws that targeted socially marginalized communities and allowed dissection without consent",
-          "evidence_type": "historical documentation",
-          "strength": "strong"
+          "claim": "Historical documented collections were created under anatomy laws that targeted socially marginalized communities without their consent",
+          "evidence_type": "empirical",
+          "strength": "strong",
+          "testable": true
         },
         {
           "claim": "These collections have served as foundational resources for theory and methods development in biological anthropology into the 21st century",
-          "evidence_type": "disciplinary analysis",
-          "strength": "strong"
-        },
-        {
-          "claim": "Workshop participants reached major points of consensus on ethical guidelines for research, teaching, community engagement, and curation",
-          "evidence_type": "workshop proceedings and participant agreement",
-          "strength": "moderate"
+          "evidence_type": "empirical",
+          "strength": "moderate",
+          "testable": true
         }
       ],
       "historical_significance": {
-        "paradigm_shift": true,
+        "paradigm_shift": false,
         "influenced_fields": [
           "biological anthropology",
           "museum studies",
-          "bioethics",
-          "forensic anthropology"
+          "bioethics"
         ],
-        "controversy_generated": "Addresses ongoing tensions between scientific research interests and ethical obligations to descendant communities and marginalized populations",
-        "lasting_impact": "Establishes framework for ethical reform in biological anthropology that could transform how historical human remains collections are studied, taught with, and curated"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "Potential to establish new ethical standards for handling historical collections, but impact assessment requires full text and field reception analysis"
       }
     }
   },
@@ -771,106 +697,78 @@
       "abstract_preview": "We revise the conventional wisdom that Africa’s international borders were drawn arbitrarily. Europeans knew very little about most of Africa in the mid-1880s, but their self-interested goals of amass..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "original_research",
+        "subfield": "political geography",
+        "summary": "This paper challenges the conventional wisdom that African colonial borders were arbitrary by demonstrating that Europeans actively incorporated precolonial political structures and geographical features into border formation."
+      },
       "concepts": [
         {
-          "name": "Endogenous Colonial Borders",
+          "name": "endogenous colonial borders",
           "type": "theory",
-          "definition": "The concept that African colonial borders were not arbitrarily drawn but were influenced by precolonial political structures, geography, and European-African negotiations",
-          "novelty_at_time": "high"
+          "definition": "Colonial borders that were influenced by local African political structures and geographical conditions rather than being arbitrarily imposed",
+          "novelty_at_time": "high",
+          "well_established": false
         },
         {
-          "name": "African Agency in Border Formation",
-          "type": "phenomenon",
-          "definition": "The influence that African rulers and political entities exercised on colonial border demarcation through treaties and negotiations with Europeans",
-          "novelty_at_time": "medium"
-        },
-        {
-          "name": "Precolonial State Frontiers",
-          "type": "framework",
-          "definition": "Historical boundaries and territorial divisions of African political entities that existed before European colonization",
-          "novelty_at_time": "low"
-        },
-        {
-          "name": "Geographic Focal Points in Border Formation",
-          "type": "theory",
-          "definition": "The role of natural features, particularly water bodies, as determining factors in colonial border placement",
-          "novelty_at_time": "medium"
-        },
-        {
-          "name": "Causal Process Observations for Borders",
+          "name": "causal process observations for bilateral borders",
           "type": "method",
-          "definition": "Systematic coding of historical evidence to identify causal mechanisms behind each bilateral border formation",
-          "novelty_at_time": "high"
+          "definition": "Systematic coding of historical evidence to trace the causal mechanisms behind each pair of countries' shared border formation",
+          "novelty_at_time": "medium",
+          "well_established": false
+        },
+        {
+          "name": "arbitrary African borders thesis",
+          "type": "paradigm",
+          "definition": "The conventional wisdom that Africa's international borders were drawn without regard to local conditions or African input",
+          "novelty_at_time": "low",
+          "well_established": true
         }
       ],
       "relationships": [
         {
-          "from": "Endogenous Colonial Borders",
-          "to": "Arbitrary Colonial Borders Theory",
+          "from": "this work",
+          "to": "conventional wisdom on African borders",
           "type": "CONTRADICTS",
           "confidence": 0.9,
-          "explanation": "Directly challenges the conventional wisdom that African borders were drawn arbitrarily by Europeans"
-        },
-        {
-          "from": "African Agency in Border Formation",
-          "to": "Colonial Studies Literature",
-          "type": "EXTENDS",
-          "confidence": 0.8,
-          "explanation": "Builds upon existing colonial studies by emphasizing African actors' influence in colonial processes"
-        },
-        {
-          "from": "Geographic Focal Points in Border Formation",
-          "to": "Political Geography Theory",
-          "type": "APPLIES",
-          "confidence": 0.7,
-          "explanation": "Applies geographic determinism concepts to explain colonial border placement patterns"
-        },
-        {
-          "from": "Causal Process Observations for Borders",
-          "to": "Mixed Methods Research",
-          "type": "BUILDS_ON",
-          "confidence": 0.8,
-          "explanation": "Combines quantitative spatial analysis with qualitative historical evidence examination"
+          "explanation": "The abstract explicitly states they 'revise the conventional wisdom that Africa's international borders were drawn arbitrarily'"
         }
       ],
       "claims": [
         {
           "claim": "Historical political frontiers directly affected 62% of all bilateral borders in Africa",
-          "evidence_type": "Quantitative analysis of original spatial dataset and qualitative coding of treaties",
-          "strength": "strong"
+          "evidence_type": "empirical",
+          "strength": "strong",
+          "testable": true
         },
         {
-          "claim": "Europeans negotiated with African rulers to secure treaties and learn about historical state frontiers",
-          "evidence_type": "Diplomatic histories and treaty analysis",
-          "strength": "strong"
+          "claim": "Europeans negotiated with African rulers and learned about historical state frontiers, enabling African influence on border formation",
+          "evidence_type": "empirical",
+          "strength": "moderate",
+          "testable": true
         },
         {
           "claim": "Water bodies comprised the primary border feature much more frequently than straight lines",
-          "evidence_type": "Systematic analysis of border characteristics across all bilateral borders",
-          "strength": "strong"
+          "evidence_type": "empirical",
+          "strength": "strong",
+          "testable": true
         },
         {
-          "claim": "Europeans' self-interested goals prompted intensive examination of on-the-ground conditions during border formation",
-          "evidence_type": "Historical diplomatic records and treaty negotiations",
-          "strength": "moderate"
-        },
-        {
-          "claim": "Major water bodies shaped precolonial civilizations and served as focal points for border formation",
-          "evidence_type": "Spatial analysis and historical evidence of precolonial states",
-          "strength": "moderate"
+          "claim": "Europeans' self-interested goals of amassing territory prompted intensive examination of on-the-ground conditions during border formation",
+          "evidence_type": "empirical",
+          "strength": "moderate",
+          "testable": true
         }
       ],
       "historical_significance": {
-        "paradigm_shift": true,
+        "paradigm_shift": false,
         "influenced_fields": [
-          "African Studies",
-          "Colonial History",
-          "Political Geography",
-          "International Relations",
-          "Comparative Politics"
+          "political geography",
+          "African studies",
+          "colonial history"
         ],
-        "controversy_generated": "Challenges fundamental assumptions about colonial legacy and African state formation, potentially controversial among scholars who emphasize colonial arbitrariness",
-        "lasting_impact": "Likely to reshape understanding of African political geography and colonial processes, with implications for debates about African state legitimacy and border conflicts"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "challenges established narrative about African border formation but paradigm shift determination requires broader field reception analysis"
       }
     }
   },
@@ -884,93 +782,79 @@
       "abstract_preview": "I use accent as a metaphor and a conceptual tool to epistemologically reflect over the field of migration studies. Accented thinking is a response and a reaction to the condition of coloniality that s..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "theoretical",
+        "subfield": "migration studies epistemology",
+        "summary": "The paper introduces 'accented thinking' as a conceptual tool to challenge colonial knowledge production structures in migration studies and develop alternative epistemological approaches."
+      },
       "concepts": [
         {
           "name": "accented thinking",
           "type": "framework",
-          "definition": "An epistemological approach using accent as metaphor for alternative knowledge production in response to coloniality in migration studies",
-          "novelty_at_time": "high"
-        },
-        {
-          "name": "epistemic refusal",
-          "type": "method",
-          "definition": "A combination of accent as way of knowing and form of struggle that refuses dominant epistemologies",
-          "novelty_at_time": "medium"
+          "definition": "An epistemological approach that uses accent as both a way of knowing and a form of struggle against colonial knowledge production structures",
+          "novelty_at_time": "high",
+          "well_established": false
         },
         {
           "name": "accent as refusal",
-          "type": "theory",
-          "definition": "Using accent as tool to scrutinize epistemic injustices and create alternative ways of knowing",
-          "novelty_at_time": "high"
+          "type": "tool",
+          "definition": "Using accent as a tool to scrutinize epistemic injustices and create alternative ways of knowing",
+          "novelty_at_time": "high",
+          "well_established": false
         },
         {
-          "name": "coloniality in knowledge production",
+          "name": "epistemic refusal",
+          "type": "paradigm",
+          "definition": "A rejection of dominant knowledge production methods that results from combining accent as a way of knowing with accent as a form of struggle",
+          "novelty_at_time": "medium",
+          "well_established": false
+        },
+        {
+          "name": "coloniality of knowledge production",
           "type": "phenomenon",
-          "definition": "Colonial structures that shape and constrain knowledge production processes in migration studies",
-          "novelty_at_time": "low"
+          "definition": "The colonial structures that shape how knowledge is produced in academic fields",
+          "novelty_at_time": "low",
+          "well_established": true
         }
       ],
       "relationships": [
         {
           "from": "accented thinking",
           "to": "decolonial epistemology",
-          "type": "BUILDS_ON",
-          "confidence": 0.9,
-          "explanation": "Accented thinking responds to coloniality and seeks alternative knowledge production, aligning with decolonial epistemological projects"
-        },
-        {
-          "from": "epistemic refusal",
-          "to": "epistemic disobedience",
-          "type": "EXTENDS",
-          "confidence": 0.8,
-          "explanation": "Epistemic refusal extends concepts of epistemic disobedience by combining knowing and struggle through accent metaphor"
-        },
-        {
-          "from": "accent as refusal",
-          "to": "epistemic injustice theory",
-          "type": "APPLIES",
-          "confidence": 0.85,
-          "explanation": "Uses accent as tool to analyze and scrutinize epistemic injustices in migration studies"
-        },
-        {
-          "from": "accented thinking",
-          "to": "traditional migration studies",
-          "type": "CONTRADICTS",
-          "confidence": 0.75,
-          "explanation": "Challenges dominant approaches in migration studies by proposing alternative epistemological frameworks"
+          "type": "RESPONDS_TO",
+          "confidence": 0.6,
+          "explanation": "The paper positions accented thinking as a response to coloniality in knowledge production, suggesting engagement with decolonial scholarship"
         }
       ],
       "claims": [
         {
-          "claim": "Accented thinking can stimulate emergence of new perspectives and approaches in migration studies",
-          "evidence_type": "theoretical argumentation",
-          "strength": "moderate"
+          "claim": "Accented thinking can stimulate the emergence of new perspectives and approaches in migration studies",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
-          "claim": "Accent functions both as a way of knowing and a form of struggle",
-          "evidence_type": "conceptual analysis",
-          "strength": "moderate"
+          "claim": "The field of migration studies is structured by colonial conditions that affect knowledge production",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": true
         },
         {
-          "claim": "Coloniality structures knowledge production processes in migration studies",
-          "evidence_type": "critical analysis",
-          "strength": "moderate"
-        },
-        {
-          "claim": "Accented thinking takes us beyond notions that restrict alternative orders",
-          "evidence_type": "theoretical argumentation",
-          "strength": "weak"
+          "claim": "Accent can function as both a way of knowing and a form of struggle",
+          "evidence_type": "theoretical",
+          "strength": "weak",
+          "testable": false
         }
       ],
       "historical_significance": {
         "paradigm_shift": false,
         "influenced_fields": [
           "migration studies",
-          "decolonial studies",
-          "epistemology"
+          "epistemology",
+          "decolonial studies"
         ],
-        "controversy_generated": "Potential debate over methodological validity and practical application of accent metaphor in academic research",
-        "lasting_impact": "Contributes to ongoing decolonial turn in migration studies by offering novel metaphorical framework for epistemological critique"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "unclear from abstract alone"
       }
     }
   },
@@ -984,94 +868,99 @@
       "abstract_preview": "This article focuses on the concept of refusal, particularly as it has been developed within critical Black studies and critical Indigenous studies within anthropology and beyond. It argues that while..."
     },
     "analysis": {
+      "paper_type": {
+        "type": "theoretical",
+        "subfield": "critical anthropology",
+        "summary": "This paper argues for reformulating anthropology through the concept of refusal as developed in critical Black and Indigenous studies to better address ongoing coloniality and racism."
+      },
       "concepts": [
         {
           "name": "refusal",
-          "type": "theory",
-          "definition": "A concept developed within critical Black studies and critical Indigenous studies that provides alternative approaches to understanding political struggle and resistance beyond traditional Western frameworks",
-          "novelty_at_time": "medium"
+          "type": "framework",
+          "definition": "A concept developed within critical Black studies and critical Indigenous studies that provides analytical inroads for understanding political struggle beyond traditional Foucauldian and Gramscian frameworks",
+          "novelty_at_time": "low",
+          "well_established": true
         },
         {
           "name": "afterlives of conquest",
-          "type": "framework",
-          "definition": "The ongoing effects and continuing presence of colonial violence and dispossession that persist in contemporary political and social formations",
-          "novelty_at_time": "medium"
-        },
-        {
-          "name": "coloniality",
-          "type": "framework",
-          "definition": "The ongoing structural and epistemic dimensions of colonial power that continue to shape modern political life globally",
-          "novelty_at_time": "low"
-        },
-        {
-          "name": "modern personhood",
           "type": "phenomenon",
-          "definition": "The foundational processes that established possibilities for political subjectivity and agency in modernity, particularly in Western contexts",
-          "novelty_at_time": "low"
+          "definition": "The ongoing effects and manifestations of historical conquest that continue to shape contemporary political life",
+          "novelty_at_time": "medium",
+          "well_established": false
+        },
+        {
+          "name": "foundational processes of modern personhood",
+          "type": "phenomenon",
+          "definition": "The basic processes that established the possibilities for modern personhood and political life globally, not just in the West",
+          "novelty_at_time": "low",
+          "well_established": true
         }
       ],
       "relationships": [
         {
-          "from": "refusal",
+          "from": "Thomas's refusal framework",
           "to": "Foucauldian analysis",
           "type": "EXTENDS",
           "confidence": 0.8,
-          "explanation": "Refusal builds upon but addresses limitations in Foucauldian frameworks by attending to foundational processes of modern personhood"
+          "explanation": "The paper argues that while Foucauldian frames have generated exquisite analyses of power, they have not sufficiently attended to foundational processes of modern personhood"
         },
         {
-          "from": "refusal",
+          "from": "Thomas's refusal framework",
           "to": "Gramscian analysis",
           "type": "EXTENDS",
           "confidence": 0.8,
-          "explanation": "Refusal extends Gramscian approaches to power by incorporating Black and Indigenous radical thought genealogies"
+          "explanation": "Similar to Foucauldian frames, Gramscian approaches are noted as having limitations in addressing foundational processes that the refusal concept can address"
         },
         {
-          "from": "refusal",
+          "from": "Thomas's approach",
           "to": "critical Black studies",
           "type": "BUILDS_ON",
           "confidence": 0.9,
-          "explanation": "The concept of refusal has been developed within critical Black studies as a framework for understanding political struggle"
+          "explanation": "The paper explicitly states it focuses on refusal as developed within critical Black studies"
         },
         {
-          "from": "refusal",
+          "from": "Thomas's approach",
           "to": "critical Indigenous studies",
           "type": "BUILDS_ON",
           "confidence": 0.9,
-          "explanation": "Refusal emerges from critical Indigenous studies as an approach to political resistance and thought"
+          "explanation": "The paper explicitly states it focuses on refusal as developed within critical Indigenous studies"
         }
       ],
       "claims": [
         {
           "claim": "Foucauldian and Gramscian frameworks have not sufficiently attended to foundational processes that charted possibilities of modern personhood and political life globally",
-          "evidence_type": "theoretical critique",
-          "strength": "moderate"
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": false
         },
         {
-          "claim": "Traditional power analysis frameworks have not adequately acknowledged genealogies of Black and Indigenous radical thought informing political approaches in these communities",
-          "evidence_type": "theoretical critique",
-          "strength": "moderate"
+          "claim": "These frameworks have not adequately acknowledged genealogies of Black and Indigenous radical thought informing political approaches in these communities",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": true
         },
         {
           "claim": "Any significant reformulation of anthropology must recognize and foreground ongoing coloniality and racism as afterlives of conquest",
-          "evidence_type": "disciplinary critique",
-          "strength": "strong"
+          "evidence_type": "theoretical",
+          "strength": "strong",
+          "testable": false
         },
         {
-          "claim": "Refusal provides inroads to reformulating anthropological approaches to political struggle",
-          "evidence_type": "theoretical proposition",
-          "strength": "moderate"
+          "claim": "Refusal provides analytical inroads for reformulating anthropological approaches to political struggle",
+          "evidence_type": "theoretical",
+          "strength": "moderate",
+          "testable": true
         }
       ],
       "historical_significance": {
-        "paradigm_shift": true,
+        "paradigm_shift": false,
         "influenced_fields": [
-          "anthropology",
+          "critical anthropology",
           "critical Black studies",
-          "critical Indigenous studies",
-          "decolonial studies"
+          "critical Indigenous studies"
         ],
-        "controversy_generated": "Challenges established theoretical frameworks in anthropology and calls for disciplinary reformulation",
-        "lasting_impact": "Contributes to ongoing decolonial turn in anthropology and foregrounds Indigenous and Black radical thought as central to understanding political resistance"
+        "controversy_generated": "none apparent from abstract",
+        "lasting_impact": "Contributes to ongoing efforts to decolonize anthropological theory and method"
       }
     }
   }
