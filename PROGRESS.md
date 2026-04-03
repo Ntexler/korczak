@@ -9,9 +9,9 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 1a — Infrastructure
-**Status:** In Progress
-**Goal:** Set up Supabase, FastAPI backend, Next.js frontend, DB schema.
+## Current Phase: 1b — Graph Seeding
+**Status:** Pipeline tested, ready for full run
+**Goal:** Seed 5,000 papers (2,500 anthropology + 2,500 sleep/cognition).
 
 ### Phase 1a Progress
 - [x] DB schema: 3 migrations (core graph, user graph, validation tables)
@@ -24,8 +24,16 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] All 3 migrations run — 15 tables live in Supabase
 - [x] Supabase client tested — reads/writes working
 - [x] FastAPI server boots on port 8000
-- [ ] Wire API endpoints to Supabase (currently return placeholders)
-- [ ] Frontend → Backend connection test
+- [ ] Wire API endpoints to Supabase (will do in Phase 1c)
+
+### Phase 1b Progress
+- [x] Seeding pipeline created (`backend/pipeline/seed_graph.py`)
+- [x] Two domains configured: anthropology (T10149) + sleep/cognition (T10985)
+- [x] Test run: 10 papers seeded (5 anthro + 5 sleep) — 70 concepts, 44 claims, 18 relationships
+- [x] Pipeline handles: OpenAlex fetch → Claude analysis → Supabase insert (papers, concepts, claims, relationships)
+- [ ] Full seeding run: 2,500 per domain (5,000 total)
+- [ ] Entity resolution (embedding-based dedup)
+- [ ] Manual validation: 50 nodes, 100 edges
 
 ### Files Created
 ```
@@ -66,12 +74,18 @@ frontend/
 
 ## Completed
 
-### 2026-04-03 — Phase 1a: Infrastructure (in progress)
-- [x] Created DB schema (3 migration files, 13 tables)
+### 2026-04-04 — Phase 1b: Graph Seeding (in progress)
+- [x] Built seeding pipeline with Claude analysis + Supabase inserts
+- [x] Added sleep/cognition domain (T10985)
+- [x] Test run: 10 papers → 70 concepts, 44 claims, 18 relationships
+
+### 2026-04-03 — Phase 1a: Infrastructure
+- [x] Created DB schema (3 migration files, 15 tables)
 - [x] Created FastAPI backend skeleton (11 routes)
 - [x] Created integration clients (Supabase, Claude, OpenAlex)
 - [x] Created Next.js frontend with chat UI
-- [x] Both build successfully
+- [x] Supabase project set up and migrations run
+- [x] Both backend and frontend build successfully
 
 ### 2026-04-03 — Phase 0.5: New Papers Test
 - [x] Created `test_new_papers.py` script
@@ -103,13 +117,16 @@ frontend/
 | 2026-04-03 | Claude Sonnet for paper analysis | Good quality/cost tradeoff for batch analysis |
 | 2026-04-03 | Improved prompt v2 | Added paper_type, calibrated paradigm_shift, varied concept types, confidence bounds |
 | 2026-04-03 | No Docker for local dev | PostgreSQL runs natively on Windows, simpler setup |
+| 2026-04-03 | Added sleep/cognition domain | User requested; OpenAlex topic T10985 (Sleep & Wakefulness Research, 85K works) |
+| 2026-04-03 | 2,500 papers per domain | 5K total (anthropology + sleep), sorted by citations desc |
 
 ---
 
 ## Phase Roadmap
 - [x] Phase 0: Prompt validation (8/10 on canonical works)
 - [x] Phase 0.5: Test new papers (8.5/10, prompt v2)
-- [ ] **Phase 1a: Infrastructure** ← WE ARE HERE
+- [x] Phase 1a: Infrastructure (Supabase + FastAPI + Next.js)
+- [ ] **Phase 1b: Graph Seeding** ← WE ARE HERE
 - [ ] Phase 1b: Graph Seeding (5K papers, entity resolution)
 - [ ] Phase 1c: Navigator (context builder, system prompt, chat UI)
 - [ ] Phase 1d: Self-Monitoring v1
