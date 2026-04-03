@@ -9,43 +9,72 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 0.5 — Test New Papers Analysis
-**Status:** PASSED (8.5/10)
-**Goal:** Verify Claude can analyze recent (2024-2025) papers as well as canonical ones.
+## Current Phase: 1a — Infrastructure
+**Status:** In Progress
+**Goal:** Set up Supabase, FastAPI backend, Next.js frontend, DB schema.
 
-### Phase 0.5 Results
-- **Script**: `test_new_papers.py` — fetches from OpenAlex, analyzes with Claude (Sonnet)
-- **Results file**: `phase05_results.json`
-- **Papers tested**: 10 recent (2024-2025) anthropology articles from OpenAlex topic `T10149`
-- **Success rate**: 10/10 analyses parsed successfully
-- **Papers analyzed**:
-  1. The Disappearance of Rituals (Reklis, 2024)
-  2. Decolonial research methodology (2024)
-  3. When decolonization is hijacked (2024)
-  4. Decolonising Research for Justice (2024)
-  5. Transculturality and the Eco-Logic of Memory (2024)
-  6. Decolonizing biodiversity conservation (2024)
-  7. Ethical futures in biological anthropology (2024)
-  8. Endogenous Colonial Borders (Paine et al., 2024)
-  9. Doing migration studies with an accent (2024)
-  10. Refusal (and Repair) (2024)
-- **Quality observations**:
-  - Concept extraction: Good — identifies 4-7 concepts per paper with types and novelty
-  - Relationship mapping: Good — correctly uses BUILDS_ON, CONTRADICTS, EXTENDS, APPLIES
-  - Claims: Solid — distinguishes evidence types and strength
-  - Cross-references: Claude connects to known works (Barthes, colonial studies, etc.)
-  - Issue: "paradigm_shift" flagged too often (6/10) — may need prompt calibration
+### Phase 1a Progress
+- [x] DB schema: 3 migrations (core graph, user graph, validation tables)
+- [x] FastAPI backend skeleton (11 routes: health, chat, graph)
+- [x] Integration clients: Supabase, Claude API, OpenAlex
+- [x] Prompt files: paper_analysis (v2), navigator system prompt
+- [x] Next.js frontend skeleton (chat UI, zustand store, API lib)
+- [x] Both backend and frontend build successfully
+- [ ] Supabase project setup (need to create project + run migrations)
+- [ ] Wire API endpoints to Supabase (currently return placeholders)
+- [ ] Frontend → Backend connection test
+
+### Files Created
+```
+db/migrations/
+  001_core_schema.sql      — papers, concepts, claims, entities, controversies, relationships
+  002_user_schema.sql      — user_profiles, user_knowledge, conversations, messages
+  003_validation_schema.sql — source_evidence, quality_flags, disagreements, source_health
+
+backend/
+  main.py, config.py       — FastAPI app with CORS, lifespan
+  api/health.py            — GET /api/health
+  api/chat.py              — POST /api/chat, WS /api/chat/ws/{id}
+  api/graph.py             — GET /api/graph/concepts, /stats, /neighbors
+  integrations/supabase_client.py  — CRUD for papers, concepts, relationships
+  integrations/claude_client.py    — analyze_paper(), navigate()
+  integrations/openalex_client.py  — fetch_papers() with cursor pagination
+  prompts/paper_analysis.py        — v2 prompt (Phase 0.5 validated)
+  prompts/navigator.py             — Navigator system prompt
+  requirements.txt
+
+frontend/
+  src/app/page.tsx         — Chat page (Korczak Navigator UI)
+  src/components/Chat/     — ChatInput, ChatMessage
+  src/stores/chatStore.ts  — Zustand store for chat state
+  src/lib/api.ts           — API client functions
+```
+
+---
+
+## Phase 0.5 — Test New Papers Analysis
+**Status:** PASSED (8.5/10)
+
 - **Prompt iteration**: v1 had paradigm_shift inflation (6/10), flat concept types, no paper classification. v2 fixed all issues.
-- **Result**: 8.5/10 average — PASSED. Proceeding to Phase 1a.
+- **10/10 papers** analyzed successfully, all proper anthropology
+- **Result**: 8.5/10 average — PASSED
 
 ---
 
 ## Completed
 
+### 2026-04-03 — Phase 1a: Infrastructure (in progress)
+- [x] Created DB schema (3 migration files, 13 tables)
+- [x] Created FastAPI backend skeleton (11 routes)
+- [x] Created integration clients (Supabase, Claude, OpenAlex)
+- [x] Created Next.js frontend with chat UI
+- [x] Both build successfully
+
 ### 2026-04-03 — Phase 0.5: New Papers Test
 - [x] Created `test_new_papers.py` script
 - [x] Configured OpenAlex API (topic T10149 = Anthropological Studies)
 - [x] Ran Claude analysis on 10 papers — 10/10 success
+- [x] Improved prompt v2 — paradigm_shift calibrated, paper_type added
 - [x] Saved results to `phase05_results.json`
 
 ### 2026-04-03 — Project Setup
@@ -70,6 +99,7 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 | 2026-04-03 | OpenAlex topic T10149 for anthropology | Concept-based filtering was too broad; topic gives clean anthropology results |
 | 2026-04-03 | Claude Sonnet for paper analysis | Good quality/cost tradeoff for batch analysis |
 | 2026-04-03 | Improved prompt v2 | Added paper_type, calibrated paradigm_shift, varied concept types, confidence bounds |
+| 2026-04-03 | No Docker for local dev | PostgreSQL runs natively on Windows, simpler setup |
 
 ---
 
@@ -77,7 +107,6 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] Phase 0: Prompt validation (8/10 on canonical works)
 - [x] Phase 0.5: Test new papers (8.5/10, prompt v2)
 - [ ] **Phase 1a: Infrastructure** ← WE ARE HERE
-- [ ] Phase 1a: Infrastructure (Supabase, FastAPI, Next.js skeletons)
 - [ ] Phase 1b: Graph Seeding (5K papers, entity resolution)
 - [ ] Phase 1c: Navigator (context builder, system prompt, chat UI)
 - [ ] Phase 1d: Self-Monitoring v1
