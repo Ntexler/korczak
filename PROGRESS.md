@@ -10,7 +10,7 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 ---
 
 ## Current Phase: 1b — Graph Seeding
-**Status:** Pipeline tested, ready for full run
+**Status:** 281 papers seeded, enriched, syllabus generated
 **Goal:** Seed 5,000 papers (2,500 anthropology + 2,500 sleep/cognition).
 
 ### Phase 1a Progress
@@ -30,13 +30,16 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] Seeding pipeline created (`backend/pipeline/seed_graph.py`)
 - [x] Two domains configured: anthropology (T10149) + sleep/cognition (T10985)
 - [x] Test run: 10 papers seeded (5 anthro + 5 sleep) — 70 concepts, 44 claims, 18 relationships
-- [x] Full seeding run in progress: 218 papers, 1,160 concepts, 387 relationships (and counting)
+- [x] Full seeding run: 281 papers, 1,405 concepts, 815 claims, 472 relationships
 - [x] Multi-source enrichment pipeline (`backend/pipeline/enrich_sources.py`)
   - Semantic Scholar: 104 papers enriched (citations, influential count, TLDR)
   - CrossRef: 100 papers enriched (publisher, references, metadata verification)
-  - Retraction Watch: 27 papers checked (0 retracted)
+  - Retraction Watch: 100+ papers checked (0 retracted)
   - 14 citation count disagreements detected (OpenAlex vs S2)
-- [ ] Continue seeding until credits exhausted
+- [x] Syllabus generator (`backend/pipeline/generate_syllabus.py`)
+  - 20 topic files in `syllabus/` folder (auto-grouped from 140+ subfields)
+  - Topics: Anthropological Theory, Indigenous & Decolonial, Environmental, Political, Sleep & Cognition, etc.
+- [ ] Continue seeding when credits available
 - [ ] Entity resolution (embedding-based dedup)
 - [ ] Manual validation: 50 nodes, 100 edges
 
@@ -57,7 +60,19 @@ backend/
   integrations/openalex_client.py  — fetch_papers() with cursor pagination
   prompts/paper_analysis.py        — v2 prompt (Phase 0.5 validated)
   prompts/navigator.py             — Navigator system prompt
+  pipeline/seed_graph.py           — OpenAlex → Claude → Supabase seeding
+  pipeline/enrich_sources.py       — S2 + CrossRef + Retraction Watch enrichment
+  pipeline/generate_syllabus.py    — Auto-generate syllabus files from DB
   requirements.txt
+
+syllabus/
+  README.md                        — Index of all topic syllabi
+  anthropological_theory__philosophy.md
+  indigenous__decolonial_studies.md
+  environmental__ecological_anthropology.md
+  political_anthropology__power.md
+  sleep__cognition_research.md
+  ... (20 topic files total)
 
 frontend/
   src/app/page.tsx         — Chat page (Korczak Navigator UI)
