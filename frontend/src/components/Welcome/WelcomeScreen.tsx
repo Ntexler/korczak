@@ -5,6 +5,7 @@ import { Compass, BookOpen, Brain, Sparkles } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
 
+
 const ICONS = [Brain, BookOpen, Sparkles, Compass];
 const COLORS = ["text-accent-gold", "text-accent-blue", "text-accent-green", "text-accent-amber"];
 
@@ -14,7 +15,7 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({ onSend }: WelcomeScreenProps) {
   const graphStats = useChatStore((s) => s.graphStats);
-  const { t } = useLocaleStore();
+  const { t, fonts: f } = useLocaleStore();
   const prompts = t.prompts as unknown as string[];
   const statsLabel = t.statsLabel as unknown as { papers: string; concepts: string; connections: string };
 
@@ -34,7 +35,7 @@ export default function WelcomeScreen({ onSend }: WelcomeScreenProps) {
         </div>
         <h1
           className="text-4xl sm:text-5xl font-bold tracking-tight mb-3"
-          style={{ fontFamily: "var(--font-serif)" }}
+          style={{ fontFamily: f.serif }}
         >
           {t.welcomeTitle}{" "}
           <span className="text-accent-gold">{t.appName}</span>

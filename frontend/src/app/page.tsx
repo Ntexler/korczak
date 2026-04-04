@@ -26,8 +26,7 @@ export default function Home() {
     setConceptPanelOpen,
   } = useChatStore();
 
-  const { locale, toggleLocale, t } = useLocaleStore();
-  const isRtl = locale === "he";
+  const { locale, toggleLocale, t, fonts: f, isRtl } = useLocaleStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on new messages
@@ -58,7 +57,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background" dir={isRtl ? "rtl" : "ltr"}>
+    <div className="flex flex-col h-screen bg-background" dir={isRtl ? "rtl" : "ltr"} style={{ fontFamily: f.sans }}>
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface/30 backdrop-blur-sm z-10">
         <div className="flex items-center gap-3">
@@ -72,7 +71,7 @@ export default function Home() {
             <Compass size={20} className="text-accent-gold" />
             <h1
               className="text-lg font-bold text-foreground tracking-tight"
-              style={{ fontFamily: "var(--font-serif)" }}
+              style={{ fontFamily: f.serif }}
             >
               {t.appName}
             </h1>

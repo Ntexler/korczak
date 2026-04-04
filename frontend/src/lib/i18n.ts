@@ -1,5 +1,16 @@
 export type Locale = "en" | "he";
 
+export const fonts = {
+  en: {
+    sans: "var(--font-geist-sans), system-ui, sans-serif",
+    serif: "Georgia, 'Times New Roman', serif",
+  },
+  he: {
+    sans: "var(--font-heebo), 'Heebo', 'Segoe UI', sans-serif",
+    serif: "var(--font-frank), 'Frank Ruhl Libre', 'David', serif",
+  },
+} as const;
+
 export const translations = {
   en: {
     // Header

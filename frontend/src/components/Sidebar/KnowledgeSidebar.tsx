@@ -16,7 +16,7 @@ interface KnowledgeSidebarProps {
 export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProps) {
   const { messages, sidebarOpen, setSidebarOpen } = useChatStore();
   const setSelectedConceptId = useChatStore((s) => s.setSelectedConceptId);
-  const { t } = useLocaleStore();
+  const { t, fonts: f } = useLocaleStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ id: string; name: string; type: string }[]>([]);
   const [searching, setSearching] = useState(false);
@@ -66,7 +66,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Compass size={16} className="text-accent-gold" />
-          <span className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--font-serif)" }}>
+          <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.serif }}>
             {t.explore}
           </span>
         </div>

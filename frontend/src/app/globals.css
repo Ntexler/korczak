@@ -25,6 +25,8 @@
   --insight-bg: #1A1520;
   --user-bubble: #1A2332;
   --font-serif: "Georgia", "Times New Roman", serif;
+  --font-hebrew: var(--font-heebo), "Heebo", "Segoe UI", sans-serif;
+  --font-hebrew-serif: var(--font-frank), "Frank Ruhl Libre", "David", serif;
 }
 
 @theme inline {
@@ -55,6 +57,21 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Hebrew font overrides */
+[dir="rtl"] body,
+[dir="rtl"] {
+  font-family: var(--font-hebrew);
+}
+
+[dir="rtl"] .section-header {
+  font-family: var(--font-hebrew-serif);
+}
+
+/* Serif headings in Hebrew */
+[dir="rtl"] [style*="font-serif"] {
+  font-family: var(--font-hebrew-serif) !important;
 }
 
 /* Scrollbar */
