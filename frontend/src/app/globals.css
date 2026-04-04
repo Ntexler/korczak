@@ -25,8 +25,7 @@
   --insight-bg: #1A1520;
   --user-bubble: #1A2332;
   --font-serif: "Georgia", "Times New Roman", serif;
-  --font-hebrew: var(--font-heebo), "Heebo", "Segoe UI", sans-serif;
-  --font-hebrew-serif: var(--font-frank), "Frank Ruhl Libre", "David", serif;
+  --font-hebrew: var(--font-rubik), "Rubik", "Segoe UI", sans-serif;
 }
 
 @theme inline {
@@ -66,12 +65,7 @@ body {
 }
 
 [dir="rtl"] .section-header {
-  font-family: var(--font-hebrew-serif);
-}
-
-/* Serif headings in Hebrew */
-[dir="rtl"] [style*="font-serif"] {
-  font-family: var(--font-hebrew-serif) !important;
+  font-family: var(--font-hebrew);
 }
 
 /* Scrollbar */

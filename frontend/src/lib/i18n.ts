@@ -6,8 +6,8 @@ export const fonts = {
     serif: "Georgia, 'Times New Roman', serif",
   },
   he: {
-    sans: "var(--font-heebo), 'Heebo', 'Segoe UI', sans-serif",
-    serif: "var(--font-frank), 'Frank Ruhl Libre', 'David', serif",
+    sans: "var(--font-rubik), 'Rubik', 'Segoe UI', sans-serif",
+    serif: "var(--font-rubik), 'Rubik', 'Segoe UI', sans-serif",
   },
 } as const;
 
@@ -78,7 +78,7 @@ export const translations = {
 
     // Welcome
     welcomeTitle: "ברוכים הבאים ל",
-    tagline: "ראה מה שאתה לא רואה",
+    tagline: "תראה מה שאתה לא רואה",
     statsLabel: { papers: "מאמרים", concepts: "מושגים", connections: "קשרים" },
 
     // Suggested prompts
