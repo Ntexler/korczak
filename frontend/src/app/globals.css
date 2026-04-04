@@ -1,26 +1,208 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Korczak AI — Dark Museum Theme */
+/* "A late-night library with a brilliant guide" */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0C0F14;
+  --surface: #161B22;
+  --surface-hover: #1C2333;
+  --border: #2D3548;
+  --foreground: #E6EDF3;
+  --text-secondary: #8B949E;
+  --accent-gold: #E8B931;
+  --accent-gold-dim: rgba(232, 185, 49, 0.2);
+  --accent-blue: #58A6FF;
+  --accent-green: #3FB950;
+  --accent-amber: #D29922;
+  --insight-bg: #1A1520;
+  --user-bubble: #1A2332;
+  --font-serif: "Georgia", "Times New Roman", serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-gold-dim: var(--accent-gold-dim);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-green: var(--accent-green);
+  --color-accent-amber: var(--accent-amber);
+  --color-insight-bg: var(--insight-bg);
+  --color-user-bubble: var(--user-bubble);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Animations */
+@keyframes message-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes concept-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(232, 185, 49, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(232, 185, 49, 0.3);
+  }
+}
+
+@keyframes sidebar-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes count-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+
+.animate-message-in {
+  animation: message-fade-in 0.3s ease-out forwards;
+}
+
+.animate-concept-in {
+  animation: concept-float-in 0.25s ease-out forwards;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-sidebar-slide {
+  animation: sidebar-slide 0.3s ease-out forwards;
+}
+
+.animate-panel-slide {
+  animation: panel-slide-in 0.3s ease-out forwards;
+}
+
+.animate-count-up {
+  animation: count-up-fade 0.5s ease-out forwards;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.dot-bounce-1 { animation: dot-bounce 1.2s ease-in-out infinite; }
+.dot-bounce-2 { animation: dot-bounce 1.2s ease-in-out 0.15s infinite; }
+.dot-bounce-3 { animation: dot-bounce 1.2s ease-in-out 0.3s infinite; }
+
+/* Prose overrides for dark theme */
+.prose {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-links: var(--accent-blue);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-code: var(--accent-gold);
+  --tw-prose-quotes: var(--text-secondary);
+}
+
+/* Concept badge */
+.concept-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+  background: rgba(232, 185, 49, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.concept-badge:hover {
+  background: rgba(232, 185, 49, 0.15);
+  border-color: var(--accent-gold);
+}
+
+/* Insight callout */
+.insight-callout {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--insight-bg);
+  border-left: 3px solid var(--accent-gold);
+  border-radius: 0 8px 8px 0;
 }

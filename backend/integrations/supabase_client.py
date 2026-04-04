@@ -102,3 +102,128 @@ async def get_graph_stats() -> dict:
         "total_claims": claims.count or 0,
         "total_entities": entities.count or 0,
     }
+
+
+# -- Navigator helpers --
+
+async def get_concept_by_id(concept_id: str) -> dict | None:
+    """Get a single concept by ID."""
+    client = get_client()
+    result = client.table("concepts").select("*").eq("id", concept_id).execute()
+    return result.data[0] if result.data else None
+
+
+async def get_papers_for_concept(concept_id: str, limit: int = 5) -> list[dict]:
+    """Get papers linked to a concept via paper_concepts join."""
+    client = get_client()
+    result = (
+        client.table("paper_concepts")
+        .select("paper_id, relevance, papers(id, title, authors, publication_year, cited_by_count, abstract)")
+        .eq("concept_id", concept_id)
+        .order("relevance", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    papers = []
+    for row in result.data:
+        paper = row.get("papers")
+        if paper:
+            paper["relevance"] = row.get("relevance")
+            papers.append(paper)
+    return papers
+
+
+async def get_claims_for_papers(paper_ids: list[str], limit: int = 10) -> list[dict]:
+    """Get claims by paper IDs."""
+    if not paper_ids:
+        return []
+    client = get_client()
+    result = (
+        client.table("claims")
+        .select("id, paper_id, claim_text, evidence_type, strength, confidence")
+        .in_("paper_id", paper_ids)
+        .order("confidence", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return result.data
+
+
+async def search_controversies(keyword: str, limit: int = 3) -> list[dict]:
+    """Search controversies by keyword ILIKE on title."""
+    client = get_client()
+    result = (
+        client.table("controversies")
+        .select("*")
+        .ilike("title", f"%{keyword}%")
+        .limit(limit)
+        .execute()
+    )
+    return result.data
+
+
+async def list_concepts(
+    search: str | None = None,
+    type_filter: str | None = None,
+    trend_filter: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict]:
+    """List/search concepts with optional filters."""
+    client = get_client()
+    query = client.table("concepts").select("id, name, type, definition, paper_count, trend, confidence")
+    if search:
+        query = query.ilike("name", f"%{search}%")
+    if type_filter:
+        query = query.eq("type", type_filter)
+    if trend_filter:
+        query = query.eq("trend", trend_filter)
+    query = query.order("paper_count", desc=True).range(offset, offset + limit - 1)
+    result = query.execute()
+    return result.data
+
+
+async def create_conversation(mode: str = "navigator", user_id: str | None = None) -> dict:
+    """Create a new conversation."""
+    client = get_client()
+    data = {"mode": mode}
+    if user_id:
+        data["user_id"] = user_id
+    result = client.table("conversations").insert(data).execute()
+    return result.data[0]
+
+
+async def save_message(
+    conversation_id: str,
+    role: str,
+    content: str,
+    graph_context: dict | None = None,
+    concepts_referenced: list | None = None,
+) -> dict:
+    """Save a message to a conversation."""
+    client = get_client()
+    data = {
+        "conversation_id": conversation_id,
+        "role": role,
+        "content": content,
+    }
+    if graph_context:
+        data["graph_context"] = graph_context
+    if concepts_referenced:
+        data["concepts_referenced"] = concepts_referenced
+    result = client.table("messages").insert(data).execute()
+    return result.data[0]
+
+
+async def get_conversation_messages(conversation_id: str, limit: int = 50) -> list[dict]:
+    """Get messages for a conversation."""
+    client = get_client()
+    result = (
+        client.table("messages")
+        .select("id, role, content, concepts_referenced, created_at")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", desc=False)
+        .limit(limit)
+        .execute()
+    )
+    return result.data

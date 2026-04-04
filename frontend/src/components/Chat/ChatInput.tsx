@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useRef, KeyboardEvent, FormEvent } from "react";
+import { Compass } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -9,30 +10,67 @@ interface ChatInputProps {
 
 export default function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || disabled) return;
     onSend(input.trim());
     setInput("");
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  const handleInput = () => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 150) + "px";
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 p-4 border-t">
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Ask Korczak anything..."
-        disabled={disabled}
-        className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-      />
+    <form
+      onSubmit={handleSubmit}
+      className="flex items-end gap-3 p-4 border-t border-border bg-background"
+    >
+      <div className="flex-1 relative">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            handleInput();
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Explore a concept, ask a question..."
+          disabled={disabled}
+          rows={1}
+          className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-foreground text-sm resize-none
+            placeholder:text-text-secondary
+            focus:outline-none focus:border-accent-gold/50 focus:ring-1 focus:ring-accent-gold/20
+            disabled:opacity-40 transition-all duration-200"
+        />
+      </div>
       <button
         type="submit"
         disabled={disabled || !input.trim()}
-        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        className="flex items-center justify-center w-11 h-11 rounded-xl
+          bg-accent-gold text-background font-medium
+          hover:bg-accent-gold/90
+          disabled:opacity-30 disabled:cursor-not-allowed
+          transition-all duration-200"
       >
-        Send
+        <Compass size={18} />
       </button>
     </form>
   );

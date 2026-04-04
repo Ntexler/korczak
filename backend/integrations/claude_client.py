@@ -20,16 +20,32 @@ async def analyze_paper(title: str, authors: str, year: int, abstract: str) -> d
     return _parse_json_response(response)
 
 
-async def navigate(user_message: str, graph_context: str, user_context: str = "") -> str:
-    """Generate a Navigator response."""
+async def navigate(
+    user_message: str,
+    graph_context: str,
+    user_context: str = "",
+    history: list[dict] | None = None,
+) -> str:
+    """Generate a Navigator response with optional conversation history."""
     from backend.prompts.navigator import NAVIGATOR_SYSTEM_PROMPT
 
     system = NAVIGATOR_SYSTEM_PROMPT.format(
         graph_context=graph_context, user_context=user_context,
     )
-    return await _call_claude(
-        user_message, model=settings.navigator_model, system=system, max_tokens=1500,
-    )
+
+    if history:
+        # Build full messages array: last 3 exchanges + current message
+        messages = []
+        for msg in history[-6:]:  # Last 3 exchanges = 6 messages max
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": "user", "content": user_message})
+        return await _call_claude_messages(
+            messages=messages, model=settings.navigator_model, system=system, max_tokens=1500,
+        )
+    else:
+        return await _call_claude(
+            user_message, model=settings.navigator_model, system=system, max_tokens=1500,
+        )
 
 
 async def _call_claude(
@@ -50,6 +66,34 @@ async def _call_claude(
         "max_tokens": max_tokens,
         "temperature": temperature,
         "messages": [{"role": "user", "content": user_message}],
+    }
+    if system:
+        body["system"] = system
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(API_URL, json=body, headers=headers, timeout=60)
+        resp.raise_for_status()
+        return resp.json()["content"][0]["text"]
+
+
+async def _call_claude_messages(
+    messages: list[dict],
+    model: str | None = None,
+    system: str | None = None,
+    max_tokens: int = 1500,
+    temperature: float = 0.3,
+) -> str:
+    """Claude API call with full messages array (for multi-turn)."""
+    headers = {
+        "x-api-key": settings.anthropic_api_key,
+        "content-type": "application/json",
+        "anthropic-version": "2023-06-01",
+    }
+    body = {
+        "model": model or settings.navigator_model,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "messages": messages,
     }
     if system:
         body["system"] = system

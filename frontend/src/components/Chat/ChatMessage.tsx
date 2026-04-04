@@ -1,33 +1,128 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { Compass, Sparkles, User } from "lucide-react";
+import { useChatStore } from "@/stores/chatStore";
+
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  conceptsReferenced?: { id: string; name: string }[];
   insight?: { type: string; content: string } | null;
 }
 
-export default function ChatMessage({ role, content, insight }: ChatMessageProps) {
+export default function ChatMessage({
+  role,
+  content,
+  conceptsReferenced,
+  insight,
+}: ChatMessageProps) {
   const isUser = role === "user";
+  const setSelectedConceptId = useChatStore((s) => s.setSelectedConceptId);
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
-      <div
-        className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-          isUser
-            ? "bg-blue-600 text-white rounded-br-sm"
-            : "bg-gray-100 text-gray-900 rounded-bl-sm"
-        }`}
-      >
-        <p className="whitespace-pre-wrap">{content}</p>
-        {insight && (
-          <div className="mt-3 pt-3 border-t border-gray-300/30">
-            <p className="text-xs font-semibold opacity-70 mb-1">
-              Insight: {insight.type}
-            </p>
-            <p className="text-sm">{insight.content}</p>
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className={`flex ${isUser ? "justify-end" : "justify-start"} mb-5`}
+    >
+      <div className={`flex gap-3 max-w-[85%] ${isUser ? "flex-row-reverse" : ""}`}>
+        {/* Avatar */}
+        <div
+          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 ${
+            isUser
+              ? "bg-accent-blue/20 text-accent-blue"
+              : "bg-accent-gold-dim text-accent-gold"
+          }`}
+        >
+          {isUser ? <User size={16} /> : <Compass size={16} />}
+        </div>
+
+        {/* Message body */}
+        <div className="flex flex-col gap-2">
+          <div
+            className={`px-4 py-3 rounded-2xl ${
+              isUser
+                ? "bg-user-bubble text-foreground rounded-br-sm"
+                : "bg-surface text-foreground rounded-bl-sm"
+            }`}
+          >
+            {/* Render content as markdown-like text */}
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed">
+              {renderContent(content)}
+            </div>
           </div>
-        )}
+
+          {/* Concept badges */}
+          {!isUser && conceptsReferenced && conceptsReferenced.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-1">
+              {conceptsReferenced.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedConceptId(c.id)}
+                  className="concept-badge animate-concept-in"
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Insight callout */}
+          {!isUser && insight && (
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+              className="insight-callout"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <Sparkles size={14} className="text-accent-gold" />
+                <span className="text-xs font-semibold text-accent-gold uppercase tracking-wide">
+                  {insight.type === "blind_spot"
+                    ? "Blind Spot"
+                    : insight.type === "connection"
+                      ? "Connection"
+                      : "Insight"}
+                </span>
+              </div>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                {insight.content}
+              </p>
+            </motion.div>
+          )}
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
+}
+
+function renderContent(content: string) {
+  // Simple markdown rendering: bold, italic, headers
+  const lines = content.split("\n");
+  return lines.map((line, i) => {
+    // Bold
+    let processed: React.ReactNode = line;
+    if (typeof processed === "string") {
+      const parts = processed.split(/\*\*(.+?)\*\*/g);
+      if (parts.length > 1) {
+        processed = parts.map((part, j) =>
+          j % 2 === 1 ? (
+            <strong key={j} className="text-foreground font-semibold">
+              {part}
+            </strong>
+          ) : (
+            part
+          )
+        );
+      }
+    }
+    return (
+      <span key={i}>
+        {processed}
+        {i < lines.length - 1 && "\n"}
+      </span>
+    );
+  });
 }
