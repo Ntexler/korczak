@@ -78,6 +78,22 @@ export const translations = {
     apisHealth: "APIs",
     costEstimate: "Est. Cost",
 
+    // Features
+    discoveries: "Discoveries",
+    risingStars: "Rising Stars",
+    researchGaps: "Research Gaps",
+    controversies: "Controversies",
+    trendingConcepts: "Trending Concepts",
+    risingPapers: "Rising Papers",
+    orphanConcepts: "Orphan Concepts",
+    missingConnections: "Missing Connections",
+    knowledgeMap: "Knowledge Map",
+    viewGraph: "View Graph",
+    noData: "No data available",
+    recentPapers: "recent papers",
+    citations: "citations",
+    gapsFound: "gaps found",
+
     // Error
     errorMessage: "I apologize — something went wrong connecting to the knowledge graph. Please try again.",
   },
@@ -146,6 +162,22 @@ export const translations = {
     graphHealth: "גרף",
     apisHealth: "ממשקים",
     costEstimate: "עלות משוערת",
+
+    // Features
+    discoveries: "תגליות",
+    risingStars: "כוכבים עולים",
+    researchGaps: "פערי מחקר",
+    controversies: "מחלוקות",
+    trendingConcepts: "מושגים מגמתיים",
+    risingPapers: "מאמרים עולים",
+    orphanConcepts: "מושגים יתומים",
+    missingConnections: "קשרים חסרים",
+    knowledgeMap: "מפת ידע",
+    viewGraph: "צפה בגרף",
+    noData: "אין נתונים",
+    recentPapers: "מאמרים אחרונים",
+    citations: "ציטוטים",
+    gapsFound: "פערים נמצאו",
 
     // Error
     errorMessage: "מצטער — משהו השתבש בחיבור לגרף הידע. נסה שוב.",

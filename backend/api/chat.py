@@ -12,6 +12,7 @@ from backend.core.context_builder import build_context
 from backend.core.mode_detector import detect_mode
 from backend.core.level_detector import detect_level, response_level, LEVEL_DESCRIPTIONS
 from backend.user.profile_builder import update_from_conversation, get_user_context_string
+from backend.user.context_extractor import extract_context, update_user_profile
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -113,6 +114,15 @@ async def chat(msg: ChatMessage):
                 )
             except Exception as e:
                 logger.warning(f"User graph update failed: {e}")
+
+        # 11. Extract personal context (Layer 2) — implicit, never asks
+        if msg.user_id:
+            try:
+                signals = extract_context(msg.message)
+                if signals:
+                    await update_user_profile(msg.user_id, signals)
+            except Exception as e:
+                logger.warning(f"Context extraction failed: {e}")
 
         return ChatResponse(
             response=response_text,

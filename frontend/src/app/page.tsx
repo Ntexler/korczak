@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
 import { sendMessage } from "@/lib/api";
@@ -9,7 +9,8 @@ import ChatInput from "@/components/Chat/ChatInput";
 import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
-import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio } from "lucide-react";
+import KnowledgeGraph from "@/components/Graph/KnowledgeGraph";
+import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map } from "lucide-react";
 
 export default function Home() {
   const {
@@ -29,6 +30,7 @@ export default function Home() {
 
   const { locale, toggleLocale, t, fonts: f, isRtl } = useLocaleStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showGraph, setShowGraph] = useState(false);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -95,6 +97,16 @@ export default function Home() {
           >
             <Languages size={14} />
             <span className="font-medium">{locale === "en" ? "HE" : "EN"}</span>
+          </button>
+          {/* Knowledge Map button */}
+          <button
+            onClick={() => setShowGraph(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
+              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+            title={t.knowledgeMap}
+          >
+            <Map size={14} />
+            <span className="hidden sm:inline font-medium">{t.knowledgeMap}</span>
           </button>
           {/* Mode selector */}
           <div className="flex items-center bg-surface-sunken rounded-full p-0.5 gap-0.5">
@@ -178,6 +190,9 @@ export default function Home() {
         {/* Right panel — Concept Detail */}
         <ConceptDetail />
       </div>
+
+      {/* Knowledge Graph overlay */}
+      {showGraph && <KnowledgeGraph onClose={() => setShowGraph(false)} />}
     </div>
   );
 }

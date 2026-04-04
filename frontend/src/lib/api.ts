@@ -65,3 +65,52 @@ export async function getDetailedHealth() {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+// --- Features API ---
+
+export async function getControversies(limit: number = 10) {
+  const res = await fetch(`${API_BASE}/features/controversies?limit=${limit}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getDebateLandscape(keyword: string) {
+  const res = await fetch(`${API_BASE}/features/debates?keyword=${encodeURIComponent(keyword)}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getResearchGaps(keyword?: string, limit: number = 20) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (keyword) params.set("keyword", keyword);
+  const res = await fetch(`${API_BASE}/features/gaps?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getRisingStars(days: number = 90, limit: number = 10) {
+  const res = await fetch(`${API_BASE}/features/rising?days=${days}&limit=${limit}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getBriefing(briefingType: string = "daily", userId?: string) {
+  const params = new URLSearchParams({ briefing_type: briefingType });
+  if (userId) params.set("user_id", userId);
+  const res = await fetch(`${API_BASE}/features/briefing?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getBriefingTopics(userId?: string) {
+  const params = userId ? `?user_id=${userId}` : "";
+  const res = await fetch(`${API_BASE}/features/briefing/topics${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getGraphVisualization(limit: number = 100) {
+  const res = await fetch(`${API_BASE}/features/visualization/graph?limit=${limit}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}

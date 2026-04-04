@@ -9,6 +9,7 @@ from backend.config import settings
 from backend.api.chat import router as chat_router
 from backend.api.graph import router as graph_router
 from backend.api.health import router as health_router
+from backend.api.features import router as features_router
 
 
 @asynccontextmanager
@@ -40,3 +41,4 @@ app.add_middleware(
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
 app.include_router(graph_router, prefix="/api/graph", tags=["graph"])
+app.include_router(features_router, prefix="/api/features", tags=["features"])

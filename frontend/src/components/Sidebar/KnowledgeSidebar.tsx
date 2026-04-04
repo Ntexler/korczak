@@ -9,6 +9,7 @@ import { searchConcepts } from "@/lib/api";
 import GraphStats from "./GraphStats";
 import TopicBrowser from "./TopicBrowser";
 import SystemHealth from "./SystemHealth";
+import DiscoveryPanel from "../Discovery/DiscoveryPanel";
 
 interface KnowledgeSidebarProps {
   onSelectTopic: (message: string) => void;
@@ -148,6 +149,14 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
             </div>
           </section>
         )}
+
+        {/* Discoveries — Rising Stars + Gaps */}
+        <section>
+          <h3 className="section-header mb-3">
+            {t.discoveries}
+          </h3>
+          <DiscoveryPanel />
+        </section>
 
         {/* Topic Browser */}
         <section>

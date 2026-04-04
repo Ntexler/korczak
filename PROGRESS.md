@@ -9,9 +9,30 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 3 — Tutor + User Graph Layer 1
-**Status:** Mode/level detection built, Socratic Tutor wired, User Graph tracking
-**Goal:** Multi-mode AI (Navigator/Tutor/Briefing) with implicit user modeling.
+## Current Phase: 4 — Differentiation Features
+**Status:** All core modules built, frontend wired, ready for API credits to test
+**Goal:** Controversy mapping, research gap detection, rising stars, briefings, D3 graph visualization.
+
+### Phase 3.5 Progress (Personal Context — COMPLETE)
+- [x] Context Extractor: regex-based extraction of role, institution, research topic, deadlines, language
+- [x] Supports Hebrew patterns (המחקר שלי, סטודנט, etc.)
+- [x] Auto-updates user_profiles table from natural conversation
+- [x] Rich user context builder: combines Layer 1 (knowledge) + Layer 2 (personal) for system prompts
+- [x] Wired into chat API (step 11 — implicit, never asks)
+
+### Phase 4 Progress
+- [x] Controversy Mapper: get_controversies(), get_controversy_detail(), map_debate_landscape()
+- [x] White Space Finder: orphan concepts, missing connections, low-evidence controversies
+- [x] Rising Stars Tracker: trending concepts, rising papers (citation velocity), emerging connections
+- [x] Briefing Engine: personalized briefing generation (data + prompt), topic suggestions
+- [x] Features API: 8 new endpoints at /api/features/* (controversies, debates, gaps, rising, briefing, visualization)
+- [x] D3.js Knowledge Graph: force-directed interactive visualization with zoom, drag, type-colored nodes
+- [x] Discovery Panel: collapsible sidebar sections for trending concepts, rising papers, research gaps
+- [x] Frontend: Knowledge Map button in header, full-screen graph overlay, discovery panel in sidebar
+- [x] i18n: Hebrew + English strings for all new features
+- [x] d3 + @types/d3 dependencies installed
+- [ ] Briefing generation (needs Claude API credits for actual text)
+- [ ] Scheduled briefings (needs cron/deployment infrastructure)
 
 ### Phase 1d Progress
 - [x] Consistency checker: orphan detection, duplicates, dangling rels, circular contradictions, confidence anomalies, stale concepts
@@ -119,6 +140,12 @@ backend/
   graph/pipeline_health.py         — External API health + data freshness + enrichment coverage [Phase 1d]
   graph/quality_monitor.py         — Concept grounding + insight rate + response completeness [Phase 1d]
   graph/cost_monitor.py            — Token estimation + daily breakdown + budget alerts [Phase 1d]
+  user/context_extractor.py        — Personal context extraction (role, institution, topic) [Phase 3.5]
+  core/controversy_mapper.py       — Controversy sides, evidence, debate landscape [Phase 4]
+  core/white_space_finder.py       — Research gaps: orphans, missing connections [Phase 4]
+  core/rising_stars.py             — Trending concepts, rising papers, emerging connections [Phase 4]
+  core/briefing_engine.py          — Personalized briefing generation + topic suggestions [Phase 4]
+  api/features.py                  — 8 endpoints: controversies, debates, gaps, rising, briefing, visualization [Phase 4]
   requirements.txt
 
 syllabus/
@@ -138,6 +165,8 @@ frontend/
   src/stores/chatStore.ts          — Panel state + graph stats cache [Phase 1c]
   src/lib/api.ts                   — Full API client (chat, graph, history, health) [Phase 1c+1d]
   src/components/Sidebar/SystemHealth.tsx — Health dashboard widget [Phase 1d]
+  src/components/Graph/KnowledgeGraph.tsx — D3.js force-directed interactive graph [Phase 4]
+  src/components/Discovery/DiscoveryPanel.tsx — Rising stars + research gaps sidebar [Phase 4]
 ```
 
 ---
@@ -152,6 +181,19 @@ frontend/
 ---
 
 ## Completed
+
+### 2026-04-04 — Phase 3.5 + 4: Personal Context + Differentiation Features
+- [x] Context Extractor (User Graph Layer 2): role, institution, research topic, deadlines, language
+- [x] Controversy Mapper: sides, evidence, debate landscape
+- [x] White Space Finder: orphan concepts, missing connections, low-evidence controversies
+- [x] Rising Stars Tracker: trending concepts, citation velocity, emerging connections
+- [x] Briefing Engine: personalized briefing data + prompt generation
+- [x] Features API: 8 new endpoints (controversies, debates, gaps, rising, briefing, visualization)
+- [x] D3.js Knowledge Graph: force-directed interactive visualization (zoom, drag, type colors)
+- [x] Discovery Panel: collapsible sidebar with trending, rising papers, research gaps
+- [x] Knowledge Map: full-screen graph overlay with legend and controls
+- [x] Context extractor wired into chat API (implicit Layer 2 updates)
+- [x] Dependencies: d3, @types/d3
 
 ### 2026-04-04 — Phase 3: Tutor + User Graph Layer 1
 - [x] Mode detector (auto-detect Navigator/Tutor/Briefing from message patterns)
@@ -234,8 +276,8 @@ frontend/
 - [x] Phase 1c: Navigator + Immersive Frontend
 - [x] Phase 1d: Self-Monitoring v1
 - [ ] Phase 2: User Testing (deferred — needs API credits + deployment)
-- [x] **Phase 3: Tutor + User Graph Layer 1** ← JUST COMPLETED
-- [ ] Phase 3.5: User Graph Layer 2 (Personal Context)
-- [ ] Phase 4: Differentiation features
+- [x] Phase 3: Tutor + User Graph Layer 1
+- [x] Phase 3.5: User Graph Layer 2 (Personal Context)
+- [x] **Phase 4: Differentiation Features** ← JUST COMPLETED
 - [ ] Phase 4.5: User Graph Layer 3 (Behavioral Patterns)
 - [ ] Phase 5: Beta launch
