@@ -46,10 +46,13 @@ export default function Home() {
         conceptsReferenced: res.concepts_referenced,
         insight: res.insight,
       });
-    } catch {
+    } catch (err) {
+      const errorText = err instanceof Error && err.message.includes("credit balance")
+        ? "API credits depleted. Please add credits at console.anthropic.com to continue."
+        : t.errorMessage;
       addMessage({
         role: "assistant",
-        content: t.errorMessage,
+        content: errorText,
       });
     } finally {
       setLoading(false);
@@ -71,7 +74,7 @@ export default function Home() {
             <Compass size={20} className="text-accent-gold" />
             <h1
               className="text-lg font-bold text-foreground tracking-tight"
-              style={{ fontFamily: f.serif }}
+              style={{ fontFamily: f.display }}
             >
               {t.appName}
             </h1>

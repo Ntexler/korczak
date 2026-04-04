@@ -1,8 +1,11 @@
 """Claude API client — abstraction layer for LLM calls."""
 
 import json
+import logging
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from backend.config import settings
 
@@ -72,7 +75,11 @@ async def _call_claude(
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(API_URL, json=body, headers=headers, timeout=60)
-        resp.raise_for_status()
+        if resp.status_code != 200:
+            error_body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            error_msg = error_body.get("error", {}).get("message", resp.text)
+            logger.error(f"Claude API error {resp.status_code}: {error_msg}")
+            raise RuntimeError(f"Claude API error: {error_msg}")
         return resp.json()["content"][0]["text"]
 
 
@@ -100,7 +107,11 @@ async def _call_claude_messages(
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(API_URL, json=body, headers=headers, timeout=60)
-        resp.raise_for_status()
+        if resp.status_code != 200:
+            error_body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            error_msg = error_body.get("error", {}).get("message", resp.text)
+            logger.error(f"Claude API error {resp.status_code}: {error_msg}")
+            raise RuntimeError(f"Claude API error: {error_msg}")
         return resp.json()["content"][0]["text"]
 
 

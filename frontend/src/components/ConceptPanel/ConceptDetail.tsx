@@ -84,7 +84,7 @@ export default function ConceptDetail() {
         className="w-[320px] flex-shrink-0 border-l border-border bg-surface/40 flex flex-col h-full overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.serif }}>
+          <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.display }}>
             {t.conceptDetail}
           </span>
           <button
@@ -123,7 +123,7 @@ export default function ConceptDetail() {
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.serif }}>
+        <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.display }}>
           {t.conceptDetail}
         </span>
         <button
@@ -150,7 +150,7 @@ export default function ConceptDetail() {
             <div className="exhibit-card">
               <h2
                 className="text-lg font-bold text-foreground mb-2"
-                style={{ fontFamily: f.serif }}
+                style={{ fontFamily: f.display }}
               >
                 {concept.name}
               </h2>

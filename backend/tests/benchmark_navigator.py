@@ -13,7 +13,7 @@ import time
 
 import httpx
 
-API_BASE = "http://localhost:8000/api"
+API_BASE = "http://localhost:8001/api"
 
 # 20 benchmark questions across 6 categories
 BENCHMARK = [

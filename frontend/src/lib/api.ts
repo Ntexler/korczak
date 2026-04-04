@@ -14,7 +14,10 @@ export async function sendMessage(
       mode,
     }),
   });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || `API error: ${res.status}`);
+  }
   return res.json();
 }
 
@@ -55,4 +58,10 @@ export async function getConceptNeighbors(id: string, depth: number = 1) {
 export async function healthCheck() {
   const res = await fetch(`${API_BASE}/health`);
   return res.ok;
+}
+
+export async function getDetailedHealth() {
+  const res = await fetch(`${API_BASE}/health/detailed`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
 }

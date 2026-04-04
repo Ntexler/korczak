@@ -24,8 +24,7 @@
   --accent-purple: #A371F7;
   --insight-bg: #1A1520;
   --user-bubble: #1A2332;
-  --font-serif: "Georgia", "Times New Roman", serif;
-  --font-hebrew: var(--font-rubik), "Rubik", "Segoe UI", sans-serif;
+  --font-hebrew: var(--font-assistant), "Assistant", "Segoe UI", sans-serif;
 }
 
 @theme inline {
@@ -61,10 +60,6 @@ body {
 /* Hebrew font overrides */
 [dir="rtl"] body,
 [dir="rtl"] {
-  font-family: var(--font-hebrew);
-}
-
-[dir="rtl"] .section-header {
   font-family: var(--font-hebrew);
 }
 
@@ -283,13 +278,12 @@ body {
   border-radius: 0 0 2px 2px;
 }
 
-/* Section header (serif, scholarly) */
+/* Section header */
 .section-header {
-  font-family: var(--font-serif);
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--text-secondary);
 }
 

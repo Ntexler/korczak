@@ -8,6 +8,7 @@ import { useLocaleStore } from "@/stores/localeStore";
 import { searchConcepts } from "@/lib/api";
 import GraphStats from "./GraphStats";
 import TopicBrowser from "./TopicBrowser";
+import SystemHealth from "./SystemHealth";
 
 interface KnowledgeSidebarProps {
   onSelectTopic: (message: string) => void;
@@ -66,7 +67,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Compass size={16} className="text-accent-gold" />
-          <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.serif }}>
+          <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.display }}>
             {t.explore}
           </span>
         </div>
@@ -154,6 +155,14 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
             {t.exploreTopics}
           </h3>
           <TopicBrowser onSelectTopic={onSelectTopic} />
+        </section>
+
+        {/* System Health */}
+        <section>
+          <h3 className="section-header mb-3">
+            {t.systemHealth}
+          </h3>
+          <SystemHealth />
         </section>
       </div>
     </motion.aside>

@@ -9,9 +9,23 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 1c — Navigator + Immersive Frontend
-**Status:** Navigator core wired, immersive dark-theme frontend deployed
-**Goal:** Graph-backed chat with beautiful UX, 15/20 benchmark score.
+## Current Phase: 1d — Self-Monitoring v1
+**Status:** All monitors built and running, health dashboard deployed
+**Goal:** Production-ready observability before user testing.
+
+### Phase 1d Progress
+- [x] Consistency checker: orphan detection, duplicates, dangling rels, circular contradictions, confidence anomalies, stale concepts
+- [x] Pipeline health monitor: external API pings (OpenAlex, S2, CrossRef), data freshness, enrichment coverage
+- [x] Navigator quality monitor: concept grounding check, insight rate, empty response detection
+- [x] Cost monitor: token estimation, daily breakdown, monthly rate projection, budget alerts
+- [x] Health API: GET /api/health/detailed aggregates all monitors
+- [x] Frontend: SystemHealth widget in sidebar (graph issues, API status, cost estimate)
+- [x] Graph cleanup: removed 255 dangling relationships (auto-fix)
+- [x] Graph status: HEALTHY (0 critical, 2 medium: 173 orphans, 362 missing definitions)
+- [ ] Schedule monitors to run automatically (cron/Airflow — deferred to deployment)
+- [ ] Confidence decay (relationships not reinforced in 2+ years) — deferred to production
+
+---
 
 ### Phase 1a Progress
 - [x] DB schema: 3 migrations (core graph, user graph, validation tables)
@@ -26,7 +40,7 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] FastAPI server boots on port 8000
 - [x] Wire API endpoints to Supabase (done in Phase 1c)
 
-### Phase 1c Progress
+### Phase 1c Progress (COMPLETE)
 - [x] SQL RPC: `get_concept_neighborhood()` recursive CTE for graph traversal
 - [x] Context builder: keyword extraction (Hebrew-aware), concept search, papers/claims/neighborhood lookup
 - [x] Claude client: multi-turn conversation support with history
@@ -40,8 +54,8 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] Knowledge sidebar: graph stats dashboard, topic browser (16 topics), recent concepts
 - [x] Concept detail panel: slides in on badge click, shows definition/confidence/neighbors
 - [x] 20-question benchmark test with optional Claude-as-judge scoring
-- [ ] Run SQL migration 004 in Supabase
-- [ ] Run benchmark and score >= 15/20
+- [x] SQL migration 004 applied in Supabase
+- [ ] Run benchmark and score >= 15/20 (blocked: API credits depleted)
 
 ### Phase 1b Progress
 - [x] Seeding pipeline created (`backend/pipeline/seed_graph.py`)
@@ -83,6 +97,10 @@ backend/
   pipeline/enrich_sources.py       — S2 + CrossRef + Retraction Watch enrichment
   pipeline/generate_syllabus.py    — Auto-generate syllabus files from DB
   tests/benchmark_navigator.py     — 20-question benchmark [Phase 1c]
+  graph/consistency_checker.py     — Orphan/dupe/dangling/contradiction detection + auto-fix [Phase 1d]
+  graph/pipeline_health.py         — External API health + data freshness + enrichment coverage [Phase 1d]
+  graph/quality_monitor.py         — Concept grounding + insight rate + response completeness [Phase 1d]
+  graph/cost_monitor.py            — Token estimation + daily breakdown + budget alerts [Phase 1d]
   requirements.txt
 
 syllabus/
@@ -100,7 +118,8 @@ frontend/
   src/components/Sidebar/TopicBrowser    — 16 browseable topics [Phase 1c]
   src/components/ConceptPanel/ConceptDetail — Slide-in concept details [Phase 1c]
   src/stores/chatStore.ts          — Panel state + graph stats cache [Phase 1c]
-  src/lib/api.ts                   — Full API client (chat, graph, history) [Phase 1c]
+  src/lib/api.ts                   — Full API client (chat, graph, history, health) [Phase 1c+1d]
+  src/components/Sidebar/SystemHealth.tsx — Health dashboard widget [Phase 1d]
 ```
 
 ---
@@ -115,6 +134,14 @@ frontend/
 ---
 
 ## Completed
+
+### 2026-04-04 — Phase 1d: Self-Monitoring v1
+- [x] Built 4 monitors: consistency checker, pipeline health, quality monitor, cost monitor
+- [x] Health API: GET /api/health/detailed aggregates all monitors
+- [x] Frontend: SystemHealth widget in sidebar
+- [x] Graph cleanup: removed 255 dangling relationships
+- [x] Modernized fonts (Assistant for Hebrew, dropped serif headings)
+- [x] Improved API error handling (meaningful credit-depleted messages)
 
 ### 2026-04-04 — Phase 1c: Navigator + Immersive Frontend
 - [x] Backend: Navigator core (context builder, multi-turn Claude, graph-backed chat pipeline)
@@ -178,8 +205,8 @@ frontend/
 - [x] Phase 0.5: Test new papers (8.5/10, prompt v2)
 - [x] Phase 1a: Infrastructure (Supabase + FastAPI + Next.js)
 - [x] Phase 1b: Graph Seeding (281 papers seeded, enriched, syllabus generated)
-- [x] **Phase 1c: Navigator + Immersive Frontend** ← JUST COMPLETED
-- [ ] Phase 1d: Self-Monitoring v1
+- [x] Phase 1c: Navigator + Immersive Frontend
+- [x] **Phase 1d: Self-Monitoring v1** ← JUST COMPLETED
 - [ ] Phase 2: User Testing
 - [ ] Phase 3: Tutor + User Graph Layer 1
 - [ ] Phase 3.5: User Graph Layer 2 (Personal Context)

@@ -35,7 +35,7 @@ export default function WelcomeScreen({ onSend }: WelcomeScreenProps) {
         </div>
         <h1
           className="text-4xl sm:text-5xl font-bold tracking-tight mb-3"
-          style={{ fontFamily: f.serif }}
+          style={{ fontFamily: f.display }}
         >
           {t.welcomeTitle}{" "}
           <span className="text-accent-gold">{t.appName}</span>

@@ -1,5 +1,6 @@
 """Context builder — extracts graph context for Navigator responses."""
 
+import json
 import re
 
 from backend.integrations import supabase_client as db
@@ -103,8 +104,18 @@ async def build_context(user_message: str) -> tuple[str, list[dict]]:
         if papers:
             section += "\nKey papers:"
             for p in papers:
-                authors = p.get("authors", [])
-                first_author = authors[0].get("name", "Unknown") if authors else "Unknown"
+                authors_raw = p.get("authors", [])
+                if isinstance(authors_raw, str):
+                    try:
+                        authors_raw = json.loads(authors_raw)
+                    except (json.JSONDecodeError, TypeError):
+                        authors_raw = []
+                if authors_raw and isinstance(authors_raw[0], dict):
+                    first_author = authors_raw[0].get("name", "Unknown")
+                elif authors_raw and isinstance(authors_raw[0], str):
+                    first_author = authors_raw[0]
+                else:
+                    first_author = "Unknown"
                 section += f"\n  - {first_author} ({p.get('publication_year', '?')}): \"{p.get('title', 'Untitled')}\" [cited: {p.get('cited_by_count', 0)}]"
 
             # Claims from these papers

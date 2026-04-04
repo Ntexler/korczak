@@ -3,11 +3,11 @@ export type Locale = "en" | "he";
 export const fonts = {
   en: {
     sans: "var(--font-geist-sans), system-ui, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
+    display: "var(--font-geist-sans), system-ui, sans-serif",
   },
   he: {
-    sans: "var(--font-rubik), 'Rubik', 'Segoe UI', sans-serif",
-    serif: "var(--font-rubik), 'Rubik', 'Segoe UI', sans-serif",
+    sans: "var(--font-assistant), 'Assistant', 'Segoe UI', sans-serif",
+    display: "var(--font-assistant), 'Assistant', 'Segoe UI', sans-serif",
   },
 } as const;
 
@@ -68,6 +68,14 @@ export const translations = {
     tutor: "tutor",
     briefing: "briefing",
 
+    // Health
+    systemHealth: "System Health",
+    healthy: "Healthy",
+    degraded: "Degraded",
+    graphHealth: "Graph",
+    apisHealth: "APIs",
+    costEstimate: "Est. Cost",
+
     // Error
     errorMessage: "I apologize — something went wrong connecting to the knowledge graph. Please try again.",
   },
@@ -126,6 +134,14 @@ export const translations = {
     navigator: "ניווט",
     tutor: "מדריך",
     briefing: "תדרוך",
+
+    // Health
+    systemHealth: "תקינות המערכת",
+    healthy: "תקין",
+    degraded: "לקוי",
+    graphHealth: "גרף",
+    apisHealth: "ממשקים",
+    costEstimate: "עלות משוערת",
 
     // Error
     errorMessage: "מצטער — משהו השתבש בחיבור לגרף הידע. נסה שוב.",
