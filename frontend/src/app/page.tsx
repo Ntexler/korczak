@@ -103,7 +103,7 @@ export default function Home() {
             {messages.length === 0 ? (
               <WelcomeScreen onSend={handleSend} />
             ) : (
-              <>
+              <div className="max-w-[760px] mx-auto">
                 {messages.map((msg) => (
                   <ChatMessage
                     key={msg.id}
@@ -111,26 +111,28 @@ export default function Home() {
                     content={msg.content}
                     conceptsReferenced={msg.conceptsReferenced}
                     insight={msg.insight}
+                    onSend={handleSend}
                   />
                 ))}
                 {isLoading && (
                   <div className="flex justify-start mb-4">
-                    <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-accent-gold-dim flex items-center justify-center">
+                    <div className="flex gap-3 items-start">
+                      <div className="w-8 h-8 rounded-full bg-accent-gold-dim flex items-center justify-center mt-1">
                         <Compass size={16} className="text-accent-gold" />
                       </div>
-                      <div className="bg-surface rounded-2xl px-4 py-3 rounded-bl-sm">
+                      <div className="bg-surface rounded-2xl px-4 py-3 rounded-bl-sm flex items-center gap-3">
+                        <span className="thinking-text">Navigating...</span>
                         <div className="flex gap-1.5">
-                          <span className="w-2 h-2 bg-accent-gold/60 rounded-full dot-bounce-1" />
-                          <span className="w-2 h-2 bg-accent-gold/60 rounded-full dot-bounce-2" />
-                          <span className="w-2 h-2 bg-accent-gold/60 rounded-full dot-bounce-3" />
+                          <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-1" />
+                          <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-2" />
+                          <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-3" />
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
-              </>
+              </div>
             )}
           </div>
 

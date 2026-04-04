@@ -9,13 +9,21 @@ interface ChatMessageProps {
   content: string;
   conceptsReferenced?: { id: string; name: string }[];
   insight?: { type: string; content: string } | null;
+  onSend?: (message: string) => void;
 }
+
+const FOLLOW_UPS = [
+  "Tell me more",
+  "What's controversial?",
+  "Show related concepts",
+];
 
 export default function ChatMessage({
   role,
   content,
   conceptsReferenced,
   insight,
+  onSend,
 }: ChatMessageProps) {
   const isUser = role === "user";
   const setSelectedConceptId = useChatStore((s) => s.setSelectedConceptId);
@@ -32,7 +40,7 @@ export default function ChatMessage({
         <div
           className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 ${
             isUser
-              ? "bg-accent-blue/20 text-accent-blue"
+              ? "bg-accent-blue/15 text-accent-blue"
               : "bg-accent-gold-dim text-accent-gold"
           }`}
         >
@@ -44,27 +52,29 @@ export default function ChatMessage({
           <div
             className={`px-4 py-3 rounded-2xl ${
               isUser
-                ? "bg-user-bubble text-foreground rounded-br-sm"
-                : "bg-surface text-foreground rounded-bl-sm"
+                ? "bg-user-bubble border border-border-subtle text-foreground rounded-br-sm"
+                : "bg-surface border border-border-subtle text-foreground rounded-bl-sm"
             }`}
           >
-            {/* Render content as markdown-like text */}
-            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed">
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm" style={{ lineHeight: '1.75' }}>
               {renderContent(content)}
             </div>
           </div>
 
-          {/* Concept badges */}
+          {/* Concept badges — staggered entrance */}
           {!isUser && conceptsReferenced && conceptsReferenced.length > 0 && (
             <div className="flex flex-wrap gap-1.5 px-1">
-              {conceptsReferenced.map((c) => (
-                <button
+              {conceptsReferenced.map((c, i) => (
+                <motion.button
                   key={c.id}
+                  initial={{ opacity: 0, scale: 0.8, y: 4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
                   onClick={() => setSelectedConceptId(c.id)}
-                  className="concept-badge animate-concept-in"
+                  className="concept-badge"
                 >
                   {c.name}
-                </button>
+                </motion.button>
               ))}
             </div>
           )}
@@ -92,6 +102,26 @@ export default function ChatMessage({
               </p>
             </motion.div>
           )}
+
+          {/* Follow-up suggestion chips */}
+          {!isUser && onSend && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.3 }}
+              className="flex flex-wrap gap-1.5 px-1"
+            >
+              {FOLLOW_UPS.map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => onSend(chip)}
+                  className="follow-up-chip"
+                >
+                  {chip}
+                </button>
+              ))}
+            </motion.div>
+          )}
         </div>
       </div>
     </motion.div>
@@ -99,10 +129,8 @@ export default function ChatMessage({
 }
 
 function renderContent(content: string) {
-  // Simple markdown rendering: bold, italic, headers
   const lines = content.split("\n");
   return lines.map((line, i) => {
-    // Bold
     let processed: React.ReactNode = line;
     if (typeof processed === "string") {
       const parts = processed.split(/\*\*(.+?)\*\*/g);
