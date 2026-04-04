@@ -9,9 +9,9 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 1b — Graph Seeding
-**Status:** 281 papers seeded, enriched, syllabus generated
-**Goal:** Seed 5,000 papers (2,500 anthropology + 2,500 sleep/cognition).
+## Current Phase: 1c — Navigator + Immersive Frontend
+**Status:** Navigator core wired, immersive dark-theme frontend deployed
+**Goal:** Graph-backed chat with beautiful UX, 15/20 benchmark score.
 
 ### Phase 1a Progress
 - [x] DB schema: 3 migrations (core graph, user graph, validation tables)
@@ -24,7 +24,24 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] All 3 migrations run — 15 tables live in Supabase
 - [x] Supabase client tested — reads/writes working
 - [x] FastAPI server boots on port 8000
-- [ ] Wire API endpoints to Supabase (will do in Phase 1c)
+- [x] Wire API endpoints to Supabase (done in Phase 1c)
+
+### Phase 1c Progress
+- [x] SQL RPC: `get_concept_neighborhood()` recursive CTE for graph traversal
+- [x] Context builder: keyword extraction (Hebrew-aware), concept search, papers/claims/neighborhood lookup
+- [x] Claude client: multi-turn conversation support with history
+- [x] Supabase helpers: papers_for_concept, claims, controversies, conversations, messages
+- [x] Chat API: full pipeline (create conversation → save message → build context → navigate → extract insight → respond)
+- [x] Graph API: all 4 endpoints wired to real Supabase queries
+- [x] Dark museum theme: "Late-night library with a brilliant guide" (warm gold/amber on deep charcoal)
+- [x] 3-panel layout: Knowledge Sidebar (280px) | Chat (flex) | Concept Detail (320px, toggleable)
+- [x] Welcome screen: animated, suggested prompts, graph stats
+- [x] Chat redesign: animated messages (framer-motion), concept badges, insight callouts
+- [x] Knowledge sidebar: graph stats dashboard, topic browser (16 topics), recent concepts
+- [x] Concept detail panel: slides in on badge click, shows definition/confidence/neighbors
+- [x] 20-question benchmark test with optional Claude-as-judge scoring
+- [ ] Run SQL migration 004 in Supabase
+- [ ] Run benchmark and score >= 15/20
 
 ### Phase 1b Progress
 - [x] Seeding pipeline created (`backend/pipeline/seed_graph.py`)
@@ -43,42 +60,47 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [ ] Entity resolution (embedding-based dedup)
 - [ ] Manual validation: 50 nodes, 100 edges
 
-### Files Created
+### Files Created/Modified
 ```
 db/migrations/
   001_core_schema.sql      — papers, concepts, claims, entities, controversies, relationships
   002_user_schema.sql      — user_profiles, user_knowledge, conversations, messages
   003_validation_schema.sql — source_evidence, quality_flags, disagreements, source_health
+  004_navigator_rpcs.sql   — get_concept_neighborhood() recursive CTE [Phase 1c]
 
 backend/
   main.py, config.py       — FastAPI app with CORS, lifespan
   api/health.py            — GET /api/health
-  api/chat.py              — POST /api/chat, WS /api/chat/ws/{id}
-  api/graph.py             — GET /api/graph/concepts, /stats, /neighbors
-  integrations/supabase_client.py  — CRUD for papers, concepts, relationships
-  integrations/claude_client.py    — analyze_paper(), navigate()
+  api/chat.py              — POST /api/chat with full Navigator pipeline [Phase 1c]
+  api/graph.py             — GET /api/graph/* wired to Supabase [Phase 1c]
+  core/context_builder.py  — Keyword extraction + graph context assembly [Phase 1c]
+  integrations/supabase_client.py  — CRUD + Navigator helpers (conversations, messages) [Phase 1c]
+  integrations/claude_client.py    — analyze_paper(), navigate() with multi-turn [Phase 1c]
   integrations/openalex_client.py  — fetch_papers() with cursor pagination
   prompts/paper_analysis.py        — v2 prompt (Phase 0.5 validated)
   prompts/navigator.py             — Navigator system prompt
   pipeline/seed_graph.py           — OpenAlex → Claude → Supabase seeding
   pipeline/enrich_sources.py       — S2 + CrossRef + Retraction Watch enrichment
   pipeline/generate_syllabus.py    — Auto-generate syllabus files from DB
+  tests/benchmark_navigator.py     — 20-question benchmark [Phase 1c]
   requirements.txt
 
 syllabus/
-  README.md                        — Index of all topic syllabi
-  anthropological_theory__philosophy.md
-  indigenous__decolonial_studies.md
-  environmental__ecological_anthropology.md
-  political_anthropology__power.md
-  sleep__cognition_research.md
-  ... (20 topic files total)
+  ... (20 topic files)
 
 frontend/
-  src/app/page.tsx         — Chat page (Korczak Navigator UI)
-  src/components/Chat/     — ChatInput, ChatMessage
-  src/stores/chatStore.ts  — Zustand store for chat state
-  src/lib/api.ts           — API client functions
+  src/app/globals.css              — Dark museum theme with custom animations [Phase 1c]
+  src/app/layout.tsx               — Korczak metadata + dark class [Phase 1c]
+  src/app/page.tsx                 — 3-panel layout: sidebar | chat | concept panel [Phase 1c]
+  src/components/Chat/ChatMessage  — Animated bubbles + concept badges + insights [Phase 1c]
+  src/components/Chat/ChatInput    — Sleek textarea with compass send button [Phase 1c]
+  src/components/Welcome/WelcomeScreen — Animated welcome with suggested prompts [Phase 1c]
+  src/components/Sidebar/KnowledgeSidebar — Graph stats + topics + recent concepts [Phase 1c]
+  src/components/Sidebar/GraphStats      — Animated metric cards [Phase 1c]
+  src/components/Sidebar/TopicBrowser    — 16 browseable topics [Phase 1c]
+  src/components/ConceptPanel/ConceptDetail — Slide-in concept details [Phase 1c]
+  src/stores/chatStore.ts          — Panel state + graph stats cache [Phase 1c]
+  src/lib/api.ts                   — Full API client (chat, graph, history) [Phase 1c]
 ```
 
 ---
@@ -94,7 +116,16 @@ frontend/
 
 ## Completed
 
-### 2026-04-04 — Phase 1b: Graph Seeding (in progress)
+### 2026-04-04 — Phase 1c: Navigator + Immersive Frontend
+- [x] Backend: Navigator core (context builder, multi-turn Claude, graph-backed chat pipeline)
+- [x] Backend: All API endpoints wired to real Supabase queries
+- [x] Frontend: Dark museum theme with warm gold/amber accents
+- [x] Frontend: 3-panel responsive layout with sidebar, chat, concept detail
+- [x] Frontend: Animated messages, concept badges, insight callouts, welcome screen
+- [x] Benchmark: 20-question test across 6 categories
+- [x] Dependencies: framer-motion, lucide-react, @tailwindcss/typography
+
+### 2026-04-04 — Phase 1b: Graph Seeding
 - [x] Built seeding pipeline with Claude analysis + Supabase inserts
 - [x] Added sleep/cognition domain (T10985)
 - [x] Test run: 10 papers → 70 concepts, 44 claims, 18 relationships
@@ -146,9 +177,8 @@ frontend/
 - [x] Phase 0: Prompt validation (8/10 on canonical works)
 - [x] Phase 0.5: Test new papers (8.5/10, prompt v2)
 - [x] Phase 1a: Infrastructure (Supabase + FastAPI + Next.js)
-- [ ] **Phase 1b: Graph Seeding** ← WE ARE HERE
-- [ ] Phase 1b: Graph Seeding (5K papers, entity resolution)
-- [ ] Phase 1c: Navigator (context builder, system prompt, chat UI)
+- [x] Phase 1b: Graph Seeding (281 papers seeded, enriched, syllabus generated)
+- [x] **Phase 1c: Navigator + Immersive Frontend** ← JUST COMPLETED
 - [ ] Phase 1d: Self-Monitoring v1
 - [ ] Phase 2: User Testing
 - [ ] Phase 3: Tutor + User Graph Layer 1
