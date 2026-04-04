@@ -20,7 +20,7 @@ interface GraphStats {
 interface ChatState {
   messages: Message[];
   conversationId: string | null;
-  mode: "navigator" | "tutor" | "briefing";
+  mode: "auto" | "navigator" | "tutor" | "briefing";
   isLoading: boolean;
 
   // Panel state
@@ -46,7 +46,7 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   conversationId: null,
-  mode: "navigator",
+  mode: "auto",
   isLoading: false,
   selectedConceptId: null,
   sidebarOpen: true,

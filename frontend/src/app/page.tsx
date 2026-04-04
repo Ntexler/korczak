@@ -9,7 +9,7 @@ import ChatInput from "@/components/Chat/ChatInput";
 import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
-import { Compass, Menu, PanelRightOpen, Languages } from "lucide-react";
+import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio } from "lucide-react";
 
 export default function Home() {
   const {
@@ -17,6 +17,7 @@ export default function Home() {
     isLoading,
     conversationId,
     mode,
+    setMode,
     sidebarOpen,
     conceptPanelOpen,
     addMessage,
@@ -95,9 +96,29 @@ export default function Home() {
             <Languages size={14} />
             <span className="font-medium">{locale === "en" ? "HE" : "EN"}</span>
           </button>
-          <span className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-accent-gold-dim text-accent-gold rounded-full">
-            {t.navigator}
-          </span>
+          {/* Mode selector */}
+          <div className="flex items-center bg-surface-sunken rounded-full p-0.5 gap-0.5">
+            {(["auto", "navigator", "tutor"] as const).map((m) => {
+              const icons = { auto: Radio, navigator: Navigation, tutor: GraduationCap };
+              const Icon = icons[m];
+              const active = mode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-all
+                    ${active
+                      ? "bg-accent-gold-dim text-accent-gold"
+                      : "text-text-tertiary hover:text-text-secondary"
+                    }`}
+                  title={t[m]}
+                >
+                  <Icon size={11} />
+                  <span className="hidden sm:inline">{t[m]}</span>
+                </button>
+              );
+            })}
+          </div>
           <button
             onClick={() => setConceptPanelOpen(!conceptPanelOpen)}
             className="p-1.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"

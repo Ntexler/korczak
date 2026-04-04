@@ -51,6 +51,40 @@ async def navigate(
         )
 
 
+async def tutor(
+    user_message: str,
+    graph_context: str,
+    user_context: str = "",
+    level_description: str = "",
+    socratic_level: int = 0,
+    history: list[dict] | None = None,
+) -> str:
+    """Generate a Socratic Tutor response."""
+    from backend.prompts.tutor import build_tutor_prompt
+
+    system = build_tutor_prompt(
+        graph_context=graph_context,
+        user_context=user_context,
+        level_description=level_description,
+        socratic_level=socratic_level,
+    )
+
+    if history:
+        messages = []
+        for msg in history[-6:]:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": "user", "content": user_message})
+        return await _call_claude_messages(
+            messages=messages, model=settings.navigator_model, system=system,
+            max_tokens=1200, temperature=0.4,
+        )
+    else:
+        return await _call_claude(
+            user_message, model=settings.navigator_model, system=system,
+            max_tokens=1200, temperature=0.4,
+        )
+
+
 async def _call_claude(
     user_message: str,
     model: str | None = None,

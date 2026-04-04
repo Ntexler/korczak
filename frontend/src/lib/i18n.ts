@@ -67,6 +67,8 @@ export const translations = {
     navigator: "navigator",
     tutor: "tutor",
     briefing: "briefing",
+    auto: "auto",
+    modeAuto: "Auto-detect mode",
 
     // Health
     systemHealth: "System Health",
@@ -134,6 +136,8 @@ export const translations = {
     navigator: "ניווט",
     tutor: "מדריך",
     briefing: "תדרוך",
+    auto: "אוטומטי",
+    modeAuto: "זיהוי מצב אוטומטי",
 
     // Health
     systemHealth: "תקינות המערכת",

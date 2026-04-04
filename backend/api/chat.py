@@ -1,4 +1,4 @@
-"""Chat API endpoints — full Navigator pipeline."""
+"""Chat API endpoints — full Navigator + Tutor pipeline."""
 
 import re
 import logging
@@ -7,8 +7,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from backend.integrations import supabase_client as db
-from backend.integrations.claude_client import navigate
+from backend.integrations.claude_client import navigate, tutor
 from backend.core.context_builder import build_context
+from backend.core.mode_detector import detect_mode
+from backend.core.level_detector import detect_level, response_level, LEVEL_DESCRIPTIONS
+from backend.user.profile_builder import update_from_conversation, get_user_context_string
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,20 +20,22 @@ router = APIRouter()
 class ChatMessage(BaseModel):
     message: str
     conversation_id: str | None = None
-    mode: str = "navigator"  # navigator | tutor | briefing
+    mode: str = "auto"  # auto | navigator | tutor | briefing
+    user_id: str | None = None  # Optional for knowledge tracking
 
 
 class ChatResponse(BaseModel):
     response: str
     conversation_id: str
     mode: str
+    detected_mode: str | None = None
     concepts_referenced: list[dict] = []
     insight: dict | None = None
 
 
 @router.post("/", response_model=ChatResponse)
 async def chat(msg: ChatMessage):
-    """Send a message to Korczak — full pipeline."""
+    """Send a message to Korczak — full pipeline with mode/level detection."""
     try:
         # 1. Create or reuse conversation
         if msg.conversation_id:
@@ -42,29 +47,54 @@ async def chat(msg: ChatMessage):
         # 2. Save user message
         await db.save_message(conversation_id, role="user", content=msg.message)
 
-        # 3. Build graph context
-        graph_context, concepts_referenced = await build_context(msg.message)
-
-        # 4. Get conversation history for multi-turn
+        # 3. Get conversation history
         history = []
         if msg.conversation_id:
             messages = await db.get_conversation_messages(conversation_id, limit=10)
-            # Exclude the message we just saved (last one)
             for m in messages[:-1]:
                 history.append({"role": m["role"], "content": m["content"]})
 
-        # 5. Call Navigator
-        response_text = await navigate(
-            user_message=msg.message,
-            graph_context=graph_context,
-            user_context="Anonymous user exploring the knowledge graph.",
-            history=history if history else None,
-        )
+        # 4. Detect mode (if auto)
+        if msg.mode == "auto":
+            active_mode = detect_mode(msg.message, "navigator", history or None)
+        else:
+            active_mode = msg.mode
 
-        # 6. Extract insight from response (look for marked section)
-        insight = _extract_insight(response_text)
+        # 5. Detect user level
+        user_level = detect_level(msg.message, history or None)
+        resp_level = response_level(user_level)
 
-        # 7. Save assistant response
+        # 6. Build graph context
+        graph_context, concepts_referenced = await build_context(msg.message)
+
+        # 7. Build user context
+        if msg.user_id:
+            user_context = await get_user_context_string(msg.user_id)
+        else:
+            user_context = "Anonymous user exploring the knowledge graph."
+
+        # 8. Call appropriate mode
+        if active_mode == "tutor":
+            response_text = await tutor(
+                user_message=msg.message,
+                graph_context=graph_context,
+                user_context=user_context,
+                level_description=LEVEL_DESCRIPTIONS[resp_level],
+                socratic_level=min(resp_level, 2),  # Cap at level 2 until user opts in
+                history=history if history else None,
+            )
+            insight = None  # Tutor doesn't add unsolicited insights
+        else:
+            # Navigator (default) or briefing (falls back to navigator for now)
+            response_text = await navigate(
+                user_message=msg.message,
+                graph_context=graph_context,
+                user_context=user_context,
+                history=history if history else None,
+            )
+            insight = _extract_insight(response_text)
+
+        # 9. Save assistant response
         await db.save_message(
             conversation_id,
             role="assistant",
@@ -72,10 +102,23 @@ async def chat(msg: ChatMessage):
             concepts_referenced=concepts_referenced,
         )
 
+        # 10. Update user knowledge graph (async, non-blocking)
+        if msg.user_id and concepts_referenced:
+            try:
+                await update_from_conversation(
+                    user_id=msg.user_id,
+                    concepts_referenced=concepts_referenced,
+                    user_message=msg.message,
+                    assistant_response=response_text,
+                )
+            except Exception as e:
+                logger.warning(f"User graph update failed: {e}")
+
         return ChatResponse(
             response=response_text,
             conversation_id=conversation_id,
-            mode=msg.mode,
+            mode=active_mode,
+            detected_mode=active_mode if msg.mode == "auto" else None,
             concepts_referenced=concepts_referenced,
             insight=insight,
         )
@@ -98,7 +141,6 @@ async def get_history(conversation_id: str):
 
 def _extract_insight(text: str) -> dict | None:
     """Extract the unsolicited insight section from the response."""
-    # Look for common patterns Korczak uses to mark insights
     patterns = [
         r"(?:\*\*)?(?:Unsolicited )?Insight(?:\*\*)?[:\s]*(.+?)(?:\n\n|\Z)",
         r"(?:\*\*)?Something you might not have considered(?:\*\*)?[:\s]*(.+?)(?:\n\n|\Z)",
@@ -111,7 +153,6 @@ def _extract_insight(text: str) -> dict | None:
         match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
         if match:
             content = match.group(1).strip()
-            # Determine insight type
             lower = pattern.lower()
             if "blind" in lower:
                 insight_type = "blind_spot"

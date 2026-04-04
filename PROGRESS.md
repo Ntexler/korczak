@@ -9,9 +9,9 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 1d — Self-Monitoring v1
-**Status:** All monitors built and running, health dashboard deployed
-**Goal:** Production-ready observability before user testing.
+## Current Phase: 3 — Tutor + User Graph Layer 1
+**Status:** Mode/level detection built, Socratic Tutor wired, User Graph tracking
+**Goal:** Multi-mode AI (Navigator/Tutor/Briefing) with implicit user modeling.
 
 ### Phase 1d Progress
 - [x] Consistency checker: orphan detection, duplicates, dangling rels, circular contradictions, confidence anomalies, stale concepts
@@ -24,6 +24,20 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] Graph status: HEALTHY (0 critical, 2 medium: 173 orphans, 362 missing definitions)
 - [ ] Schedule monitors to run automatically (cron/Airflow — deferred to deployment)
 - [ ] Confidence decay (relationships not reinforced in 2+ years) — deferred to production
+
+### Phase 3 Progress
+- [x] Mode Detector: auto-detect Navigator/Tutor/Briefing from message patterns (7/7 tests pass)
+- [x] Level Detector: estimate expertise (child/highschool/student/researcher) from vocabulary + question patterns
+- [x] Socratic Tutor prompt: 4 progressive levels (direct → guided → socratic → full socratic)
+- [x] Anti-annoyance rules: detect frustration, cap Socratic level, fallback to direct answers
+- [x] User Graph Layer 1: implicit knowledge tracking (understanding_level per concept, misconceptions, blind_spots)
+- [x] Profile builder: updates user_knowledge table from conversation turns
+- [x] Chat API: mode detection + level detection + tutor routing + user graph updates
+- [x] Frontend: mode selector (Auto/Navigator/Tutor) in header with icons
+- [x] Chat defaults to "auto" mode (auto-detects intent per message)
+- [ ] Briefing mode (deferred — needs scheduled jobs + proactive updates)
+- [ ] Prerequisite checker (needs more graph data + concept ordering)
+- [ ] Test with real users (blocked: API credits)
 
 ---
 
@@ -88,11 +102,15 @@ backend/
   api/chat.py              — POST /api/chat with full Navigator pipeline [Phase 1c]
   api/graph.py             — GET /api/graph/* wired to Supabase [Phase 1c]
   core/context_builder.py  — Keyword extraction + graph context assembly [Phase 1c]
+  core/mode_detector.py    — Auto-detect Navigator/Tutor/Briefing intent [Phase 3]
+  core/level_detector.py   — Expertise estimation (child→researcher) [Phase 3]
   integrations/supabase_client.py  — CRUD + Navigator helpers (conversations, messages) [Phase 1c]
   integrations/claude_client.py    — analyze_paper(), navigate() with multi-turn [Phase 1c]
   integrations/openalex_client.py  — fetch_papers() with cursor pagination
   prompts/paper_analysis.py        — v2 prompt (Phase 0.5 validated)
   prompts/navigator.py             — Navigator system prompt
+  prompts/tutor.py                 — Socratic Tutor prompt (4 levels) [Phase 3]
+  user/profile_builder.py          — Implicit knowledge tracking + user context [Phase 3]
   pipeline/seed_graph.py           — OpenAlex → Claude → Supabase seeding
   pipeline/enrich_sources.py       — S2 + CrossRef + Retraction Watch enrichment
   pipeline/generate_syllabus.py    — Auto-generate syllabus files from DB
@@ -134,6 +152,14 @@ frontend/
 ---
 
 ## Completed
+
+### 2026-04-04 — Phase 3: Tutor + User Graph Layer 1
+- [x] Mode detector (auto-detect Navigator/Tutor/Briefing from message patterns)
+- [x] Level detector (child/highschool/student/researcher from vocabulary)
+- [x] Socratic Tutor (4 levels: direct → full Socratic, anti-annoyance rules)
+- [x] User Graph Layer 1 (implicit knowledge tracking per concept)
+- [x] Profile builder (updates from conversation turns)
+- [x] Frontend mode selector (Auto/Navigator/Tutor toggle)
 
 ### 2026-04-04 — Phase 1d: Self-Monitoring v1
 - [x] Built 4 monitors: consistency checker, pipeline health, quality monitor, cost monitor
@@ -206,9 +232,9 @@ frontend/
 - [x] Phase 1a: Infrastructure (Supabase + FastAPI + Next.js)
 - [x] Phase 1b: Graph Seeding (281 papers seeded, enriched, syllabus generated)
 - [x] Phase 1c: Navigator + Immersive Frontend
-- [x] **Phase 1d: Self-Monitoring v1** ← JUST COMPLETED
-- [ ] Phase 2: User Testing
-- [ ] Phase 3: Tutor + User Graph Layer 1
+- [x] Phase 1d: Self-Monitoring v1
+- [ ] Phase 2: User Testing (deferred — needs API credits + deployment)
+- [x] **Phase 3: Tutor + User Graph Layer 1** ← JUST COMPLETED
 - [ ] Phase 3.5: User Graph Layer 2 (Personal Context)
 - [ ] Phase 4: Differentiation features
 - [ ] Phase 4.5: User Graph Layer 3 (Behavioral Patterns)
