@@ -2,13 +2,14 @@
 
 import { useRef, useEffect } from "react";
 import { useChatStore } from "@/stores/chatStore";
+import { useLocaleStore } from "@/stores/localeStore";
 import { sendMessage } from "@/lib/api";
 import ChatMessage from "@/components/Chat/ChatMessage";
 import ChatInput from "@/components/Chat/ChatInput";
 import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
-import { Compass, Menu, PanelRightOpen } from "lucide-react";
+import { Compass, Menu, PanelRightOpen, Languages } from "lucide-react";
 
 export default function Home() {
   const {
@@ -25,6 +26,8 @@ export default function Home() {
     setConceptPanelOpen,
   } = useChatStore();
 
+  const { locale, toggleLocale, t } = useLocaleStore();
+  const isRtl = locale === "he";
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on new messages
@@ -47,7 +50,7 @@ export default function Home() {
     } catch {
       addMessage({
         role: "assistant",
-        content: "I apologize — something went wrong connecting to the knowledge graph. Please try again.",
+        content: t.errorMessage,
       });
     } finally {
       setLoading(false);
@@ -55,7 +58,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background" dir={isRtl ? "rtl" : "ltr"}>
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface/30 backdrop-blur-sm z-10">
         <div className="flex items-center gap-3">
@@ -71,17 +74,27 @@ export default function Home() {
               className="text-lg font-bold text-foreground tracking-tight"
               style={{ fontFamily: "var(--font-serif)" }}
             >
-              Korczak
+              {t.appName}
             </h1>
             <span className="hidden sm:inline text-text-secondary text-sm">
-              Knowledge Navigator
+              {t.subtitle}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Language toggle */}
+          <button
+            onClick={toggleLocale}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
+              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+            title={locale === "en" ? "עברית" : "English"}
+          >
+            <Languages size={14} />
+            <span className="font-medium">{locale === "en" ? "HE" : "EN"}</span>
+          </button>
           <span className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-accent-gold-dim text-accent-gold rounded-full">
-            {mode}
+            {t.navigator}
           </span>
           <button
             onClick={() => setConceptPanelOpen(!conceptPanelOpen)}
@@ -121,7 +134,7 @@ export default function Home() {
                         <Compass size={16} className="text-accent-gold" />
                       </div>
                       <div className="bg-surface rounded-2xl px-4 py-3 rounded-bl-sm flex items-center gap-3">
-                        <span className="thinking-text">Navigating...</span>
+                        <span className="thinking-text">{t.navigating}</span>
                         <div className="flex gap-1.5">
                           <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-1" />
                           <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-2" />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { X, Compass, Search } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
+import { useLocaleStore } from "@/stores/localeStore";
 import { searchConcepts } from "@/lib/api";
 import GraphStats from "./GraphStats";
 import TopicBrowser from "./TopicBrowser";
@@ -15,6 +16,7 @@ interface KnowledgeSidebarProps {
 export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProps) {
   const { messages, sidebarOpen, setSidebarOpen } = useChatStore();
   const setSelectedConceptId = useChatStore((s) => s.setSelectedConceptId);
+  const { t } = useLocaleStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ id: string; name: string; type: string }[]>([]);
   const [searching, setSearching] = useState(false);
@@ -65,7 +67,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
         <div className="flex items-center gap-2">
           <Compass size={16} className="text-accent-gold" />
           <span className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--font-serif)" }}>
-            Explore
+            {t.explore}
           </span>
         </div>
         <button
@@ -84,7 +86,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
             type="text"
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search concepts..."
+            placeholder={t.searchConcepts}
             className="w-full pl-9 pr-3 py-2 bg-surface-sunken border border-border-subtle rounded-lg
               text-sm text-foreground placeholder:text-text-tertiary
               focus:outline-none focus:border-accent-gold/40 focus:ring-1 focus:ring-accent-gold/15
@@ -113,7 +115,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
           </div>
         )}
         {searching && (
-          <p className="text-[10px] text-text-tertiary mt-2 px-1">Searching...</p>
+          <p className="text-[10px] text-text-tertiary mt-2 px-1">{t.searching}</p>
         )}
       </div>
 
@@ -121,7 +123,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
         {/* Graph Stats */}
         <section>
           <h3 className="section-header mb-3">
-            Knowledge Graph
+            {t.knowledgeGraph}
           </h3>
           <GraphStats />
         </section>
@@ -130,7 +132,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
         {recentConcepts.length > 0 && (
           <section>
             <h3 className="section-header mb-3">
-              Recent Concepts
+              {t.recentConcepts}
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {recentConcepts.map((c) => (
@@ -149,7 +151,7 @@ export default function KnowledgeSidebar({ onSelectTopic }: KnowledgeSidebarProp
         {/* Topic Browser */}
         <section>
           <h3 className="section-header mb-3">
-            Explore Topics
+            {t.exploreTopics}
           </h3>
           <TopicBrowser onSelectTopic={onSelectTopic} />
         </section>

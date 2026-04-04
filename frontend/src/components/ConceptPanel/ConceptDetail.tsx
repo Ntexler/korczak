@@ -13,6 +13,7 @@ import {
   Compass,
 } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
+import { useLocaleStore } from "@/stores/localeStore";
 import { getConceptDetail, getConceptNeighbors } from "@/lib/api";
 
 interface ConceptData {
@@ -47,6 +48,7 @@ const REL_COLORS: Record<string, string> = {
 export default function ConceptDetail() {
   const { selectedConceptId, conceptPanelOpen, setSelectedConceptId } =
     useChatStore();
+  const { t } = useLocaleStore();
   const [concept, setConcept] = useState<ConceptData | null>(null);
   const [neighbors, setNeighbors] = useState<NeighborData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -83,7 +85,7 @@ export default function ConceptDetail() {
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--font-serif)" }}>
-            Concept Detail
+            {t.conceptDetail}
           </span>
           <button
             onClick={() => useChatStore.getState().setConceptPanelOpen(false)}
@@ -96,9 +98,9 @@ export default function ConceptDetail() {
           <div className="w-16 h-16 rounded-full bg-accent-gold-dim/30 flex items-center justify-center mb-4">
             <Compass size={28} className="text-accent-gold/40" />
           </div>
-          <p className="text-sm text-text-secondary mb-1">No concept selected</p>
+          <p className="text-sm text-text-secondary mb-1">{t.noConceptSelected}</p>
           <p className="text-xs text-text-tertiary">
-            Click any gold concept badge in the chat to explore it here
+            {t.clickBadgeHint}
           </p>
         </div>
       </motion.aside>
@@ -106,9 +108,9 @@ export default function ConceptDetail() {
   }
 
   const confidenceLabel = (c: number) => {
-    if (c > 0.85) return { text: "Well-established", icon: CheckCircle2, color: "text-accent-green", barColor: "var(--accent-green)" };
-    if (c >= 0.6) return { text: "Likely accurate", icon: Shield, color: "text-accent-amber", barColor: "var(--accent-amber)" };
-    return { text: "Needs more evidence", icon: AlertTriangle, color: "text-text-secondary", barColor: "var(--text-secondary)" };
+    if (c > 0.85) return { text: t.wellEstablished, icon: CheckCircle2, color: "text-accent-green", barColor: "var(--accent-green)" };
+    if (c >= 0.6) return { text: t.likelyAccurate, icon: Shield, color: "text-accent-amber", barColor: "var(--accent-amber)" };
+    return { text: t.needsMoreEvidence, icon: AlertTriangle, color: "text-text-secondary", barColor: "var(--text-secondary)" };
   };
 
   return (
@@ -122,7 +124,7 @@ export default function ConceptDetail() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <span className="text-sm font-semibold text-foreground" style={{ fontFamily: "var(--font-serif)" }}>
-          Concept Detail
+          {t.conceptDetail}
         </span>
         <button
           onClick={() => setSelectedConceptId(null)}
@@ -140,7 +142,7 @@ export default function ConceptDetail() {
               <span className="w-2 h-2 bg-accent-gold rounded-full dot-bounce-2" />
               <span className="w-2 h-2 bg-accent-gold rounded-full dot-bounce-3" />
             </div>
-            <span className="thinking-text">Loading concept...</span>
+            <span className="thinking-text">{t.loadingConcept}</span>
           </div>
         ) : concept ? (
           <>
@@ -208,7 +210,7 @@ export default function ConceptDetail() {
               <div className="flex items-center gap-2">
                 <BookOpen size={14} className="text-accent-blue" />
                 <span className="text-xs text-text-secondary">
-                  Referenced in {concept.paper_count} papers
+                  {t.referencedIn} {concept.paper_count} {t.papers}
                 </span>
               </div>
             )}
@@ -218,7 +220,7 @@ export default function ConceptDetail() {
               <section>
                 <h3 className="section-header flex items-center gap-2 mb-3">
                   <GitBranch size={12} />
-                  Connected Concepts
+                  {t.connectedConcepts}
                 </h3>
                 <div className="space-y-1.5">
                   {neighbors.related.map((rel, i) => (
@@ -249,7 +251,7 @@ export default function ConceptDetail() {
           </>
         ) : (
           <div className="flex flex-col items-center py-12 text-center">
-            <p className="text-sm text-text-secondary">Concept not found</p>
+            <p className="text-sm text-text-secondary">{t.conceptNotFound}</p>
           </div>
         )}
       </div>

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Compass, Sparkles, User } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
+import { useLocaleStore } from "@/stores/localeStore";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -11,12 +12,6 @@ interface ChatMessageProps {
   insight?: { type: string; content: string } | null;
   onSend?: (message: string) => void;
 }
-
-const FOLLOW_UPS = [
-  "Tell me more",
-  "What's controversial?",
-  "Show related concepts",
-];
 
 export default function ChatMessage({
   role,
@@ -27,6 +22,9 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   const isUser = role === "user";
   const setSelectedConceptId = useChatStore((s) => s.setSelectedConceptId);
+  const { t } = useLocaleStore();
+
+  const followUps = [t.tellMeMore, t.whatsControversial, t.showRelated];
 
   return (
     <motion.div
@@ -91,10 +89,10 @@ export default function ChatMessage({
                 <Sparkles size={14} className="text-accent-gold" />
                 <span className="text-xs font-semibold text-accent-gold uppercase tracking-wide">
                   {insight.type === "blind_spot"
-                    ? "Blind Spot"
+                    ? t.blindSpot
                     : insight.type === "connection"
-                      ? "Connection"
-                      : "Insight"}
+                      ? t.connection
+                      : t.insight}
                 </span>
               </div>
               <p className="text-sm text-text-secondary leading-relaxed">
@@ -111,7 +109,7 @@ export default function ChatMessage({
               transition={{ delay: 0.4, duration: 0.3 }}
               className="flex flex-wrap gap-1.5 px-1"
             >
-              {FOLLOW_UPS.map((chip) => (
+              {followUps.map((chip) => (
                 <button
                   key={chip}
                   onClick={() => onSend(chip)}

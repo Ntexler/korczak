@@ -3,30 +3,10 @@
 import { motion } from "framer-motion";
 import { Compass, BookOpen, Brain, Sparkles } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
+import { useLocaleStore } from "@/stores/localeStore";
 
-const SUGGESTED_PROMPTS = [
-  {
-    icon: Brain,
-    text: "What are the main debates in anthropology?",
-    color: "text-accent-gold",
-    featured: true,
-  },
-  {
-    icon: BookOpen,
-    text: "How does participant observation work?",
-    color: "text-accent-blue",
-  },
-  {
-    icon: Sparkles,
-    text: "What connects sleep research to cognitive anthropology?",
-    color: "text-accent-green",
-  },
-  {
-    icon: Compass,
-    text: "Show me the most influential papers on decolonization",
-    color: "text-accent-amber",
-  },
-];
+const ICONS = [Brain, BookOpen, Sparkles, Compass];
+const COLORS = ["text-accent-gold", "text-accent-blue", "text-accent-green", "text-accent-amber"];
 
 interface WelcomeScreenProps {
   onSend: (message: string) => void;
@@ -34,6 +14,9 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({ onSend }: WelcomeScreenProps) {
   const graphStats = useChatStore((s) => s.graphStats);
+  const { t } = useLocaleStore();
+  const prompts = t.prompts as unknown as string[];
+  const statsLabel = t.statsLabel as unknown as { papers: string; concepts: string; connections: string };
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 welcome-bg">
@@ -53,10 +36,11 @@ export default function WelcomeScreen({ onSend }: WelcomeScreenProps) {
           className="text-4xl sm:text-5xl font-bold tracking-tight mb-3"
           style={{ fontFamily: "var(--font-serif)" }}
         >
-          Welcome to <span className="text-accent-gold">Korczak</span>
+          {t.welcomeTitle}{" "}
+          <span className="text-accent-gold">{t.appName}</span>
         </h1>
         <p className="text-text-secondary text-lg italic">
-          See what you don&apos;t see
+          {t.tagline}
         </p>
 
         {/* Graph stats */}
@@ -71,21 +55,21 @@ export default function WelcomeScreen({ onSend }: WelcomeScreenProps) {
               <span className="block text-lg font-semibold text-foreground">
                 {graphStats.total_papers.toLocaleString()}
               </span>
-              <span className="text-text-tertiary text-xs">papers</span>
+              <span className="text-text-tertiary text-xs">{statsLabel.papers}</span>
             </div>
             <div className="w-px h-8 bg-border" />
             <div className="text-center">
               <span className="block text-lg font-semibold text-foreground">
                 {graphStats.total_concepts.toLocaleString()}
               </span>
-              <span className="text-text-tertiary text-xs">concepts</span>
+              <span className="text-text-tertiary text-xs">{statsLabel.concepts}</span>
             </div>
             <div className="w-px h-8 bg-border" />
             <div className="text-center">
               <span className="block text-lg font-semibold text-foreground">
                 {graphStats.total_relationships.toLocaleString()}
               </span>
-              <span className="text-text-tertiary text-xs">connections</span>
+              <span className="text-text-tertiary text-xs">{statsLabel.connections}</span>
             </div>
           </motion.div>
         )}
@@ -98,33 +82,38 @@ export default function WelcomeScreen({ onSend }: WelcomeScreenProps) {
         transition={{ delay: 0.3, duration: 0.5 }}
         className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl w-full"
       >
-        {SUGGESTED_PROMPTS.map((prompt, i) => (
-          <motion.button
-            key={i}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 + i * 0.1 }}
-            onClick={() => onSend(prompt.text)}
-            className={`flex items-start gap-3 rounded-xl border text-left transition-all duration-200 group
-              ${
-                prompt.featured
-                  ? "sm:col-span-2 p-5 bg-gradient-to-r from-accent-gold/[0.04] to-surface border-accent-gold/20 hover:border-accent-gold/40"
-                  : "p-4 bg-surface border-border hover:border-accent-gold/30 hover:bg-surface-hover"
-              }`}
-          >
-            <prompt.icon
-              size={prompt.featured ? 22 : 18}
-              className={`${prompt.color} mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform`}
-            />
-            <span
-              className={`text-text-secondary group-hover:text-foreground transition-colors ${
-                prompt.featured ? "text-base" : "text-sm"
-              }`}
+        {prompts.map((text, i) => {
+          const Icon = ICONS[i] || Compass;
+          const color = COLORS[i] || "text-accent-gold";
+          const featured = i === 0;
+          return (
+            <motion.button
+              key={i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 + i * 0.1 }}
+              onClick={() => onSend(text)}
+              className={`flex items-start gap-3 rounded-xl border text-left transition-all duration-200 group
+                ${
+                  featured
+                    ? "sm:col-span-2 p-5 bg-gradient-to-r from-accent-gold/[0.04] to-surface border-accent-gold/20 hover:border-accent-gold/40"
+                    : "p-4 bg-surface border-border hover:border-accent-gold/30 hover:bg-surface-hover"
+                }`}
             >
-              {prompt.text}
-            </span>
-          </motion.button>
-        ))}
+              <Icon
+                size={featured ? 22 : 18}
+                className={`${color} mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform`}
+              />
+              <span
+                className={`text-text-secondary group-hover:text-foreground transition-colors ${
+                  featured ? "text-base" : "text-sm"
+                }`}
+              >
+                {text}
+              </span>
+            </motion.button>
+          );
+        })}
       </motion.div>
     </div>
   );

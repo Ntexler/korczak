@@ -2,6 +2,7 @@
 
 import { useState, useRef, KeyboardEvent, FormEvent } from "react";
 import { Compass } from "lucide-react";
+import { useLocaleStore } from "@/stores/localeStore";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -11,13 +12,13 @@ interface ChatInputProps {
 export default function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { t } = useLocaleStore();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || disabled) return;
     onSend(input.trim());
     setInput("");
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -52,7 +53,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
             handleInput();
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Explore a concept, ask a question..."
+          placeholder={t.inputPlaceholder}
           disabled={disabled}
           rows={1}
           className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-foreground text-sm resize-none
