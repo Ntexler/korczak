@@ -18,7 +18,7 @@ interface TrendingConcept {
 interface RisingPaper {
   paper_id: string;
   title: string;
-  citation_count: number;
+  cited_by_count: number;
   citation_velocity: number;
 }
 
@@ -165,7 +165,7 @@ export default function DiscoveryPanel() {
                   >
                     <p className="text-xs text-text-secondary line-clamp-2">{p.title}</p>
                     <p className="text-[10px] text-text-tertiary mt-0.5">
-                      {p.citation_count} {t.citations} &middot; {p.citation_velocity.toFixed(3)}/day
+                      {p.cited_by_count} {t.citations} &middot; {p.citation_velocity.toFixed(3)}/day
                     </p>
                   </div>
                 ))}

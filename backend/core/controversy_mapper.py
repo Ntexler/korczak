@@ -15,7 +15,7 @@ async def get_controversies(limit: int = 10, active_only: bool = True) -> list[d
     client = get_client()
     query = client.table("controversies").select("*")
     if active_only:
-        query = query.eq("active", True)
+        query = query.eq("status", "active")
     query = query.order("created_at", desc=True).limit(limit)
     result = query.execute()
     return result.data

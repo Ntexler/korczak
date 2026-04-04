@@ -22,13 +22,13 @@ async def get_trending_concepts(days: int = 90, limit: int = 15) -> list[dict]:
     compared to older ones.
     """
     client = get_client()
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    cutoff_year = datetime.now(timezone.utc).year - max(days // 365, 1)
 
-    # Get recent papers
+    # Get recent papers by publication year
     recent_papers = (
         client.table("papers")
         .select("id")
-        .gte("published_date", cutoff)
+        .gte("publication_year", cutoff_year)
         .execute()
     )
     recent_ids = {p["id"] for p in recent_papers.data}
@@ -108,9 +108,9 @@ async def get_rising_papers(days: int = 180, limit: int = 15) -> list[dict]:
     # Get recent-ish papers with citation data
     papers = (
         client.table("papers")
-        .select("id, title, authors, published_date, citation_count, created_at")
+        .select("id, title, authors, publication_year, cited_by_count, created_at")
         .gte("created_at", cutoff)
-        .order("citation_count", desc=True)
+        .order("cited_by_count", desc=True)
         .limit(100)
         .execute()
     )
@@ -118,20 +118,24 @@ async def get_rising_papers(days: int = 180, limit: int = 15) -> list[dict]:
     results = []
     now = datetime.now(timezone.utc)
     for p in papers.data:
-        citations = p.get("citation_count") or 0
+        citations = p.get("cited_by_count") or 0
         if citations == 0:
             continue
 
-        # Calculate age in days
-        created = p.get("published_date") or p.get("created_at", "")
-        try:
-            if isinstance(created, str) and created:
-                age_date = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                age_days = max((now - age_date).days, 1)
-            else:
+        # Calculate age in days from publication_year (integer) or created_at
+        pub_year = p.get("publication_year")
+        if pub_year and isinstance(pub_year, int):
+            age_days = max((now.year - pub_year) * 365, 1)
+        else:
+            created_at = p.get("created_at", "")
+            try:
+                if isinstance(created_at, str) and created_at:
+                    age_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    age_days = max((now - age_date).days, 1)
+                else:
+                    age_days = 365
+            except (ValueError, TypeError):
                 age_days = 365
-        except (ValueError, TypeError):
-            age_days = 365
 
         # Citations per day (velocity)
         velocity = citations / age_days
@@ -140,8 +144,8 @@ async def get_rising_papers(days: int = 180, limit: int = 15) -> list[dict]:
             "paper_id": p["id"],
             "title": p["title"],
             "authors": p.get("authors"),
-            "published_date": p.get("published_date"),
-            "citation_count": citations,
+            "publication_year": p.get("publication_year"),
+            "cited_by_count": citations,
             "age_days": age_days,
             "citation_velocity": round(velocity, 4),
         })

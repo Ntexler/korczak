@@ -137,8 +137,8 @@ async def find_low_evidence_controversies(limit: int = 10) -> list[dict]:
 
     controversies = (
         client.table("controversies")
-        .select("id, title, description, active")
-        .eq("active", True)
+        .select("id, title, description, status")
+        .eq("status", "active")
         .execute()
     )
 
