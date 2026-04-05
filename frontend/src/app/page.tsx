@@ -10,10 +10,11 @@ import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
 import KnowledgeGraph from "@/components/Graph/KnowledgeGraph";
-import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine } from "lucide-react";
+import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine, Clock } from "lucide-react";
 import { useLibraryStore } from "@/stores/libraryStore";
 import PaperLibrary from "@/components/Library/PaperLibrary";
 import KnowledgeTreeView from "@/components/Tree/KnowledgeTree";
+import KnowledgeTimeline from "@/components/Timeline/KnowledgeTimeline";
 
 export default function Home() {
   const {
@@ -36,6 +37,7 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showGraph, setShowGraph] = useState(false);
   const [showTree, setShowTree] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
 
   // TODO: Replace with actual auth user ID when auth is implemented
   const userId: string | undefined = undefined;
@@ -141,6 +143,16 @@ export default function Home() {
             <Map size={14} />
             <span className="hidden sm:inline font-medium">{t.knowledgeMap}</span>
           </button>
+          {/* Timeline button */}
+          <button
+            onClick={() => setShowTimeline(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
+              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+            title={locale === "he" ? "ציר זמן" : "Timeline"}
+          >
+            <Clock size={14} />
+            <span className="hidden sm:inline font-medium">{locale === "he" ? "ציר זמן" : "Timeline"}</span>
+          </button>
           {/* Mode selector */}
           <div className="flex items-center bg-surface-sunken rounded-full p-0.5 gap-0.5">
             {(["auto", "navigator", "tutor"] as const).map((m) => {
@@ -231,6 +243,9 @@ export default function Home() {
 
       {/* Knowledge Graph overlay */}
       {showGraph && <KnowledgeGraph onClose={() => setShowGraph(false)} />}
+
+      {/* Knowledge Timeline overlay */}
+      {showTimeline && <KnowledgeTimeline onClose={() => setShowTimeline(false)} />}
 
       {/* Knowledge Tree overlay */}
       {showTree && userId && (

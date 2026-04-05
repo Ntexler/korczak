@@ -409,6 +409,32 @@ export async function getTreeProgress(userId: string) {
   return res.json();
 }
 
+// --- Timeline API ---
+
+export async function getConceptTimeline(conceptId: string) {
+  const res = await fetch(`${API_BASE}/timeline/concept/${conceptId}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getFieldTimeline(yearStart: number = 1950, yearEnd: number = 2026) {
+  const res = await fetch(`${API_BASE}/timeline/field?year_start=${yearStart}&year_end=${yearEnd}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getGraphChangelog(limit: number = 50) {
+  const res = await fetch(`${API_BASE}/timeline/changelog?limit=${limit}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getFieldMilestones() {
+  const res = await fetch(`${API_BASE}/timeline/milestones`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
 // --- Researcher Profiles API ---
 
 export async function createResearcherProfile(data: {
