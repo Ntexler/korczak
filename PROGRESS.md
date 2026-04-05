@@ -9,7 +9,50 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 5.0 — Study/Research Platform Expansion
+## Current Phase: 6.0 — Knowledge Liberation & Map Depth
+**Status:** All 3 features implemented — Rich Map Nodes, Connection Transparency, Paper Translation
+**Goal:** Make the knowledge map deeply informative, transparent in its reasoning, and accessible across languages.
+
+### Phase 6.2 — Rich Knowledge Map Nodes (COMPLETE)
+- [x] Backend: concept_enricher.py — get_concept_with_context (key papers, claims), get_enriched_neighbors (explanations), get_enriched_graph_data
+- [x] Graph API returns full context per concept (key_papers, key_claims fields)
+- [x] Neighbors endpoint exposes relationship_explanation from DB RPC
+- [x] Visualization endpoint includes definitions + explanations + source papers per edge
+- [x] Frontend: Knowledge Map info panel widened (w-96), shows definition paragraph, paper count, connection explanations, source paper references
+- [x] Frontend: Concept Detail panel — new Key Papers section, Key Claims section, connection explanations in related list
+- [x] i18n: 5 new EN/HE pairs (keyPapers, keyClaims, exploreInDepth, source, whyConnected)
+
+### Phase 6.3 — Connection Transparency (COMPLETE)
+- [x] DB Migration 012: connection_feedback + proposed_connections tables
+- [x] Backend: connection_feedback.py router — agree/disagree on connections, propose missing connections, vote on proposals
+- [x] Auto-adjusts connection confidence when community disagrees (>60% threshold, min confidence 0.1)
+- [x] Frontend: ConnectionFeedback.tsx — inline agree/disagree + comment buttons on each connection
+- [x] API: 5 new connection feedback endpoints + 5 frontend API functions
+- [x] Registered at /api/connections (10th router)
+- [x] i18n: 6 new EN/HE pairs (agree, disagree, feedback, propose, etc.)
+
+### Phase 6.1 — Paper Translation Pipeline (COMPLETE)
+- [x] DB Migration 013: paper_translations table (cached per language, unique per paper+target)
+- [x] Backend: paper_translator.py — detect_language (25 languages, script-based), translate via Claude API, cache in DB, flag poor quality
+- [x] Backend: translation.py router — POST /translate, GET /{paper_id}, POST /flag, GET /languages/supported
+- [x] Frontend: TranslateButton.tsx — one-click translate on any paper card
+- [x] Frontend: TranslatedView.tsx — side-by-side original/translated with toggle + flag
+- [x] API: 4 new translation endpoints + 4 frontend API functions
+- [x] Registered at /api/translation (11th router)
+- [x] i18n: 6 new EN/HE pairs (translate, translated, showOriginal, flag, etc.)
+
+### Phase 6 Summary
+- **2 DB migrations** (012-013): 3 new tables
+- **11 API routers** registered in main.py (was 9)
+- **2 new backend API modules**: connection_feedback, translation
+- **1 new backend core module**: concept_enricher, paper_translator
+- **3 new frontend components**: ConnectionFeedback, TranslateButton, TranslatedView
+- **~14 new API functions** in api.ts
+- **~23 new i18n strings** (EN/HE)
+
+---
+
+## Previous Phase: 5.0 — Study/Research Platform Expansion
 **Status:** All 5 expansion phases implemented — Paper Library, Highlights/Reading Mode, Syllabus, Community, Knowledge Tree
 **Goal:** Transform Korczak from a knowledge navigator into a full study/research platform.
 
@@ -261,6 +304,15 @@ frontend/
 
 ## Completed
 
+### 2026-04-05 — Phase 6: Knowledge Liberation & Map Depth
+- [x] Rich Knowledge Map: concept definitions, key papers, key claims in info panel
+- [x] Connection Transparency: explanations, source papers, agree/disagree feedback
+- [x] Paper Translation: 25 languages, Claude-powered, cached, side-by-side view
+- [x] Connection Feedback system: propose missing connections, community voting
+- [x] 2 new DB migrations (012-013), 3 new tables
+- [x] 2 new backend routers, 2 new core modules
+- [x] 3 new frontend components, ~14 new API functions, ~23 new i18n strings
+
 ### 2026-04-05 — Phase 4.5: Behavioral Patterns + Polish
 - [x] Behavior Tracker (User Graph Layer 3): session patterns, learning velocity, engagement
 - [x] Language preference: locale passed from frontend → chat API → Claude prompts
@@ -365,5 +417,9 @@ frontend/
 - [x] Phase 3: Tutor + User Graph Layer 1
 - [x] Phase 3.5: User Graph Layer 2 (Personal Context)
 - [x] Phase 4: Differentiation Features
-- [x] **Phase 4.5: User Graph Layer 3 (Behavioral Patterns)** ← JUST COMPLETED
-- [ ] Phase 5: Beta launch
+- [x] Phase 4.5: User Graph Layer 3 (Behavioral Patterns)
+- [x] Phase 5: Study/Research Platform (Library, Highlights, Syllabus, Community, Knowledge Tree)
+- [x] **Phase 6: Knowledge Liberation (Rich Map, Transparency, Translation)** ← JUST COMPLETED
+- [ ] Phase 7: Academic Social Network (profiles, summaries, collaborative editing)
+- [ ] Phase 8: Timeline of Knowledge (evolution tracking, animated history)
+- [ ] Phase 9: Advanced Visualization (multiple views, lenses, overlays)
