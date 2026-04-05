@@ -13,6 +13,7 @@ from backend.core.mode_detector import detect_mode
 from backend.core.level_detector import detect_level, response_level, LEVEL_DESCRIPTIONS
 from backend.user.profile_builder import update_from_conversation, get_user_context_string
 from backend.user.context_extractor import extract_context, update_user_profile
+from backend.user.behavior_tracker import track_session, get_behavior_context_string
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -23,6 +24,7 @@ class ChatMessage(BaseModel):
     conversation_id: str | None = None
     mode: str = "auto"  # auto | navigator | tutor | briefing
     user_id: str | None = None  # Optional for knowledge tracking
+    locale: str = "en"  # en | he — for language-aware responses
 
 
 class ChatResponse(BaseModel):
@@ -68,11 +70,20 @@ async def chat(msg: ChatMessage):
         # 6. Build graph context
         graph_context, concepts_referenced = await build_context(msg.message)
 
-        # 7. Build user context
+        # 7. Build user context (Layer 1 + Layer 3 behavior)
         if msg.user_id:
             user_context = await get_user_context_string(msg.user_id)
+            behavior_context = await get_behavior_context_string(msg.user_id)
+            if behavior_context:
+                user_context += "\n" + behavior_context
         else:
             user_context = "Anonymous user exploring the knowledge graph."
+
+        # Add language instruction
+        if msg.locale == "he":
+            user_context += "\nIMPORTANT: Respond in Hebrew. Use technical terms in English."
+        else:
+            user_context += "\nRespond in English."
 
         # 8. Call appropriate mode
         if active_mode == "tutor":
@@ -123,6 +134,13 @@ async def chat(msg: ChatMessage):
                     await update_user_profile(msg.user_id, signals)
             except Exception as e:
                 logger.warning(f"Context extraction failed: {e}")
+
+        # 12. Track behavioral patterns (Layer 3)
+        if msg.user_id:
+            try:
+                await track_session(msg.user_id, msg.message, active_mode, concepts_referenced)
+            except Exception as e:
+                logger.warning(f"Behavior tracking failed: {e}")
 
         return ChatResponse(
             response=response_text,

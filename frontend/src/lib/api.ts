@@ -3,7 +3,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 export async function sendMessage(
   message: string,
   conversationId?: string,
-  mode: string = "navigator"
+  mode: string = "navigator",
+  locale: string = "en"
 ) {
   const res = await fetch(`${API_BASE}/chat/`, {
     method: "POST",
@@ -12,6 +13,7 @@ export async function sendMessage(
       message,
       conversation_id: conversationId,
       mode,
+      locale,
     }),
   });
   if (!res.ok) {

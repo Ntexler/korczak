@@ -41,7 +41,7 @@ export default function Home() {
     addMessage({ role: "user", content: text });
     setLoading(true);
     try {
-      const res = await sendMessage(text, conversationId ?? undefined, mode);
+      const res = await sendMessage(text, conversationId ?? undefined, mode, locale);
       if (res.conversation_id) setConversationId(res.conversation_id);
       addMessage({
         role: "assistant",

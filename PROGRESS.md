@@ -9,9 +9,9 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 4 — Differentiation Features
-**Status:** All core modules built, frontend wired, ready for API credits to test
-**Goal:** Controversy mapping, research gap detection, rising stars, briefings, D3 graph visualization.
+## Current Phase: 4.5 — User Graph Layer 3 + Polish
+**Status:** All 3 user graph layers built, language wired, error handling complete
+**Goal:** Behavioral patterns, language-aware responses, robust error handling.
 
 ### Phase 3.5 Progress (Personal Context — COMPLETE)
 - [x] Context Extractor: regex-based extraction of role, institution, research topic, deadlines, language
@@ -33,6 +33,17 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 - [x] d3 + @types/d3 dependencies installed
 - [ ] Briefing generation (needs Claude API credits for actual text)
 - [ ] Scheduled briefings (needs cron/deployment infrastructure)
+
+### Phase 4.5 Progress (Behavioral Patterns — COMPLETE)
+- [x] Behavior Tracker: session patterns, time-of-day, mode preference, message complexity
+- [x] Learning Velocity: concept level progression tracking, interaction counts
+- [x] Engagement Profile: comprehensive user analytics (sessions/day, peak hours, complexity)
+- [x] Behavior context injected into system prompts (Layer 3)
+- [x] Language preference wired: frontend locale → chat API → Claude prompts (HE/EN)
+- [x] Error handling: all features API endpoints wrapped in try/except with proper HTTPException
+- [x] Engagement API: GET /api/features/engagement/{user_id}
+- [x] Migration 005: behavior_data JSONB column on user_profiles
+- [ ] Run migration 005 in Supabase SQL Editor (DDL can't run via client)
 
 ### Phase 1d Progress
 - [x] Consistency checker: orphan detection, duplicates, dangling rels, circular contradictions, confidence anomalies, stale concepts
@@ -145,7 +156,8 @@ backend/
   core/white_space_finder.py       — Research gaps: orphans, missing connections [Phase 4]
   core/rising_stars.py             — Trending concepts, rising papers, emerging connections [Phase 4]
   core/briefing_engine.py          — Personalized briefing generation + topic suggestions [Phase 4]
-  api/features.py                  — 8 endpoints: controversies, debates, gaps, rising, briefing, visualization [Phase 4]
+  api/features.py                  — 9 endpoints: controversies, debates, gaps, rising, briefing, engagement, visualization [Phase 4+4.5]
+  user/behavior_tracker.py         — Session patterns, learning velocity, engagement profile [Phase 4.5]
   requirements.txt
 
 syllabus/
@@ -181,6 +193,13 @@ frontend/
 ---
 
 ## Completed
+
+### 2026-04-05 — Phase 4.5: Behavioral Patterns + Polish
+- [x] Behavior Tracker (User Graph Layer 3): session patterns, learning velocity, engagement
+- [x] Language preference: locale passed from frontend → chat API → Claude prompts
+- [x] Error handling: all features API endpoints wrapped in try/except
+- [x] Engagement API endpoint: GET /api/features/engagement/{user_id}
+- [x] Migration 005: behavior_data JSONB column
 
 ### 2026-04-04 — Phase 3.5 + 4: Personal Context + Differentiation Features
 - [x] Context Extractor (User Graph Layer 2): role, institution, research topic, deadlines, language
@@ -278,6 +297,6 @@ frontend/
 - [ ] Phase 2: User Testing (deferred — needs API credits + deployment)
 - [x] Phase 3: Tutor + User Graph Layer 1
 - [x] Phase 3.5: User Graph Layer 2 (Personal Context)
-- [x] **Phase 4: Differentiation Features** ← JUST COMPLETED
-- [ ] Phase 4.5: User Graph Layer 3 (Behavioral Patterns)
+- [x] Phase 4: Differentiation Features
+- [x] **Phase 4.5: User Graph Layer 3 (Behavioral Patterns)** ← JUST COMPLETED
 - [ ] Phase 5: Beta launch
