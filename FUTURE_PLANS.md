@@ -340,9 +340,27 @@ Phases 7, 8, and 9 can be built in parallel once Phase 6 is solid.
 
 ---
 
+## Hotfix: Mock User + Auth Plan
+
+**Problem:** Phases 7 & 8 features (Social, Timeline, Tree) exist in code but are invisible because `userId` is `undefined` in `page.tsx`. Social components (ConceptSummaries, DiscussionThread) need `researcherId` to enable write actions.
+
+### Immediate Fix: Demo/Mock User
+- Set `userId = "demo-researcher-1"` in `page.tsx` (enables Tree, Library)
+- Pass `researcherId` through `ConceptDetail` to Social components (enables Summaries, Discussions)
+- This unblocks ALL Phase 7/8 features for local development
+
+### Phase 9: Real Auth (Supabase)
+- Wire Supabase Auth into frontend with login/signup flows
+- Create auth store (Zustand) to hold user session
+- Auto-create researcher profile on first login
+- Replace mock userId with real session user
+- Protect write endpoints with JWT verification on backend
+
+---
+
 ## Infrastructure Needs (Can Start Anytime)
 
-- **Auth integration** — Wire Supabase Auth into frontend (userId currently undefined)
+- **Auth integration** — Wire Supabase Auth into frontend (Phase 9 plan above)
 - **Deployment** — Vercel (frontend) + Railway/Fly.io (backend)
 - **Full seeding** — Seed all 5K papers + include non-English sources
 - **Scheduled briefings** — Cron jobs for daily personalized briefings

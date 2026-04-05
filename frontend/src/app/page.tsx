@@ -39,8 +39,8 @@ export default function Home() {
   const [showTree, setShowTree] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
 
-  // TODO: Replace with actual auth user ID when auth is implemented
-  const userId: string | undefined = undefined;
+  // TODO: Replace with actual Supabase Auth when implemented (Phase 9)
+  const userId: string | undefined = "demo-researcher-1";
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -238,7 +238,7 @@ export default function Home() {
         </main>
 
         {/* Right panel — Concept Detail */}
-        <ConceptDetail />
+        <ConceptDetail researcherId={userId} />
       </div>
 
       {/* Knowledge Graph overlay */}

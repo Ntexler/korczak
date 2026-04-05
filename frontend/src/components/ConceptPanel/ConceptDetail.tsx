@@ -65,7 +65,7 @@ const REL_COLORS: Record<string, string> = {
   INTRODUCES: "border-l-accent-gold",
 };
 
-export default function ConceptDetail() {
+export default function ConceptDetail({ researcherId }: { researcherId?: string }) {
   const { selectedConceptId, conceptPanelOpen, setSelectedConceptId } =
     useChatStore();
   const { locale, t, fonts: f } = useLocaleStore();
@@ -337,10 +337,10 @@ export default function ConceptDetail() {
             )}
 
             {/* Community Summaries */}
-            <ConceptSummaries conceptId={concept.id} />
+            <ConceptSummaries conceptId={concept.id} researcherId={researcherId} />
 
             {/* Discussions */}
-            <DiscussionThread targetType="concept" targetId={concept.id} />
+            <DiscussionThread targetType="concept" targetId={concept.id} researcherId={researcherId} />
           </>
         ) : (
           <div className="flex flex-col items-center py-12 text-center">
