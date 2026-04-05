@@ -186,6 +186,14 @@ export const translations = {
     source: "Source",
     whyConnected: "Why connected",
 
+    // Translation
+    translate: "Translate",
+    translated: "Translated",
+    showOriginal: "Show original",
+    hideOriginal: "Hide original",
+    flagTranslation: "Flag poor translation",
+    flagged: "Flagged",
+
     // Connection Feedback
     agreeConnection: "Agree",
     disagreeConnection: "Disagree",
@@ -370,6 +378,14 @@ export const translations = {
     exploreInDepth: "חקור לעומק",
     source: "מקור",
     whyConnected: "למה מחוברים",
+
+    // Translation
+    translate: "תרגם",
+    translated: "תורגם",
+    showOriginal: "הצג מקור",
+    hideOriginal: "הסתר מקור",
+    flagTranslation: "דווח על תרגום לקוי",
+    flagged: "דווח",
 
     // Connection Feedback
     agreeConnection: "מסכים",

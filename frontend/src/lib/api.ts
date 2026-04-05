@@ -409,6 +409,34 @@ export async function getTreeProgress(userId: string) {
   return res.json();
 }
 
+// --- Translation API ---
+
+export async function translatePaper(paperId: string, targetLang: string) {
+  const res = await fetch(`${API_BASE}/translation/translate?paper_id=${paperId}&target_lang=${targetLang}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getTranslation(paperId: string, lang: string) {
+  const res = await fetch(`${API_BASE}/translation/${paperId}?lang=${lang}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function flagTranslation(translationId: string) {
+  const res = await fetch(`${API_BASE}/translation/${translationId}/flag`, { method: "POST" });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getSupportedLanguages() {
+  const res = await fetch(`${API_BASE}/translation/languages/supported`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
 // --- Connection Feedback API ---
 
 export async function submitConnectionFeedback(
