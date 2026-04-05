@@ -8,7 +8,13 @@ from pydantic import BaseModel
 
 from backend.integrations import supabase_client as db
 from backend.integrations.claude_client import navigate, tutor
-from backend.core.context_builder import build_context
+from backend.core.context_builder import (
+    build_context,
+    get_library_context,
+    get_highlight_context,
+    get_reading_behavior_context,
+    get_syllabus_context,
+)
 from backend.core.mode_detector import detect_mode
 from backend.core.level_detector import detect_level, response_level, LEVEL_DESCRIPTIONS
 from backend.user.profile_builder import update_from_conversation, get_user_context_string
@@ -70,12 +76,24 @@ async def chat(msg: ChatMessage):
         # 6. Build graph context
         graph_context, concepts_referenced = await build_context(msg.message)
 
-        # 7. Build user context (Layer 1 + Layer 3 behavior)
+        # 7. Build user context (Layer 1 + Layer 3 behavior + library)
         if msg.user_id:
             user_context = await get_user_context_string(msg.user_id)
             behavior_context = await get_behavior_context_string(msg.user_id)
             if behavior_context:
                 user_context += "\n" + behavior_context
+            library_context = await get_library_context(msg.user_id)
+            if library_context:
+                user_context += "\n" + library_context
+            highlight_context = await get_highlight_context(msg.user_id)
+            if highlight_context:
+                user_context += "\n" + highlight_context
+            reading_context = await get_reading_behavior_context(msg.user_id)
+            if reading_context:
+                user_context += "\n" + reading_context
+            syllabus_context = await get_syllabus_context(msg.user_id)
+            if syllabus_context:
+                user_context += "\n" + syllabus_context
         else:
             user_context = "Anonymous user exploring the knowledge graph."
 

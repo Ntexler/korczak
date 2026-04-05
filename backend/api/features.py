@@ -1,4 +1,4 @@
-"""Features API — controversies, white space, rising stars, briefings."""
+"""Features API — controversies, white space, rising stars, briefings, knowledge tree."""
 
 import logging
 
@@ -197,4 +197,106 @@ async def graph_visualization_data(
         }
     except Exception as e:
         logger.error(f"Graph visualization error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Knowledge Tree ---
+
+@router.get("/tree")
+async def knowledge_tree(
+    user_id: str = Query(...),
+    domain: str | None = None,
+):
+    """Get user's knowledge tree (nodes + edges + statuses)."""
+    try:
+        from backend.core.knowledge_tree import build_user_tree
+        return await build_user_tree(user_id, root_domain=domain)
+    except Exception as e:
+        logger.error(f"Knowledge tree error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/tree/choose")
+async def choose_tree_branch(
+    user_id: str = Query(...),
+    branch_point_id: str = Query(...),
+    chosen_concept_id: str = Query(...),
+):
+    """Choose a branch at a fork in the knowledge tree."""
+    try:
+        from backend.core.knowledge_tree import choose_branch
+        return await choose_branch(user_id, branch_point_id, chosen_concept_id)
+    except Exception as e:
+        logger.error(f"Branch choice error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/tree/branches")
+async def tree_branches(
+    concept_id: str = Query(...),
+    user_id: str = Query(...),
+):
+    """Get available branches at a concept (fork point)."""
+    try:
+        from backend.core.knowledge_tree import get_available_branches
+        return {"branches": await get_available_branches(user_id, concept_id)}
+    except Exception as e:
+        logger.error(f"Tree branches error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/tree/progress")
+async def tree_progress(user_id: str = Query(...)):
+    """Get knowledge tree progress summary."""
+    try:
+        from backend.core.knowledge_tree import get_tree_progress
+        return await get_tree_progress(user_id)
+    except Exception as e:
+        logger.error(f"Tree progress error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/visualization/progress")
+async def visualization_progress(
+    user_id: str = Query(...),
+    syllabus_id: str | None = None,
+):
+    """Enhanced graph with centrality, user_level, is_pillar for progress visualization."""
+    try:
+        from backend.core.centrality import compute_concept_centrality, classify_pillar_vs_niche
+        from backend.integrations.supabase_client import get_client
+
+        client = get_client()
+
+        # Get user knowledge
+        user_knowledge = (
+            client.table("user_knowledge")
+            .select("concept_id, understanding_level")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        knowledge_map = {
+            uk["concept_id"]: uk["understanding_level"]
+            for uk in (user_knowledge.data or [])
+        }
+
+        # Get centrality and pillar classification
+        centrality = await compute_concept_centrality()
+        pillars = await classify_pillar_vs_niche()
+
+        nodes = []
+        for cid, data in centrality.items():
+            nodes.append({
+                "id": cid,
+                "name": data["name"],
+                "type": data["type"],
+                "centrality": round(data["centrality"], 3),
+                "is_pillar": pillars.get(cid) == "pillar",
+                "classification": pillars.get(cid, "standard"),
+                "user_level": knowledge_map.get(cid, 0),
+            })
+
+        return {"nodes": nodes, "total": len(nodes)}
+    except Exception as e:
+        logger.error(f"Progress visualization error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

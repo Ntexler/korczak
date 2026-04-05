@@ -10,7 +10,10 @@ import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
 import KnowledgeGraph from "@/components/Graph/KnowledgeGraph";
-import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map } from "lucide-react";
+import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine } from "lucide-react";
+import { useLibraryStore } from "@/stores/libraryStore";
+import PaperLibrary from "@/components/Library/PaperLibrary";
+import KnowledgeTreeView from "@/components/Tree/KnowledgeTree";
 
 export default function Home() {
   const {
@@ -29,8 +32,13 @@ export default function Home() {
   } = useChatStore();
 
   const { locale, toggleLocale, t, fonts: f, isRtl } = useLocaleStore();
+  const { libraryOpen, setLibraryOpen } = useLibraryStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showGraph, setShowGraph] = useState(false);
+  const [showTree, setShowTree] = useState(false);
+
+  // TODO: Replace with actual auth user ID when auth is implemented
+  const userId: string | undefined = undefined;
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -98,6 +106,31 @@ export default function Home() {
             <Languages size={14} />
             <span className="font-medium">{locale === "en" ? "HE" : "EN"}</span>
           </button>
+          {/* Library button */}
+          <button
+            onClick={() => setLibraryOpen(!libraryOpen)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors ${
+              libraryOpen
+                ? "bg-accent-gold/15 text-accent-gold"
+                : "hover:bg-surface-hover text-text-secondary hover:text-foreground"
+            }`}
+            title={t.library}
+          >
+            <BookOpen size={14} />
+            <span className="hidden sm:inline font-medium">{t.library}</span>
+          </button>
+          {/* Knowledge Tree button */}
+          {userId && (
+            <button
+              onClick={() => setShowTree(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
+                hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+              title={t.knowledgeTree}
+            >
+              <TreePine size={14} />
+              <span className="hidden sm:inline font-medium">{t.knowledgeTree}</span>
+            </button>
+          )}
           {/* Knowledge Map button */}
           <button
             onClick={() => setShowGraph(true)}
@@ -142,8 +175,13 @@ export default function Home() {
 
       {/* Main content — 3-panel layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar */}
-        <KnowledgeSidebar onSelectTopic={handleSend} />
+        {/* Library panel (replaces sidebar when active) */}
+        {libraryOpen && userId ? (
+          <PaperLibrary userId={userId} onClose={() => setLibraryOpen(false)} />
+        ) : (
+          /* Left sidebar */
+          <KnowledgeSidebar onSelectTopic={handleSend} />
+        )}
 
         {/* Center — Chat */}
         <main className="flex-1 flex flex-col min-w-0">
@@ -193,6 +231,11 @@ export default function Home() {
 
       {/* Knowledge Graph overlay */}
       {showGraph && <KnowledgeGraph onClose={() => setShowGraph(false)} />}
+
+      {/* Knowledge Tree overlay */}
+      {showTree && userId && (
+        <KnowledgeTreeView userId={userId} onClose={() => setShowTree(false)} />
+      )}
     </div>
   );
 }

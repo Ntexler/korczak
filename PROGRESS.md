@@ -9,7 +9,74 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 4.5 — User Graph Layer 3 + Polish
+## Current Phase: 5.0 — Study/Research Platform Expansion
+**Status:** All 5 expansion phases implemented — Paper Library, Highlights/Reading Mode, Syllabus, Community, Knowledge Tree
+**Goal:** Transform Korczak from a knowledge navigator into a full study/research platform.
+
+### Phase 5 Expansion — Paper Library + Smart Recommendations (COMPLETE)
+- [x] DB Migration 006: user_papers, reading_lists, reading_list_papers tables
+- [x] Backend: `/api/library` router — CRUD for papers, lists, recommendations
+- [x] Smart Reading Recommender: interest profile from saved papers, context-weighted (browsing vs search vs syllabus)
+- [x] Context Builder: get_library_context() distinguishes task-driven vs genuine interests
+- [x] Chat API: library context injected into Claude prompts
+- [x] Frontend: libraryStore (Zustand), PaperLibrary panel, PaperCard, SavePaperButton, ReadingListManager, RecommendationFeed
+- [x] API: 10 new library endpoints, i18n: ~20 EN/HE pairs
+- [x] Page: Library button in header, toggles between sidebar and library panel
+
+### Phase 5 Expansion — Highlights, Annotations & Reading Mode (COMPLETE)
+- [x] DB Migration 007: highlights, learning_paths, learning_path_items, reading_sessions tables
+- [x] Backend: `/api/highlights` router — CRUD for highlights, learning paths, items
+- [x] Backend: `/api/reading` router — session tracking, analytics, paper sections
+- [x] Paper Sections engine: splits abstracts into semantic sections, maps concepts per section
+- [x] Context Builder: get_highlight_context() + get_reading_behavior_context() for Claude prompts
+- [x] Frontend: highlightStore, readingStore, TextHighlighter (floating toolbar), HighlightOverlay, LearningPathPanel, HighlightSidebar
+- [x] Reading Mode: full-screen reader with section nav, concept tags, heartbeat timer (30s intervals)
+- [x] API: 12 new endpoints, i18n: ~14 EN/HE pairs
+
+### Phase 5 Expansion — Syllabus Integration (COMPLETE)
+- [x] DB Migration 008: syllabi, syllabus_readings, user_syllabi tables
+- [x] DB Migration 009: get_syllabus_graph() RPC with centrality + user progress
+- [x] MIT OCW Client: fetch_departments() (27 depts), fetch_courses(), fetch_course_readings(), match_readings_to_papers()
+- [x] OpenStax Client: fetch_books(), fetch_book_chapters() via OpenStax API
+- [x] Scrapers: scrape_mit_ocw.py (all departments), scrape_openstax.py (full catalog)
+- [x] Backend: `/api/syllabus` router — browse, detail, fork, user syllabi, custom create, progress tracking
+- [x] Context Builder: get_syllabus_context() — where user is in curriculum
+- [x] Frontend: SyllabusBrowser, SyllabusDetail, SyllabusProgress (Where Am I), MySyllabi
+- [x] API: 7 new endpoints, i18n: ~14 EN/HE pairs
+
+### Phase 5 Expansion — Community Layer (COMPLETE)
+- [x] DB Migration 010: paper_comments (threaded), community_votes tables
+- [x] Backend: `/api/community` router — threaded comments, voting (upvote/downvote/flag with toggle), public highlights
+- [x] Frontend: PaperComments (threaded), SharedHighlights, VoteButton (reusable)
+- [x] API: 4 new endpoints, i18n: ~8 EN/HE pairs
+
+### Phase 5 Expansion — Personal Knowledge Tree (COMPLETE)
+- [x] DB Migration 011: knowledge_tree_nodes, branch_choices tables
+- [x] Centrality engine: compute_concept_centrality(), detect_branch_points(), classify_pillar_vs_niche()
+- [x] Knowledge Tree engine: build_user_tree(), get_available_branches(), choose_branch(), get_tree_progress(), refresh_tree()
+- [x] Features API: 5 new tree endpoints (tree, choose, branches, progress, visualization/progress)
+- [x] Frontend: KnowledgeTree (D3 dendrogram — vertical tree, fog of war, glow effects, zoom/pan)
+- [x] BranchChoiceModal: shows paths at fork points with concept counts, paper counts, descriptions
+- [x] TreeProgress: summary bar with completion %, depth reached
+- [x] Page: Knowledge Tree button in header (visible when user is authenticated)
+- [x] API: 4 new endpoints, i18n: ~18 EN/HE pairs
+
+### Expansion Summary
+- **6 DB migrations** (006-011): 14 new tables, 1 RPC
+- **9 API routers** registered in main.py (was 4)
+- **5 new backend API modules**: library, highlights, reading, syllabus, community
+- **3 new backend core modules**: reading_recommender, paper_sections, centrality, knowledge_tree
+- **2 new integration clients**: MIT OCW, OpenStax
+- **2 new pipeline scrapers**: MIT OCW (all depts), OpenStax
+- **3 new Zustand stores**: libraryStore, highlightStore, readingStore
+- **23 new frontend components** across 6 directories (Library, Highlights, Reading, Syllabus, Community, Tree)
+- **~45 new API functions** in api.ts
+- **~90 new i18n strings** (EN/HE)
+- **Context builder**: 4 new context functions feeding Claude prompts (library, highlights, reading behavior, syllabus)
+
+---
+
+## Previous Phase: 4.5 — User Graph Layer 3 + Polish
 **Status:** All 3 user graph layers built, language wired, error handling complete
 **Goal:** Behavioral patterns, language-aware responses, robust error handling.
 
