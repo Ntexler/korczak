@@ -409,6 +409,128 @@ export async function getTreeProgress(userId: string) {
   return res.json();
 }
 
+// --- Researcher Profiles API ---
+
+export async function createResearcherProfile(data: {
+  user_id: string;
+  display_name: string;
+  bio?: string;
+  institution?: string;
+  role?: string;
+  research_interests?: string[];
+}) {
+  const res = await fetch(`${API_BASE}/researchers/profiles`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getResearcherProfile(profileId: string) {
+  const res = await fetch(`${API_BASE}/researchers/profiles/${profileId}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getResearcherByUser(userId: string) {
+  const res = await fetch(`${API_BASE}/researchers/profiles/by-user/${userId}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function followResearcher(profileId: string, followerId: string) {
+  const res = await fetch(`${API_BASE}/researchers/profiles/${profileId}/follow?follower_id=${followerId}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function unfollowResearcher(profileId: string, followerId: string) {
+  const res = await fetch(`${API_BASE}/researchers/profiles/${profileId}/follow?follower_id=${followerId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getActivityFeed(researcherId: string, limit: number = 30) {
+  const res = await fetch(`${API_BASE}/researchers/feed?researcher_id=${researcherId}&limit=${limit}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function searchResearchers(query: string) {
+  const res = await fetch(`${API_BASE}/researchers/search?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+// --- Summaries & Discussions API ---
+
+export async function getConceptSummaries(conceptId: string, sort: string = "top") {
+  const res = await fetch(`${API_BASE}/social/concepts/${conceptId}/summaries?sort=${sort}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function createSummary(data: {
+  concept_id: string;
+  author_id: string;
+  title: string;
+  body: string;
+  referenced_concepts?: string[];
+}) {
+  const res = await fetch(`${API_BASE}/social/summaries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function voteSummary(summaryId: string, voterId: string, vote: "up" | "down") {
+  const res = await fetch(`${API_BASE}/social/summaries/${summaryId}/vote?voter_id=${voterId}&vote=${vote}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getDiscussions(targetType: string, targetId: string) {
+  const res = await fetch(`${API_BASE}/social/discussions?target_type=${targetType}&target_id=${targetId}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function createDiscussion(data: {
+  target_type: string;
+  target_id: string;
+  author_id: string;
+  title?: string;
+  body: string;
+  parent_id?: string;
+}) {
+  const res = await fetch(`${API_BASE}/social/discussions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function voteDiscussion(discussionId: string, voterId: string, vote: "up" | "down") {
+  const res = await fetch(`${API_BASE}/social/discussions/${discussionId}/vote?voter_id=${voterId}&vote=${vote}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
 // --- Translation API ---
 
 export async function translatePaper(paperId: string, targetLang: string) {

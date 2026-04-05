@@ -15,6 +15,8 @@ import {
 import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
 import { getConceptDetail, getConceptNeighbors } from "@/lib/api";
+import ConceptSummaries from "@/components/Social/ConceptSummaries";
+import DiscussionThread from "@/components/Social/DiscussionThread";
 
 interface KeyPaper {
   id: string;
@@ -333,6 +335,12 @@ export default function ConceptDetail() {
                 </div>
               </section>
             )}
+
+            {/* Community Summaries */}
+            <ConceptSummaries conceptId={concept.id} />
+
+            {/* Discussions */}
+            <DiscussionThread targetType="concept" targetId={concept.id} />
           </>
         ) : (
           <div className="flex flex-col items-center py-12 text-center">

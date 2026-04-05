@@ -186,6 +186,24 @@ export const translations = {
     source: "Source",
     whyConnected: "Why connected",
 
+    // Social / Academic Network
+    communitySummaries: "Community Summaries",
+    writeSummary: "Write summary",
+    discussions: "Discussions",
+    startDiscussion: "Start discussion",
+    publish: "Publish",
+    post: "Post",
+    noSummariesYet: "No summaries yet. Be the first!",
+    noDiscussionsYet: "No discussions yet.",
+    summaryTitle: "Summary title...",
+    writeInterpretation: "Write your interpretation...",
+    discussionTitle: "Discussion title (optional)...",
+    whatsYourTake: "What's your take?",
+    follow: "Follow",
+    unfollow: "Unfollow",
+    followers: "Followers",
+    reputation: "Reputation",
+
     // Translation
     translate: "Translate",
     translated: "Translated",
@@ -378,6 +396,24 @@ export const translations = {
     exploreInDepth: "חקור לעומק",
     source: "מקור",
     whyConnected: "למה מחוברים",
+
+    // Social / Academic Network
+    communitySummaries: "סיכומים קהילתיים",
+    writeSummary: "כתוב סיכום",
+    discussions: "דיונים",
+    startDiscussion: "התחל דיון",
+    publish: "פרסם",
+    post: "פרסם",
+    noSummariesYet: "אין עדיין סיכומים. היה הראשון!",
+    noDiscussionsYet: "אין דיונים עדיין.",
+    summaryTitle: "כותרת הסיכום...",
+    writeInterpretation: "כתוב את הפרשנות שלך...",
+    discussionTitle: "כותרת הדיון (אופציונלי)...",
+    whatsYourTake: "מה דעתך?",
+    follow: "עקוב",
+    unfollow: "הפסק לעקוב",
+    followers: "עוקבים",
+    reputation: "מוניטין",
 
     // Translation
     translate: "תרגם",

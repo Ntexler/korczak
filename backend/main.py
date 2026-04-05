@@ -17,6 +17,8 @@ from backend.api.syllabus import router as syllabus_router
 from backend.api.community import router as community_router
 from backend.api.connection_feedback import router as connections_router
 from backend.api.translation import router as translation_router
+from backend.api.researcher import router as researcher_router
+from backend.api.summaries import router as summaries_router
 
 
 @asynccontextmanager
@@ -56,3 +58,5 @@ app.include_router(syllabus_router, prefix="/api/syllabus", tags=["syllabus"])
 app.include_router(community_router, prefix="/api/community", tags=["community"])
 app.include_router(connections_router, prefix="/api/connections", tags=["connections"])
 app.include_router(translation_router, prefix="/api/translation", tags=["translation"])
+app.include_router(researcher_router, prefix="/api/researchers", tags=["researchers"])
+app.include_router(summaries_router, prefix="/api/social", tags=["social"])
