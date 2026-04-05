@@ -304,6 +304,21 @@ frontend/
 
 ## Completed
 
+### 2026-04-05 — Phase 8: Timeline of Knowledge
+- [x] DB Migration 015: concept_history, graph_changelog, field_milestones tables
+- [x] Backend: timeline.py router — concept timeline, field evolution, changelog, milestones
+- [x] Frontend: KnowledgeTimeline.tsx — D3.js area chart, milestone markers, playback animation
+- [x] Timeline button in main header (Clock icon)
+- [x] 4 new API functions, 14th router registered
+
+### 2026-04-05 — Phase 7: Academic Social Network
+- [x] DB Migration 014: 8 new tables (researcher_profiles, follows, concept_summaries, summary_versions, summary_votes, discussions, discussion_votes, activity_feed)
+- [x] Backend: researcher.py (profiles, follows, activity feed, search — 9 endpoints)
+- [x] Backend: summaries.py (concept summaries w/ versioning, discussions w/ threading — 9 endpoints)
+- [x] Reputation system (+5 summaries, +2 discussions)
+- [x] Frontend: ConceptSummaries.tsx, DiscussionThread.tsx — wired into ConceptDetail panel
+- [x] 14 new API functions, 16 new i18n strings, 2 new routers (12th + 13th)
+
 ### 2026-04-05 — Phase 6: Knowledge Liberation & Map Depth
 - [x] Rich Knowledge Map: concept definitions, key papers, key claims in info panel
 - [x] Connection Transparency: explanations, source papers, agree/disagree feedback
