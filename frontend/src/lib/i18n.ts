@@ -179,6 +179,13 @@ export const translations = {
     available: "Available",
     in_progress: "In Progress",
 
+    // Rich Knowledge Map
+    keyPapers: "Key Papers",
+    keyClaims: "Key Claims",
+    exploreInDepth: "Explore in depth",
+    source: "Source",
+    whyConnected: "Why connected",
+
     // Error
     errorMessage: "I apologize — something went wrong connecting to the knowledge graph. Please try again.",
   },
@@ -348,6 +355,13 @@ export const translations = {
     locked: "נעול",
     available: "זמין",
     in_progress: "בתהליך",
+
+    // Rich Knowledge Map
+    keyPapers: "מאמרים מרכזיים",
+    keyClaims: "טענות מרכזיות",
+    exploreInDepth: "חקור לעומק",
+    source: "מקור",
+    whyConnected: "למה מחוברים",
 
     // Error
     errorMessage: "מצטער — משהו השתבש בחיבור לגרף הידע. נסה שוב.",

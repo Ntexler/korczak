@@ -19,6 +19,8 @@ class ConceptOut(BaseModel):
     paper_count: int = 0
     trend: str = "stable"
     confidence: float = 0.5
+    key_papers: list[dict] = []
+    key_claims: list[dict] = []
 
 
 class GraphNeighbors(BaseModel):
@@ -60,22 +62,16 @@ async def list_concepts(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/concepts/{concept_id}", response_model=ConceptOut)
+@router.get("/concepts/{concept_id}")
 async def get_concept(concept_id: str):
-    """Get a single concept with its details."""
+    """Get a single concept with full context: definition, key papers, claims."""
     try:
-        c = await db.get_concept_by_id(concept_id)
-        if not c:
+        from backend.core.concept_enricher import get_concept_with_context
+
+        concept = await get_concept_with_context(concept_id)
+        if not concept:
             raise HTTPException(status_code=404, detail="Concept not found")
-        return ConceptOut(
-            id=str(c["id"]),
-            name=c["name"],
-            type=c.get("type", "concept"),
-            definition=c.get("definition"),
-            paper_count=c.get("paper_count", 0),
-            trend=c.get("trend", "stable"),
-            confidence=c.get("confidence", 0.5),
-        )
+        return concept
     except HTTPException:
         raise
     except Exception as e:
@@ -83,13 +79,15 @@ async def get_concept(concept_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/concepts/{concept_id}/neighbors", response_model=GraphNeighbors)
+@router.get("/concepts/{concept_id}/neighbors")
 async def get_neighbors(concept_id: str, depth: int = Query(default=1, le=3)):
-    """Get neighboring concepts in the graph."""
+    """Get neighboring concepts with relationship explanations."""
     try:
         c = await db.get_concept_by_id(concept_id)
         if not c:
             raise HTTPException(status_code=404, detail="Concept not found")
+
+        from backend.core.concept_enricher import get_enriched_neighbors
 
         concept = ConceptOut(
             id=str(c["id"]),
@@ -101,23 +99,7 @@ async def get_neighbors(concept_id: str, depth: int = Query(default=1, le=3)):
             confidence=c.get("confidence", 0.5),
         )
 
-        neighbors = await db.get_concept_neighborhood(concept_id, depth=depth)
-        related = [
-            {
-                "concept": {
-                    "id": str(n.get("concept_id", "")),
-                    "name": n.get("concept_name", "Unknown"),
-                    "type": n.get("concept_type", "concept"),
-                    "definition": n.get("concept_definition"),
-                    "confidence": n.get("concept_confidence", 0.5),
-                },
-                "relationship_type": n.get("relationship_type", "related"),
-                "confidence": n.get("relationship_confidence", 0.5),
-                "depth": n.get("depth", 1),
-            }
-            for n in (neighbors or [])
-        ]
-
+        related = await get_enriched_neighbors(concept_id, depth=depth)
         return GraphNeighbors(concept=concept, related=related)
     except HTTPException:
         raise

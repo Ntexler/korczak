@@ -286,7 +286,7 @@ export default function KnowledgeTree({ userId, onClose }: KnowledgeTreeProps) {
         {Object.entries(STATUS_COLORS).map(([status, color]) => (
           <div key={status} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-[10px] text-text-tertiary">{t[status] || status}</span>
+            <span className="text-[10px] text-text-tertiary">{(t as unknown as Record<string, string>)[status] || status}</span>
           </div>
         ))}
         <div className="flex items-center gap-1.5">

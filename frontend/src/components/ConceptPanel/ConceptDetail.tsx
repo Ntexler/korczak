@@ -16,6 +16,21 @@ import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
 import { getConceptDetail, getConceptNeighbors } from "@/lib/api";
 
+interface KeyPaper {
+  id: string;
+  title: string;
+  authors: { name: string }[];
+  publication_year?: number;
+  cited_by_count: number;
+}
+
+interface KeyClaim {
+  claim_text: string;
+  evidence_type: string;
+  strength: string;
+  confidence: number;
+}
+
 interface ConceptData {
   id: string;
   name: string;
@@ -24,14 +39,17 @@ interface ConceptData {
   paper_count: number;
   trend: string;
   confidence: number;
+  key_papers?: KeyPaper[];
+  key_claims?: KeyClaim[];
 }
 
 interface NeighborData {
   concept: ConceptData;
   related: {
-    concept: { id: string; name: string; type: string };
+    concept: { id: string; name: string; type: string; definition?: string };
     relationship_type: string;
     confidence: number;
+    explanation?: string;
   }[];
 }
 
@@ -48,7 +66,7 @@ const REL_COLORS: Record<string, string> = {
 export default function ConceptDetail() {
   const { selectedConceptId, conceptPanelOpen, setSelectedConceptId } =
     useChatStore();
-  const { t, fonts: f } = useLocaleStore();
+  const { locale, t, fonts: f } = useLocaleStore();
   const [concept, setConcept] = useState<ConceptData | null>(null);
   const [neighbors, setNeighbors] = useState<NeighborData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -216,7 +234,65 @@ export default function ConceptDetail() {
               </div>
             )}
 
-            {/* Related Concepts — color-coded by relationship type */}
+            {/* Key Papers */}
+            {concept.key_papers && concept.key_papers.length > 0 && (
+              <section>
+                <h3 className="section-header flex items-center gap-2 mb-3">
+                  <BookOpen size={12} />
+                  {locale === "he" ? "מאמרים מרכזיים" : "Key Papers"}
+                </h3>
+                <div className="space-y-2">
+                  {concept.key_papers.map((paper) => (
+                    <div
+                      key={paper.id}
+                      className="px-3 py-2 rounded-lg bg-surface-sunken text-left"
+                    >
+                      <p className="text-xs text-foreground leading-relaxed line-clamp-2">
+                        {paper.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-text-tertiary">
+                        {paper.authors?.[0]?.name && (
+                          <span>{paper.authors[0].name}{paper.authors.length > 1 ? " et al." : ""}</span>
+                        )}
+                        {paper.publication_year && <span>{paper.publication_year}</span>}
+                        {paper.cited_by_count > 0 && (
+                          <span>{paper.cited_by_count} {t.citations}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Key Claims */}
+            {concept.key_claims && concept.key_claims.length > 0 && (
+              <section>
+                <h3 className="section-header flex items-center gap-2 mb-3">
+                  <Shield size={12} />
+                  {locale === "he" ? "טענות מרכזיות" : "Key Claims"}
+                </h3>
+                <div className="space-y-1.5">
+                  {concept.key_claims.map((claim, i) => (
+                    <div
+                      key={i}
+                      className="px-3 py-2 rounded-lg bg-surface-sunken"
+                    >
+                      <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
+                        {claim.claim_text}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-text-tertiary">
+                        <span className="capitalize">{claim.evidence_type}</span>
+                        <span className="capitalize">{claim.strength}</span>
+                        <span>{(claim.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Related Concepts — color-coded by relationship type, with explanations */}
             {neighbors && neighbors.related && neighbors.related.length > 0 && (
               <section>
                 <h3 className="section-header flex items-center gap-2 mb-3">
@@ -228,22 +304,30 @@ export default function ConceptDetail() {
                     <button
                       key={i}
                       onClick={() => setSelectedConceptId(rel.concept.id)}
-                      className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg
+                      className={`w-full px-3 py-2.5 rounded-lg
                         bg-surface-sunken hover:bg-surface-hover
                         border-l-2 ${REL_COLORS[rel.relationship_type] || "border-l-border"}
                         text-left transition-all duration-150 group`}
                     >
-                      <div>
-                        <span className="text-sm text-foreground group-hover:text-accent-gold transition-colors">
-                          {rel.concept.name}
-                        </span>
-                        <span className="block text-[10px] text-text-tertiary mt-0.5">
-                          {rel.relationship_type.replace(/_/g, " ").toLowerCase()}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm text-foreground group-hover:text-accent-gold transition-colors">
+                            {rel.concept.name}
+                          </span>
+                          <span className="block text-[10px] text-text-tertiary mt-0.5">
+                            {rel.relationship_type.replace(/_/g, " ").toLowerCase()}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-text-tertiary">
+                          {(rel.confidence * 100).toFixed(0)}%
                         </span>
                       </div>
-                      <span className="text-[10px] text-text-tertiary">
-                        {(rel.confidence * 100).toFixed(0)}%
-                      </span>
+                      {/* WHY this connection exists */}
+                      {rel.explanation && (
+                        <p className="text-[10px] text-text-tertiary leading-relaxed mt-1 italic">
+                          {rel.explanation}
+                        </p>
+                      )}
                     </button>
                   ))}
                 </div>

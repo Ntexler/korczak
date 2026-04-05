@@ -13,6 +13,8 @@ interface GraphNode extends d3.SimulationNodeDatum {
   type: string;
   confidence: number;
   color: string;
+  definition?: string;
+  paper_count?: number;
 }
 
 interface GraphEdge {
@@ -21,11 +23,13 @@ interface GraphEdge {
   target: string | GraphNode;
   type: string;
   confidence: number;
+  explanation?: string;
+  source_paper?: string;
 }
 
 interface SelectedInfo {
   node: GraphNode;
-  connections: { node: GraphNode; edgeType: string; direction: "to" | "from" }[];
+  connections: { node: GraphNode; edgeType: string; direction: "to" | "from"; explanation?: string; source_paper?: string }[];
 }
 
 interface KnowledgeGraphProps {
@@ -87,10 +91,10 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
       const tgt = typeof edge.target === "string" ? edge.target : edge.target.id;
       if (src === nodeId) {
         const target = nodes.find((n) => n.id === tgt);
-        if (target) connections.push({ node: target, edgeType: edge.type, direction: "to" });
+        if (target) connections.push({ node: target, edgeType: edge.type, direction: "to", explanation: edge.explanation, source_paper: edge.source_paper });
       } else if (tgt === nodeId) {
         const source = nodes.find((n) => n.id === src);
-        if (source) connections.push({ node: source, edgeType: edge.type, direction: "from" });
+        if (source) connections.push({ node: source, edgeType: edge.type, direction: "from", explanation: edge.explanation, source_paper: edge.source_paper });
       }
     }
 
@@ -430,7 +434,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
         {/* Info Panel — appears when a node is selected */}
         {selected && (
           <div
-            className="absolute bottom-4 left-4 z-20 w-80 max-h-[60%] bg-surface border border-border rounded-xl shadow-lg overflow-hidden flex flex-col"
+            className="absolute bottom-4 left-4 z-20 w-96 max-h-[70%] bg-surface border border-border rounded-xl shadow-lg overflow-hidden flex flex-col"
             dir={locale === "he" ? "rtl" : "ltr"}
           >
             {/* Selected node header */}
@@ -451,6 +455,11 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                 <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-surface-sunken text-text-secondary">
                   {selected.node.type}
                 </span>
+                {selected.node.paper_count ? (
+                  <span className="text-[10px] text-text-tertiary">
+                    {selected.node.paper_count} {t.papers}
+                  </span>
+                ) : null}
                 <div className="flex items-center gap-1.5 flex-1">
                   <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
                     <div
@@ -463,17 +472,30 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => openConceptPanel(selected.node.id)}
-                className="mt-2 flex items-center gap-1.5 text-xs text-accent-gold hover:underline"
-              >
-                <ExternalLink size={11} />
-                {locale === "he" ? "פתח בפאנל מושגים" : "Open in Concept Panel"}
-              </button>
             </div>
 
-            {/* Connections list */}
             <div className="flex-1 overflow-y-auto">
+              {/* Definition / Description paragraph */}
+              {selected.node.definition && (
+                <div className="px-4 py-3 border-b border-border/50">
+                  <p className="text-xs text-text-secondary leading-relaxed">
+                    {selected.node.definition}
+                  </p>
+                </div>
+              )}
+
+              {/* Explore in depth link */}
+              <div className="px-4 pt-2">
+                <button
+                  onClick={() => openConceptPanel(selected.node.id)}
+                  className="flex items-center gap-1.5 text-xs text-accent-gold hover:underline"
+                >
+                  <ExternalLink size={11} />
+                  {locale === "he" ? "חקור לעומק בפאנל מושגים" : "Explore in depth"}
+                </button>
+              </div>
+
+              {/* Connections with explanations */}
               <div className="px-4 py-2">
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-text-tertiary">
                   {t.connectedConcepts} ({selected.connections.length})
@@ -484,7 +506,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                   {locale === "he" ? "אין חיבורים ישירים" : "No direct connections"}
                 </div>
               ) : (
-                <div className="px-2 pb-2">
+                <div className="px-2 pb-2 space-y-0.5">
                   {selected.connections.map((conn, i) => (
                     <button
                       key={`${conn.node.id}-${i}`}
@@ -492,27 +514,41 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                         selectNode(conn.node.id);
                         highlightSelection(conn.node.id);
                       }}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-hover transition-colors text-left"
+                      className="w-full px-2 py-2 rounded-lg hover:bg-surface-hover transition-colors text-left"
                     >
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: conn.node.color }} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs text-foreground truncate">{conn.node.name}</div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span
-                            className="w-2 h-0.5 rounded flex-shrink-0"
-                            style={{ backgroundColor: EDGE_COLORS[conn.edgeType] || "#2D3548" }}
-                          />
-                          <span className="text-[10px] text-text-tertiary">
-                            {conn.direction === "to"
-                              ? (EDGE_LABELS[conn.edgeType]?.[li] || conn.edgeType.toLowerCase())
-                              : (locale === "he" ? "מ: " : "from: ") + (EDGE_LABELS[conn.edgeType]?.[li] || conn.edgeType.toLowerCase())
-                            }
-                          </span>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: conn.node.color }} />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs text-foreground truncate">{conn.node.name}</div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span
+                              className="w-2 h-0.5 rounded flex-shrink-0"
+                              style={{ backgroundColor: EDGE_COLORS[conn.edgeType] || "#2D3548" }}
+                            />
+                            <span className="text-[10px] text-text-tertiary">
+                              {conn.direction === "to"
+                                ? (EDGE_LABELS[conn.edgeType]?.[li] || conn.edgeType.toLowerCase())
+                                : (locale === "he" ? "מ: " : "from: ") + (EDGE_LABELS[conn.edgeType]?.[li] || conn.edgeType.toLowerCase())
+                              }
+                            </span>
+                          </div>
                         </div>
+                        <span className="text-[10px] text-text-tertiary font-mono flex-shrink-0">
+                          {Math.round(conn.node.confidence * 100)}%
+                        </span>
                       </div>
-                      <span className="text-[10px] text-text-tertiary font-mono flex-shrink-0">
-                        {Math.round(conn.node.confidence * 100)}%
-                      </span>
+                      {/* Connection explanation — WHY these are connected */}
+                      {conn.explanation && (
+                        <p className="text-[10px] text-text-tertiary leading-relaxed mt-1 ml-4 italic">
+                          {conn.explanation}
+                        </p>
+                      )}
+                      {/* Source paper that established this connection */}
+                      {conn.source_paper && (
+                        <p className="text-[10px] text-accent-gold/60 mt-0.5 ml-4 truncate">
+                          {locale === "he" ? "מקור: " : "Source: "}{conn.source_paper}
+                        </p>
+                      )}
                     </button>
                   ))}
                 </div>

@@ -131,70 +131,10 @@ async def user_engagement(user_id: str):
 async def graph_visualization_data(
     limit: int = Query(default=100, le=500),
 ):
-    """Get nodes and edges for D3.js force-directed graph visualization."""
+    """Get nodes and edges for D3.js force-directed graph visualization (with definitions + explanations)."""
     try:
-        from backend.integrations.supabase_client import get_client
-
-        client = get_client()
-
-        # Get concepts as nodes
-        concepts = (
-            client.table("concepts")
-            .select("id, name, type, confidence")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
-        )
-
-        concept_ids = {c["id"] for c in concepts.data}
-
-        # Get relationships as edges (only between included concepts)
-        relationships = (
-            client.table("relationships")
-            .select("id, source_id, target_id, relationship_type, confidence")
-            .execute()
-        )
-
-        # Filter edges to only include nodes we have
-        edges = [
-            {
-                "id": r["id"],
-                "source": r["source_id"],
-                "target": r["target_id"],
-                "type": r["relationship_type"],
-                "confidence": r.get("confidence", 0.5),
-            }
-            for r in relationships.data
-            if r["source_id"] in concept_ids and r["target_id"] in concept_ids
-        ]
-
-        # Map concept types to colors for the frontend
-        type_colors = {
-            "theory": "#E8B931",       # gold
-            "method": "#58A6FF",       # blue
-            "concept": "#3FB950",      # green
-            "finding": "#D29922",      # amber
-            "person": "#BC8CFF",       # purple
-            "institution": "#F78166",  # orange
-        }
-
-        nodes = [
-            {
-                "id": c["id"],
-                "name": c["name"],
-                "type": c.get("type", "concept"),
-                "confidence": c.get("confidence", 0.5),
-                "color": type_colors.get(c.get("type", "concept"), "#8B949E"),
-            }
-            for c in concepts.data
-        ]
-
-        return {
-            "nodes": nodes,
-            "edges": edges,
-            "node_count": len(nodes),
-            "edge_count": len(edges),
-        }
+        from backend.core.concept_enricher import get_enriched_graph_data
+        return await get_enriched_graph_data(limit=limit)
     except Exception as e:
         logger.error(f"Graph visualization error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
