@@ -9,6 +9,14 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
+## Hotfix: Mock User for Phase 7/8 Visibility (COMPLETE)
+- [x] Set `userId = "demo-researcher-1"` in page.tsx (enables Tree, Library)
+- [x] Pass `researcherId` through ConceptDetail to ConceptSummaries + DiscussionThread
+- [x] All Phase 7/8 features now visible and interactive in local dev
+- [x] Updated FUTURE_PLANS.md with Phase 9 auth plan
+
+---
+
 ## Current Phase: 6.0 — Knowledge Liberation & Map Depth
 **Status:** All 3 features implemented — Rich Map Nodes, Connection Transparency, Paper Translation
 **Goal:** Make the knowledge map deeply informative, transparent in its reasoning, and accessible across languages.
