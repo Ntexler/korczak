@@ -408,3 +408,65 @@ export async function getTreeProgress(userId: string) {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+// --- Connection Feedback API ---
+
+export async function submitConnectionFeedback(
+  relationshipId: string,
+  feedbackType: string,
+  comment?: string,
+  userId?: string
+) {
+  const params = userId ? `?user_id=${userId}` : "";
+  const res = await fetch(`${API_BASE}/connections/${relationshipId}/feedback${params}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feedback_type: feedbackType, comment }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getConnectionFeedback(relationshipId: string) {
+  const res = await fetch(`${API_BASE}/connections/${relationshipId}/feedback`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function proposeConnection(
+  sourceConceptId: string,
+  targetConceptId: string,
+  relationshipType: string,
+  explanation: string,
+  userId?: string
+) {
+  const params = userId ? `?user_id=${userId}` : "";
+  const res = await fetch(`${API_BASE}/connections/propose${params}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      source_concept_id: sourceConceptId,
+      target_concept_id: targetConceptId,
+      relationship_type: relationshipType,
+      explanation,
+    }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getProposedConnections(status: string = "pending") {
+  const res = await fetch(`${API_BASE}/connections/proposals?status=${status}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function voteProposal(proposalId: string, vote: "up" | "down") {
+  const res = await fetch(`${API_BASE}/connections/proposals/${proposalId}/vote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ vote }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}

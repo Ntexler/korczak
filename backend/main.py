@@ -15,6 +15,7 @@ from backend.api.highlights import router as highlights_router
 from backend.api.reading import router as reading_router
 from backend.api.syllabus import router as syllabus_router
 from backend.api.community import router as community_router
+from backend.api.connection_feedback import router as connections_router
 
 
 @asynccontextmanager
@@ -52,3 +53,4 @@ app.include_router(highlights_router, prefix="/api/highlights", tags=["highlight
 app.include_router(reading_router, prefix="/api/reading", tags=["reading"])
 app.include_router(syllabus_router, prefix="/api/syllabus", tags=["syllabus"])
 app.include_router(community_router, prefix="/api/community", tags=["community"])
+app.include_router(connections_router, prefix="/api/connections", tags=["connections"])

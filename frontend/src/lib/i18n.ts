@@ -186,6 +186,14 @@ export const translations = {
     source: "Source",
     whyConnected: "Why connected",
 
+    // Connection Feedback
+    agreeConnection: "Agree",
+    disagreeConnection: "Disagree",
+    thanksFeedback: "Thanks for your feedback",
+    whyWrong: "Why is this wrong?",
+    proposeConnection: "Propose Connection",
+    proposalSubmitted: "Proposal submitted",
+
     // Error
     errorMessage: "I apologize — something went wrong connecting to the knowledge graph. Please try again.",
   },
@@ -362,6 +370,14 @@ export const translations = {
     exploreInDepth: "חקור לעומק",
     source: "מקור",
     whyConnected: "למה מחוברים",
+
+    // Connection Feedback
+    agreeConnection: "מסכים",
+    disagreeConnection: "לא מסכים",
+    thanksFeedback: "תודה על המשוב",
+    whyWrong: "למה לא נכון?",
+    proposeConnection: "הצע חיבור",
+    proposalSubmitted: "ההצעה נשלחה",
 
     // Error
     errorMessage: "מצטער — משהו השתבש בחיבור לגרף הידע. נסה שוב.",

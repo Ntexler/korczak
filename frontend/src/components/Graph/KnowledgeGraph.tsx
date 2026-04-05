@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import * as d3 from "d3";
 import { X, ZoomIn, ZoomOut, Maximize2, ExternalLink } from "lucide-react";
 import { getGraphVisualization } from "@/lib/api";
+import ConnectionFeedback from "./ConnectionFeedback";
 import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
 
@@ -29,7 +30,7 @@ interface GraphEdge {
 
 interface SelectedInfo {
   node: GraphNode;
-  connections: { node: GraphNode; edgeType: string; direction: "to" | "from"; explanation?: string; source_paper?: string }[];
+  connections: { node: GraphNode; edgeId: string; edgeType: string; direction: "to" | "from"; explanation?: string; source_paper?: string }[];
 }
 
 interface KnowledgeGraphProps {
@@ -91,10 +92,10 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
       const tgt = typeof edge.target === "string" ? edge.target : edge.target.id;
       if (src === nodeId) {
         const target = nodes.find((n) => n.id === tgt);
-        if (target) connections.push({ node: target, edgeType: edge.type, direction: "to", explanation: edge.explanation, source_paper: edge.source_paper });
+        if (target) connections.push({ node: target, edgeId: edge.id, edgeType: edge.type, direction: "to", explanation: edge.explanation, source_paper: edge.source_paper });
       } else if (tgt === nodeId) {
         const source = nodes.find((n) => n.id === src);
-        if (source) connections.push({ node: source, edgeType: edge.type, direction: "from", explanation: edge.explanation, source_paper: edge.source_paper });
+        if (source) connections.push({ node: source, edgeId: edge.id, edgeType: edge.type, direction: "from", explanation: edge.explanation, source_paper: edge.source_paper });
       }
     }
 
@@ -549,6 +550,10 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                           {locale === "he" ? "מקור: " : "Source: "}{conn.source_paper}
                         </p>
                       )}
+                      {/* Agree/Disagree feedback */}
+                      <div className="ml-4">
+                        <ConnectionFeedback relationshipId={conn.edgeId} />
+                      </div>
                     </button>
                   ))}
                 </div>
