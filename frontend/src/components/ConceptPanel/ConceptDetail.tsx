@@ -109,8 +109,9 @@ export default function ConceptDetail() {
 
   const confidenceLabel = (c: number) => {
     if (c > 0.85) return { text: t.wellEstablished, icon: CheckCircle2, color: "text-accent-green", barColor: "var(--accent-green)" };
-    if (c >= 0.6) return { text: t.likelyAccurate, icon: Shield, color: "text-accent-amber", barColor: "var(--accent-amber)" };
-    return { text: t.needsMoreEvidence, icon: AlertTriangle, color: "text-text-secondary", barColor: "var(--text-secondary)" };
+    if (c >= 0.6) return { text: t.likelyAccurate, icon: Shield, color: "text-accent-blue", barColor: "var(--accent-blue)" };
+    if (c >= 0.4) return { text: t.needsMoreEvidence, icon: AlertTriangle, color: "text-accent-amber", barColor: "var(--accent-amber)" };
+    return { text: t.emerging, icon: TrendingUp, color: "text-text-tertiary", barColor: "var(--text-tertiary)" };
   };
 
   return (

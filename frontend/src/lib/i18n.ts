@@ -55,6 +55,7 @@ export const translations = {
     wellEstablished: "Well-established",
     likelyAccurate: "Likely accurate",
     needsMoreEvidence: "Needs more evidence",
+    emerging: "Emerging concept",
     referencedIn: "Referenced in",
     papers: "papers",
 
@@ -140,6 +141,7 @@ export const translations = {
     wellEstablished: "מבוסס היטב",
     likelyAccurate: "כנראה מדויק",
     needsMoreEvidence: "דרוש יותר ביסוס",
+    emerging: "מושג מתפתח",
     referencedIn: "מוזכר ב",
     papers: "מאמרים",
 
