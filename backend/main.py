@@ -21,6 +21,7 @@ from backend.api.researcher import router as researcher_router
 from backend.api.summaries import router as summaries_router
 from backend.api.timeline import router as timeline_router
 from backend.api.upload import router as upload_router
+from backend.api.courses import router as courses_router
 
 
 @asynccontextmanager
@@ -64,3 +65,4 @@ app.include_router(researcher_router, prefix="/api/researchers", tags=["research
 app.include_router(summaries_router, prefix="/api/social", tags=["social"])
 app.include_router(timeline_router, prefix="/api/timeline", tags=["timeline"])
 app.include_router(upload_router, prefix="/api", tags=["upload"])
+app.include_router(courses_router, prefix="/api/courses", tags=["courses"])
