@@ -6,6 +6,7 @@ import time
 
 from backend.search.models import (
     PipelineResult,
+    QueryIntent,
     RetrievalBundle,
     TokenUsage,
 )
@@ -62,7 +63,7 @@ async def run_search_pipeline(
     except Exception as e:
         logger.error(f"Query analysis failed: {e}")
         # Fallback: use raw message as both concept and sub-query
-        from backend.search.models import QueryAnalysis, QueryIntent
+        from backend.search.models import QueryAnalysis
         analysis = QueryAnalysis(
             intent=QueryIntent.FACTUAL,
             concepts=[user_message[:100]],
@@ -155,13 +156,13 @@ async def run_search_pipeline(
     if not should_check_coverage:
         stages_completed.append("coverage_skip_rich")
 
-    # ── Stage 4: Synthesis ──
+    # ── Stage 4: Synthesis (smart model routing) ──
     try:
         synthesis_output, tokens = await synthesize(
-            user_message, bundle, locale,
+            user_message, bundle, locale, intent=analysis.intent,
         )
         token_usage.synthesis = tokens
-        stages_completed.append("synthesis")
+        stages_completed.append(f"synthesis_{analysis.intent.value}")
     except Exception as e:
         logger.error(f"Synthesis failed: {e}")
         return PipelineResult(
@@ -174,9 +175,10 @@ async def run_search_pipeline(
         )
 
     # ── Stage 5: Skeptic Review ──
+    # Skip for: tutor mode at high Socratic, AND simple factual/exploration queries
     skeptic_warnings = []
-    # Skip skeptic for tutor mode at high Socratic levels
-    should_run_skeptic = not (mode == "tutor" and socratic_level >= 2)
+    is_complex = analysis.intent in (QueryIntent.CONTROVERSY, QueryIntent.COMPARISON)
+    should_run_skeptic = is_complex and not (mode == "tutor" and socratic_level >= 2)
 
     if should_run_skeptic:
         skeptic_retries = 0
@@ -194,6 +196,7 @@ async def run_search_pipeline(
 
                 synthesis_output, tokens = await synthesize(
                     user_message, bundle, locale, skeptic_feedback=feedback,
+                    intent=analysis.intent,
                 )
                 token_usage.synthesis += tokens
                 skeptic_retries += 1

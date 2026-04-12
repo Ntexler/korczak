@@ -125,14 +125,23 @@ async def check_coverage(
     ), response.total_tokens
 
 
+def _pick_synthesis_model(intent: QueryIntent) -> str:
+    """Smart routing: Haiku for simple factual queries, Sonnet for complex ones."""
+    if intent in (QueryIntent.CONTROVERSY, QueryIntent.COMPARISON):
+        return settings.sonnet_model
+    return settings.haiku_model
+
+
 async def synthesize(
     query: str,
     bundle: RetrievalBundle,
     locale: str = "en",
     skeptic_feedback: str | None = None,
+    intent: QueryIntent = QueryIntent.FACTUAL,
 ) -> tuple[SynthesisOutput, int]:
     """Stage 4: Synthesize retrieved knowledge into a coherent response.
     Returns (SynthesisOutput, total_tokens).
+    Uses Haiku for factual/exploration queries, Sonnet for comparison/controversy.
     """
     language_instruction = (
         "Respond in Hebrew. Use Hebrew for all text except technical/academic terms."
@@ -174,9 +183,10 @@ async def synthesize(
     if skeptic_feedback:
         prompt += f"\n\nIMPORTANT — Skeptic feedback from prior attempt (address these issues):\n{skeptic_feedback}"
 
+    model = _pick_synthesis_model(intent)
     response = await _call_claude(
         prompt,
-        model=settings.sonnet_model,
+        model=model,
         max_tokens=1500,
         temperature=0.3,
     )
@@ -229,8 +239,8 @@ async def skeptic_review(
 
     response = await _call_claude(
         prompt,
-        model=settings.sonnet_model,
-        max_tokens=1000,
+        model=settings.haiku_model,
+        max_tokens=800,
         temperature=0.2,
     )
 
