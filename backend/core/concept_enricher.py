@@ -87,20 +87,28 @@ async def get_enriched_neighbors(concept_id: str, depth: int = 1) -> list[dict]:
     return neighbors
 
 
-async def get_enriched_graph_data(limit: int = 100) -> dict:
-    """Get full graph visualization data with definitions and connection explanations."""
+async def get_enriched_graph_data(limit: int = 100, include_lens_data: bool = False) -> dict:
+    """Get full graph visualization data with definitions and connection explanations.
+
+    When include_lens_data=True, also fetches:
+    - controversy_score per concept
+    - max_publication_year per concept (from linked papers)
+    - community_activity per concept (discussions + summaries count)
+    - disagree_count per relationship (from connection_feedback)
+    """
     client = get_client()
 
-    # Get concepts with definitions
+    # Get concepts with definitions + controversy_score
     concepts = (
         client.table("concepts")
-        .select("id, name, type, definition, confidence, paper_count")
+        .select("id, name, type, definition, confidence, paper_count, controversy_score")
         .order("created_at", desc=True)
         .limit(limit)
         .execute()
     )
 
     concept_ids = {c["id"] for c in concepts.data}
+    concept_id_list = list(concept_ids)
 
     # Get relationships with explanations and source paper
     relationships = (
@@ -109,11 +117,14 @@ async def get_enriched_graph_data(limit: int = 100) -> dict:
         .execute()
     )
 
+    # Filter to relevant edges
+    relevant_rels = [
+        r for r in relationships.data
+        if r["source_id"] in concept_ids and r["target_id"] in concept_ids
+    ]
+
     # For edges with paper_id, fetch paper titles
-    paper_ids_needed = {
-        r["paper_id"] for r in relationships.data
-        if r.get("paper_id") and r["source_id"] in concept_ids and r["target_id"] in concept_ids
-    }
+    paper_ids_needed = {r["paper_id"] for r in relevant_rels if r.get("paper_id")}
 
     paper_titles = {}
     if paper_ids_needed:
@@ -124,6 +135,73 @@ async def get_enriched_graph_data(limit: int = 100) -> dict:
             .execute()
         )
         paper_titles = {p["id"]: p["title"] for p in (papers_result.data or [])}
+
+    # --- Lens data (optional) ---
+    max_pub_year: dict[str, int] = {}
+    community_activity: dict[str, int] = {}
+    disagree_counts: dict[str, int] = {}
+
+    if include_lens_data:
+        # Max publication year per concept via paper_concepts → papers
+        try:
+            pc_result = (
+                client.table("paper_concepts")
+                .select("concept_id, papers(publication_year)")
+                .in_("concept_id", concept_id_list)
+                .execute()
+            )
+            for row in (pc_result.data or []):
+                cid = row["concept_id"]
+                year = row.get("papers", {}).get("publication_year")
+                if year and (cid not in max_pub_year or year > max_pub_year[cid]):
+                    max_pub_year[cid] = year
+        except Exception as e:
+            logger.warning(f"Failed to fetch publication years for lenses: {e}")
+
+        # Community activity: discussions + concept_summaries
+        try:
+            discussions_result = (
+                client.table("discussions")
+                .select("target_id")
+                .eq("target_type", "concept")
+                .in_("target_id", concept_id_list)
+                .execute()
+            )
+            for row in (discussions_result.data or []):
+                tid = row["target_id"]
+                community_activity[tid] = community_activity.get(tid, 0) + 1
+        except Exception as e:
+            logger.warning(f"Failed to fetch discussions for lenses: {e}")
+
+        try:
+            summaries_result = (
+                client.table("concept_summaries")
+                .select("concept_id")
+                .in_("concept_id", concept_id_list)
+                .execute()
+            )
+            for row in (summaries_result.data or []):
+                cid = row["concept_id"]
+                community_activity[cid] = community_activity.get(cid, 0) + 1
+        except Exception as e:
+            logger.warning(f"Failed to fetch summaries for lenses: {e}")
+
+        # Disagree count per relationship
+        rel_ids = [r["id"] for r in relevant_rels]
+        if rel_ids:
+            try:
+                feedback_result = (
+                    client.table("connection_feedback")
+                    .select("relationship_id")
+                    .eq("feedback_type", "disagree")
+                    .in_("relationship_id", rel_ids)
+                    .execute()
+                )
+                for row in (feedback_result.data or []):
+                    rid = row["relationship_id"]
+                    disagree_counts[rid] = disagree_counts.get(rid, 0) + 1
+            except Exception as e:
+                logger.warning(f"Failed to fetch feedback for lenses: {e}")
 
     type_colors = {
         "theory": "#E8B931",
@@ -136,8 +214,9 @@ async def get_enriched_graph_data(limit: int = 100) -> dict:
         "paradigm": "#E8B931",
     }
 
-    nodes = [
-        {
+    nodes = []
+    for c in concepts.data:
+        node = {
             "id": c["id"],
             "name": c["name"],
             "type": c.get("type", "concept"),
@@ -146,11 +225,15 @@ async def get_enriched_graph_data(limit: int = 100) -> dict:
             "paper_count": c.get("paper_count", 0),
             "color": type_colors.get(c.get("type", "concept"), "#8B949E"),
         }
-        for c in concepts.data
-    ]
+        if include_lens_data:
+            node["controversy_score"] = c.get("controversy_score", 0)
+            node["max_publication_year"] = max_pub_year.get(c["id"])
+            node["community_activity"] = community_activity.get(c["id"], 0)
+        nodes.append(node)
 
-    edges = [
-        {
+    edges = []
+    for r in relevant_rels:
+        edge = {
             "id": r["id"],
             "source": r["source_id"],
             "target": r["target_id"],
@@ -159,9 +242,9 @@ async def get_enriched_graph_data(limit: int = 100) -> dict:
             "explanation": r.get("explanation"),
             "source_paper": paper_titles.get(r.get("paper_id")) if r.get("paper_id") else None,
         }
-        for r in relationships.data
-        if r["source_id"] in concept_ids and r["target_id"] in concept_ids
-    ]
+        if include_lens_data:
+            edge["disagree_count"] = disagree_counts.get(r["id"], 0)
+        edges.append(edge)
 
     return {
         "nodes": nodes,
@@ -169,3 +252,65 @@ async def get_enriched_graph_data(limit: int = 100) -> dict:
         "node_count": len(nodes),
         "edge_count": len(edges),
     }
+
+
+async def get_geographic_data() -> dict:
+    """Get institution locations with paper counts for geographic visualization."""
+    client = get_client()
+    try:
+        result = (
+            client.table("entities")
+            .select("id, name, metadata")
+            .eq("type", "institution")
+            .execute()
+        )
+        locations = []
+        for entity in (result.data or []):
+            meta = entity.get("metadata") or {}
+            if meta.get("lat") and meta.get("lng"):
+                locations.append({
+                    "id": entity["id"],
+                    "name": entity["name"],
+                    "lat": meta["lat"],
+                    "lng": meta["lng"],
+                    "paper_count": meta.get("paper_count", 0),
+                    "country": meta.get("country", ""),
+                })
+        return {"locations": locations, "total": len(locations)}
+    except Exception as e:
+        logger.warning(f"Failed to fetch geographic data: {e}")
+        return {"locations": [], "total": 0}
+
+
+async def get_sankey_flow_data() -> dict:
+    """Get relationship counts between concept types for Sankey visualization."""
+    client = get_client()
+
+    # Build concept_id → type map
+    concepts = client.table("concepts").select("id, type").execute()
+    type_map = {c["id"]: c.get("type", "concept") for c in (concepts.data or [])}
+
+    # Aggregate relationships by (source_type, target_type, rel_type)
+    relationships = (
+        client.table("relationships")
+        .select("source_id, target_id, relationship_type")
+        .execute()
+    )
+
+    flows: dict[tuple[str, str, str], int] = {}
+    for r in (relationships.data or []):
+        src_type = type_map.get(r["source_id"], "other")
+        tgt_type = type_map.get(r["target_id"], "other")
+        rel_type = r["relationship_type"]
+        key = (src_type, tgt_type, rel_type)
+        flows[key] = flows.get(key, 0) + 1
+
+    flow_list = [
+        {"source_type": k[0], "target_type": k[1], "relationship_type": k[2], "count": v}
+        for k, v in flows.items()
+        if v > 0
+    ]
+    flow_list.sort(key=lambda x: x["count"], reverse=True)
+
+    unique_types = sorted(set(type_map.values()))
+    return {"flows": flow_list, "types": unique_types}

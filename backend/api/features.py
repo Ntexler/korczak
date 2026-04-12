@@ -130,13 +130,37 @@ async def user_engagement(user_id: str):
 @router.get("/visualization/graph")
 async def graph_visualization_data(
     limit: int = Query(default=100, le=500),
+    include_lens_data: bool = Query(default=False),
 ):
-    """Get nodes and edges for D3.js force-directed graph visualization (with definitions + explanations)."""
+    """Get nodes and edges for D3.js graph visualization (with definitions + explanations).
+    Set include_lens_data=true for controversy/recency/community/gap lens metadata."""
     try:
         from backend.core.concept_enricher import get_enriched_graph_data
-        return await get_enriched_graph_data(limit=limit)
+        return await get_enriched_graph_data(limit=limit, include_lens_data=include_lens_data)
     except Exception as e:
         logger.error(f"Graph visualization error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/visualization/geographic")
+async def geographic_visualization():
+    """Get institution locations with paper counts for geographic map visualization."""
+    try:
+        from backend.core.concept_enricher import get_geographic_data
+        return await get_geographic_data()
+    except Exception as e:
+        logger.error(f"Geographic visualization error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/visualization/sankey")
+async def sankey_visualization():
+    """Get relationship flow data between concept types for Sankey diagram."""
+    try:
+        from backend.core.concept_enricher import get_sankey_flow_data
+        return await get_sankey_flow_data()
+    except Exception as e:
+        logger.error(f"Sankey visualization error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

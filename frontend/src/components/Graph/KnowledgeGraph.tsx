@@ -2,91 +2,115 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import * as d3 from "d3";
-import { X, ZoomIn, ZoomOut, Maximize2, ExternalLink, Search, ChevronRight, BookOpen, MessageSquare, Filter } from "lucide-react";
-import { getGraphVisualization, getConceptDetail } from "@/lib/api";
+import {
+  X, ZoomIn, ZoomOut, Maximize2, Search, ChevronRight, BookOpen, MessageSquare,
+  Filter, Network, GitBranch, Target, Globe2, BarChart3, SlidersHorizontal, Eye,
+} from "lucide-react";
+import { getConceptDetail } from "@/lib/api";
 import ConnectionFeedback from "./ConnectionFeedback";
 import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
-
-interface GraphNode extends d3.SimulationNodeDatum {
-  id: string;
-  name: string;
-  type: string;
-  confidence: number;
-  color: string;
-  definition?: string;
-  paper_count?: number;
-}
-
-interface GraphEdge {
-  id: string;
-  source: string | GraphNode;
-  target: string | GraphNode;
-  type: string;
-  confidence: number;
-  explanation?: string;
-  source_paper?: string;
-}
-
-interface SelectedInfo {
-  node: GraphNode;
-  connections: { node: GraphNode; edgeId: string; edgeType: string; direction: "to" | "from"; explanation?: string; source_paper?: string }[];
-}
+import { useGraphData } from "./hooks/useGraphData";
+import renderForceView from "./views/ForceView";
+import renderHierarchicalView from "./views/HierarchicalView";
+import renderRadialView from "./views/RadialView";
+import renderGeographicView from "./views/GeographicView";
+import renderSankeyView from "./views/SankeyView";
+import { computeLens, applyLensToSvg } from "./lenses/lensEngine";
+import type {
+  GraphNode, GraphEdge, SelectedInfo, ViewType, LensType, ViewCleanup,
+  GraphSettings, ConnectionInfo,
+} from "./types";
+import {
+  EDGE_COLORS, EDGE_LABELS, NODE_TYPES, ALL_EDGE_TYPES, DEFAULT_GRAPH_SETTINGS,
+} from "./types";
 
 interface KnowledgeGraphProps {
   onClose: () => void;
 }
 
-const EDGE_COLORS: Record<string, string> = {
-  RELATES_TO: "#2D3548",
-  CONTRADICTS: "#F85149",
-  SUPPORTS: "#3FB950",
-  BUILDS_ON: "#58A6FF",
-  RESPONDS_TO: "#D29922",
-};
+// --- View metadata ---
+const VIEWS: { type: ViewType; icon: typeof Network; label: [string, string]; ready: boolean }[] = [
+  { type: "force", icon: Network, label: ["Force", "כוחות"], ready: true },
+  { type: "hierarchical", icon: GitBranch, label: ["Hierarchy", "היררכיה"], ready: true },
+  { type: "radial", icon: Target, label: ["Radial", "רדיאלי"], ready: true },
+  { type: "geographic", icon: Globe2, label: ["Geographic", "גיאוגרפי"], ready: true },
+  { type: "sankey", icon: BarChart3, label: ["Sankey", "זרימה"], ready: true },
+];
 
-const EDGE_LABELS: Record<string, [string, string]> = {
-  RELATES_TO: ["relates to", "קשור ל"],
-  CONTRADICTS: ["contradicts", "סותר"],
-  SUPPORTS: ["supports", "תומך ב"],
-  BUILDS_ON: ["builds on", "מבוסס על"],
-  RESPONDS_TO: ["responds to", "מגיב ל"],
-};
-
-const NODE_TYPES: { type: string; label: [string, string]; color: string }[] = [
-  { type: "theory", label: ["Theory", "תאוריה"], color: "#E8B931" },
-  { type: "method", label: ["Method", "שיטה"], color: "#58A6FF" },
-  { type: "framework", label: ["Framework", "מסגרת"], color: "#3FB950" },
-  { type: "phenomenon", label: ["Phenomenon", "תופעה"], color: "#D29922" },
-  { type: "paradigm", label: ["Paradigm", "פרדיגמה"], color: "#E8B931" },
-  { type: "critique", label: ["Critique", "ביקורת"], color: "#F85149" },
-  { type: "tool", label: ["Tool", "כלי"], color: "#BC8CFF" },
-  { type: "metric", label: ["Metric", "מדד"], color: "#F78166" },
+// --- Lens metadata ---
+const LENSES: { type: LensType; label: [string, string]; color: string; desc: [string, string] }[] = [
+  { type: "none", label: ["None", "ללא"], color: "#8B949E", desc: ["Default view", "תצוגה רגילה"] },
+  { type: "controversy", label: ["Controversy", "מחלוקת"], color: "#F85149", desc: ["Highlight disputed connections", "הדגש חיבורים שנויים במחלוקת"] },
+  { type: "recency", label: ["Recency", "עדכניות"], color: "#58A6FF", desc: ["Fade old, brighten new", "דעך ישנים, הבהר חדשים"] },
+  { type: "confidence", label: ["Confidence", "ביטחון"], color: "#E8B931", desc: ["Size by establishment level", "גודל לפי רמת ביסוס"] },
+  { type: "community", label: ["Community", "קהילה"], color: "#3FB950", desc: ["Glow by discussion activity", "זוהר לפי פעילות קהילתית"] },
+  { type: "gap", label: ["Gaps", "פערים"], color: "#BC8CFF", desc: ["Highlight research opportunities", "הדגש הזדמנויות מחקר"] },
 ];
 
 export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [nodeCount, setNodeCount] = useState(0);
-  const [edgeCount, setEdgeCount] = useState(0);
   const [selected, setSelected] = useState<SelectedInfo | null>(null);
   const [showAllLabels, setShowAllLabels] = useState(false);
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GraphNode[]>([]);
-  const [fontSize, setFontSize] = useState(1); // 0=small, 1=medium, 2=large
+  const [fontSize, setFontSize] = useState(1);
   const [conceptDetail, setConceptDetail] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [navHistory, setNavHistory] = useState<{ id: string; name: string }[]>([]);
+  const [activeView, setActiveView] = useState<ViewType>("force");
+  const [activeLens, setActiveLens] = useState<LensType>("none");
+  const [showLenses, setShowLenses] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<GraphSettings>({ ...DEFAULT_GRAPH_SETTINGS });
+
+  const { graphData, loading } = useGraphData(150, activeLens);
+
   const setSelectedConceptId = useChatStore((s) => s.setSelectedConceptId);
   const setConceptPanelOpen = useChatStore((s) => s.setConceptPanelOpen);
   const { locale, t } = useLocaleStore();
-  const simulationRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
-  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+
+  const viewCleanupRef = useRef<ViewCleanup | null>(null);
   const nodesRef = useRef<GraphNode[]>([]);
   const edgesRef = useRef<GraphEdge[]>([]);
 
+  const li = locale === "he" ? 1 : 0;
+  const textSizes = ["text-sm", "text-[15px]", "text-lg"];
+  const bodySize = textSizes[fontSize];
+  const subSize = ["text-xs", "text-sm", "text-[15px]"][fontSize];
+
+  // --- Apply graph settings to filter nodes/edges ---
+  const getFilteredData = useCallback(() => {
+    if (!graphData) return { nodes: [], edges: [] };
+    let nodes = graphData.nodes;
+    let edges = graphData.edges;
+
+    // Filter nodes
+    nodes = nodes.filter((n) => {
+      if (hiddenTypes.has(n.type)) return false;
+      if ((n.connection_count || 0) < settings.minConnections) return false;
+      if (n.confidence < settings.minConfidence) return false;
+      if ((n.paper_count || 0) < settings.minPapers) return false;
+      return true;
+    });
+
+    const visibleIds = new Set(nodes.map((n) => n.id));
+
+    // Filter edges
+    edges = edges.filter((e) => {
+      const src = typeof e.source === "string" ? e.source : e.source.id;
+      const tgt = typeof e.target === "string" ? e.target : e.target.id;
+      if (!visibleIds.has(src) || !visibleIds.has(tgt)) return false;
+      if (settings.hiddenEdgeTypes.has(e.type)) return false;
+      return true;
+    });
+
+    return { nodes, edges };
+  }, [graphData, hiddenTypes, settings]);
+
+  // --- Node selection ---
   const selectNode = useCallback((nodeId: string | null, addToHistory = true) => {
     if (!nodeId) {
       setSelected(null);
@@ -98,7 +122,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return;
 
-    const connections: SelectedInfo["connections"] = [];
+    const connections: ConnectionInfo[] = [];
     for (const edge of edges) {
       const src = typeof edge.source === "string" ? edge.source : edge.source.id;
       const tgt = typeof edge.target === "string" ? edge.target : edge.target.id;
@@ -113,7 +137,6 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
 
     setSelected({ node, connections });
 
-    // Track navigation path
     if (addToHistory) {
       setNavHistory((prev) => {
         const already = prev.findIndex((h) => h.id === nodeId);
@@ -122,7 +145,6 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
       });
     }
 
-    // Fetch full concept detail (key papers, claims) for learning
     setLoadingDetail(true);
     setConceptDetail(null);
     getConceptDetail(nodeId)
@@ -131,19 +153,16 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
       .finally(() => setLoadingDetail(false));
   }, []);
 
+  // --- Highlight selection in SVG ---
   const highlightSelection = useCallback((nodeId: string | null) => {
     if (!svgRef.current) return;
     const svg = d3.select(svgRef.current);
 
     if (!nodeId) {
-      // Reset all
       svg.selectAll<SVGCircleElement, GraphNode>("circle.graph-node")
-        .attr("opacity", 1)
-        .attr("stroke", "#0C0F14")
-        .attr("stroke-width", 1);
+        .attr("opacity", 1).attr("stroke", "#0C0F14").attr("stroke-width", 1);
       svg.selectAll<SVGLineElement, GraphEdge>("line.graph-edge")
-        .attr("stroke-opacity", 0.4)
-        .attr("stroke-width", (d) => Math.max(0.5, d.confidence * 2));
+        .attr("stroke-opacity", 0.4).attr("stroke-width", (d) => Math.max(0.5, d.confidence * 2));
       svg.selectAll<SVGTextElement, GraphNode>("text.graph-label")
         .attr("opacity", (d) => d.confidence > 0.7 ? 1 : 0);
       return;
@@ -157,13 +176,11 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
       if (tgt === nodeId) connectedIds.add(src);
     }
 
-    // Dim unrelated nodes
     svg.selectAll<SVGCircleElement, GraphNode>("circle.graph-node")
       .attr("opacity", (d) => connectedIds.has(d.id) ? 1 : 0.15)
-      .attr("stroke", (d) => d.id === nodeId ? "#E8B931" : connectedIds.has(d.id) ? "#E8B931" : "#0C0F14")
+      .attr("stroke", (d) => connectedIds.has(d.id) ? "#E8B931" : "#0C0F14")
       .attr("stroke-width", (d) => d.id === nodeId ? 3 : connectedIds.has(d.id) ? 1.5 : 1);
 
-    // Highlight connected edges, dim others
     svg.selectAll<SVGLineElement, GraphEdge>("line.graph-edge")
       .attr("stroke-opacity", (d) => {
         const src = typeof d.source === "string" ? d.source : d.source.id;
@@ -176,226 +193,113 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
         return (src === nodeId || tgt === nodeId) ? Math.max(1.5, d.confidence * 3) : Math.max(0.5, d.confidence * 2);
       });
 
-    // Show labels for connected nodes
     svg.selectAll<SVGTextElement, GraphNode>("text.graph-label")
       .attr("opacity", (d) => connectedIds.has(d.id) ? 1 : 0.1);
-
   }, []);
 
-  const buildGraph = useCallback(async () => {
-    if (!svgRef.current) return;
-
-    setLoading(true);
-    try {
-      const data = await getGraphVisualization(150);
-      const nodes: GraphNode[] = data.nodes;
-      const edges: GraphEdge[] = data.edges;
-      nodesRef.current = nodes;
-      edgesRef.current = edges;
-      setNodeCount(nodes.length);
-      setEdgeCount(edges.length);
-
-      const svg = d3.select(svgRef.current);
-      svg.selectAll("*").remove();
-
-      const width = svgRef.current.clientWidth;
-      const height = svgRef.current.clientHeight;
-
-      // Create zoom behavior
-      const zoom = d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.1, 4])
-        .on("zoom", (event) => {
-          container.attr("transform", event.transform);
-        });
-
-      svg.call(zoom);
-      zoomRef.current = zoom;
-
-      // Click on background to deselect
-      svg.on("click", (event) => {
-        if (event.target === svgRef.current) {
-          selectNode(null);
-          highlightSelection(null);
-        }
-      });
-
-      const container = svg.append("g");
-
-      // Draw edges
-      const link = container.append("g")
-        .selectAll("line")
-        .data(edges)
-        .join("line")
-        .attr("class", "graph-edge")
-        .attr("stroke", (d) => EDGE_COLORS[d.type] || "#2D3548")
-        .attr("stroke-width", (d) => Math.max(0.5, d.confidence * 2))
-        .attr("stroke-opacity", 0.4);
-
-      // Draw nodes
-      const node = container.append("g")
-        .selectAll("circle")
-        .data(nodes)
-        .join("circle")
-        .attr("class", "graph-node")
-        .attr("r", (d) => 4 + d.confidence * 4)
-        .attr("fill", (d) => d.color)
-        .attr("stroke", "#0C0F14")
-        .attr("stroke-width", 1)
-        .attr("cursor", "pointer")
-        .on("click", (event, d) => {
-          event.stopPropagation();
-          selectNode(d.id);
-          highlightSelection(d.id);
-        });
-
-      // Apply drag behavior
-      const dragBehavior = d3.drag<SVGCircleElement, GraphNode>()
-        .on("start", (event, d) => {
-          if (!event.active) simulationRef.current?.alphaTarget(0.3).restart();
-          d.fx = d.x;
-          d.fy = d.y;
-        })
-        .on("drag", (event, d) => {
-          d.fx = event.x;
-          d.fy = event.y;
-        })
-        .on("end", (event, d) => {
-          if (!event.active) simulationRef.current?.alphaTarget(0);
-          d.fx = null;
-          d.fy = null;
-        });
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (node as any).call(dragBehavior);
-
-      // Labels for all nodes (only high-confidence visible by default)
-      const labels = container.append("g")
-        .selectAll("text")
-        .data(nodes)
-        .join("text")
-        .attr("class", "graph-label")
-        .text((d) => d.name)
-        .attr("font-size", "8px")
-        .attr("fill", "#8B949E")
-        .attr("text-anchor", "middle")
-        .attr("dy", (d) => -(6 + d.confidence * 4 + 2))
-        .attr("pointer-events", "none")
-        .attr("opacity", (d) => d.confidence > 0.7 ? 1 : 0);
-
-      // Force simulation
-      const simulation = d3.forceSimulation<GraphNode>(nodes)
-        .force("link", d3.forceLink<GraphNode, GraphEdge>(edges).id((d) => d.id).distance(60))
-        .force("charge", d3.forceManyBody().strength(-80))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide().radius(12));
-
-      simulationRef.current = simulation;
-
-      simulation.on("tick", () => {
-        link
-          .attr("x1", (d) => (d.source as GraphNode).x!)
-          .attr("y1", (d) => (d.source as GraphNode).y!)
-          .attr("x2", (d) => (d.target as GraphNode).x!)
-          .attr("y2", (d) => (d.target as GraphNode).y!);
-
-        node
-          .attr("cx", (d) => d.x!)
-          .attr("cy", (d) => d.y!);
-
-        labels
-          .attr("x", (d) => d.x!)
-          .attr("y", (d) => d.y!);
-      });
-
-      // Hover effects
-      node
-        .on("mouseenter", function (_event, d) {
-          d3.select(this)
-            .attr("r", 4 + d.confidence * 4 + 3)
-            .attr("stroke", "#E8B931")
-            .attr("stroke-width", 2);
-          // Show label on hover
-          labels.filter((ld) => ld.id === d.id).attr("opacity", 1);
-        })
-        .on("mouseleave", function (_event, d) {
-          const isSelected = selected?.node.id === d.id;
-          if (!isSelected) {
-            d3.select(this)
-              .attr("r", 4 + d.confidence * 4)
-              .attr("stroke", "#0C0F14")
-              .attr("stroke-width", 1);
-          }
-          // Hide label if it was hidden before
-          labels.filter((ld) => ld.id === d.id && ld.confidence <= 0.7)
-            .attr("opacity", (ld) => {
-              // Keep visible if part of selection
-              return 0;
-            });
-        });
-
-    } catch (err) {
-      console.error("Graph visualization error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectNode, highlightSelection]);
-
+  // --- Render active view ---
   useEffect(() => {
-    buildGraph();
-    return () => {
-      simulationRef.current?.stop();
+    if (!svgRef.current || !graphData) return;
+
+    const { nodes, edges } = getFilteredData();
+    // Clone nodes to avoid mutation across re-renders
+    const clonedNodes = nodes.map((n) => ({ ...n }));
+    const clonedEdges = edges.map((e) => ({ ...e }));
+    nodesRef.current = clonedNodes;
+    edgesRef.current = clonedEdges;
+
+    const width = svgRef.current.clientWidth;
+    const height = svgRef.current.clientHeight;
+
+    const options = {
+      width,
+      height,
+      hiddenTypes,
+      showAllLabels,
+      rootNodeId: selected?.node.id,
+      onNodeClick: (nodeId: string) => {
+        selectNode(nodeId);
+        highlightSelection(nodeId);
+      },
+      onBackgroundClick: () => {
+        selectNode(null);
+        highlightSelection(null);
+      },
     };
-  }, [buildGraph]);
 
-  // Toggle all labels
+    // Stop previous simulation
+    viewCleanupRef.current?.simulation?.stop();
+
+    // Render the active view
+    let cleanup: ViewCleanup;
+    switch (activeView) {
+      case "hierarchical":
+        cleanup = renderHierarchicalView(svgRef.current, clonedNodes, clonedEdges, options);
+        break;
+      case "radial":
+        cleanup = renderRadialView(svgRef.current, clonedNodes, clonedEdges, options);
+        break;
+      case "geographic":
+        cleanup = renderGeographicView(svgRef.current, clonedNodes, clonedEdges, options);
+        break;
+      case "sankey":
+        cleanup = renderSankeyView(svgRef.current, clonedNodes, clonedEdges, options);
+        break;
+      case "force":
+      default:
+        cleanup = renderForceView(svgRef.current, clonedNodes, clonedEdges, options);
+        break;
+    }
+
+    viewCleanupRef.current = cleanup;
+
+    // Apply lens overrides after view renders
+    if (activeLens !== "none" && svgRef.current) {
+      // Small delay to let D3 finish initial tick
+      const lensTimer = setTimeout(() => {
+        if (!svgRef.current) return;
+        const lensData = computeLens(activeLens, clonedNodes, clonedEdges);
+        applyLensToSvg(svgRef.current, lensData);
+      }, 300);
+      return () => {
+        cleanup.simulation?.stop();
+        clearTimeout(lensTimer);
+      };
+    }
+
+    return () => {
+      cleanup.simulation?.stop();
+    };
+  }, [graphData, activeView, activeLens, getFilteredData, hiddenTypes, showAllLabels, selectNode, highlightSelection]);
+
+  // --- Label toggle ---
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || selected) return;
     const svg = d3.select(svgRef.current);
-    if (selected) return; // Don't override selection highlighting
     svg.selectAll<SVGTextElement, GraphNode>("text.graph-label")
       .attr("opacity", (d) => showAllLabels || d.confidence > 0.7 ? 1 : 0);
   }, [showAllLabels, selected]);
 
-  // Filter nodes by type
-  useEffect(() => {
-    if (!svgRef.current) return;
-    const svg = d3.select(svgRef.current);
-    svg.selectAll<SVGCircleElement, GraphNode>("circle.graph-node")
-      .attr("opacity", (d) => hiddenTypes.has(d.type) ? 0.04 : 1)
-      .attr("pointer-events", (d) => hiddenTypes.has(d.type) ? "none" : "auto");
-    svg.selectAll<SVGTextElement, GraphNode>("text.graph-label")
-      .attr("opacity", (d) => hiddenTypes.has(d.type) ? 0 : (showAllLabels || d.confidence > 0.7 ? 1 : 0));
-    svg.selectAll<SVGLineElement, GraphEdge>("line.graph-edge")
-      .attr("stroke-opacity", (d) => {
-        const srcNode = nodesRef.current.find((n) => n.id === (typeof d.source === "string" ? d.source : d.source.id));
-        const tgtNode = nodesRef.current.find((n) => n.id === (typeof d.target === "string" ? d.target : d.target.id));
-        if (srcNode && hiddenTypes.has(srcNode.type)) return 0.02;
-        if (tgtNode && hiddenTypes.has(tgtNode.type)) return 0.02;
-        return 0.4;
-      });
-  }, [hiddenTypes, showAllLabels]);
-
+  // --- Zoom helpers ---
   const handleZoom = (factor: number) => {
-    if (!svgRef.current || !zoomRef.current) return;
+    if (!svgRef.current || !viewCleanupRef.current?.zoom) return;
     const svg = d3.select(svgRef.current);
-    svg.transition().duration(300).call(zoomRef.current.scaleBy, factor);
+    svg.transition().duration(300).call(viewCleanupRef.current.zoom.scaleBy, factor);
   };
 
   const handleFit = () => {
-    if (!svgRef.current || !zoomRef.current) return;
+    if (!svgRef.current || !viewCleanupRef.current?.zoom) return;
     const svg = d3.select(svgRef.current);
     svg.transition().duration(500).call(
-      zoomRef.current.transform,
+      viewCleanupRef.current.zoom.transform,
       d3.zoomIdentity.translate(svgRef.current.clientWidth / 2, svgRef.current.clientHeight / 2).scale(0.8)
     );
   };
 
+  // --- Search ---
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
+    if (query.length < 2) { setSearchResults([]); return; }
     const q = query.toLowerCase();
     const results = nodesRef.current
       .filter((n) => n.name.toLowerCase().includes(q))
@@ -405,18 +309,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
   };
 
   const navigateToNode = (nodeId: string) => {
-    if (!svgRef.current || !zoomRef.current) return;
-    const node = nodesRef.current.find((n) => n.id === nodeId);
-    if (!node || node.x == null || node.y == null) return;
-
-    const svg = d3.select(svgRef.current);
-    const width = svgRef.current.clientWidth;
-    const height = svgRef.current.clientHeight;
-    const transform = d3.zoomIdentity
-      .translate(width / 2 - node.x * 1.5, height / 2 - node.y * 1.5)
-      .scale(1.5);
-    svg.transition().duration(500).call(zoomRef.current.transform, transform);
-
+    viewCleanupRef.current?.navigateToNode?.(nodeId);
     selectNode(nodeId);
     highlightSelection(nodeId);
     setSearchQuery("");
@@ -429,24 +322,25 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
     onClose();
   };
 
-  // Navigate to node AND zoom to it (used by breadcrumb + connections)
-  const navAndSelect = (nodeId: string) => {
-    navigateToNode(nodeId);
-  };
-
-  const li = locale === "he" ? 1 : 0;
-  const textSizes = ["text-sm", "text-[15px]", "text-lg"];
-  const bodySize = textSizes[fontSize];
-  const subSize = ["text-xs", "text-sm", "text-[15px]"][fontSize];
+  const filteredData = getFilteredData();
+  const nodeCount = filteredData.nodes.length;
+  const edgeCount = filteredData.edges.length;
+  const totalNodes = graphData?.nodeCount || 0;
+  const isFiltered = nodeCount < totalNodes;
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col">
-      {/* Header */}
+      {/* ===== HEADER ===== */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-bold text-foreground">{t.knowledgeMap}</h2>
           <span className="text-xs text-text-secondary">
-            {nodeCount} nodes &middot; {edgeCount} edges
+            {nodeCount} {locale === "he" ? "צמתים" : "nodes"} &middot; {edgeCount} {locale === "he" ? "קשרים" : "edges"}
+            {isFiltered && (
+              <span className="text-accent-gold ml-1">
+                ({locale === "he" ? `מתוך ${totalNodes}` : `of ${totalNodes}`})
+              </span>
+            )}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -478,12 +372,36 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
               </div>
             )}
           </div>
+
+          {/* View switcher */}
+          <div className="flex items-center bg-surface-sunken rounded-lg p-0.5 gap-0.5">
+            {VIEWS.map((v) => {
+              const Icon = v.icon;
+              return (
+                <button
+                  key={v.type}
+                  onClick={() => v.ready && setActiveView(v.type)}
+                  disabled={!v.ready}
+                  title={v.label[li] + (!v.ready ? (locale === "he" ? " (בקרוב)" : " (coming soon)") : "")}
+                  className={`p-1.5 rounded transition-colors ${
+                    activeView === v.type
+                      ? "bg-accent-gold/15 text-accent-gold"
+                      : v.ready
+                        ? "hover:bg-surface-hover text-text-secondary"
+                        : "text-text-tertiary opacity-40 cursor-not-allowed"
+                  }`}
+                >
+                  <Icon size={14} />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Toggles */}
           <button
             onClick={() => setShowAllLabels(!showAllLabels)}
             className={`px-2 py-1 rounded text-[10px] font-medium transition-colors ${
-              showAllLabels
-                ? "bg-accent-gold/15 text-accent-gold"
-                : "hover:bg-surface-hover text-text-secondary"
+              showAllLabels ? "bg-accent-gold/15 text-accent-gold" : "hover:bg-surface-hover text-text-secondary"
             }`}
           >
             {locale === "he" ? "תוויות" : "Labels"}
@@ -491,19 +409,35 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
-              showFilters || hiddenTypes.size > 0
-                ? "bg-accent-gold/15 text-accent-gold"
-                : "hover:bg-surface-hover text-text-secondary"
+              showFilters || hiddenTypes.size > 0 ? "bg-accent-gold/15 text-accent-gold" : "hover:bg-surface-hover text-text-secondary"
             }`}
           >
             <Filter size={12} />
             {locale === "he" ? "סינון" : "Filter"}
             {hiddenTypes.size > 0 && (
-              <span className="ml-0.5 px-1 py-px rounded-full bg-accent-gold/20 text-[9px]">
-                {hiddenTypes.size}
-              </span>
+              <span className="ml-0.5 px-1 py-px rounded-full bg-accent-gold/20 text-[9px]">{hiddenTypes.size}</span>
             )}
           </button>
+          <button
+            onClick={() => setShowLenses(!showLenses)}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+              activeLens !== "none" ? "bg-accent-gold/15 text-accent-gold" : showLenses ? "bg-surface-hover text-text-secondary" : "hover:bg-surface-hover text-text-secondary"
+            }`}
+          >
+            <Eye size={12} />
+            {locale === "he" ? "עדשות" : "Lenses"}
+          </button>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+              showSettings ? "bg-accent-gold/15 text-accent-gold" : "hover:bg-surface-hover text-text-secondary"
+            }`}
+          >
+            <SlidersHorizontal size={12} />
+            {locale === "he" ? "הגדרות" : "Settings"}
+          </button>
+
+          {/* Zoom controls */}
           <button onClick={() => handleZoom(1.3)} className="p-1.5 rounded hover:bg-surface-hover text-text-secondary">
             <ZoomIn size={16} />
           </button>
@@ -519,7 +453,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
         </div>
       </div>
 
-      {/* Filter bar — clickable type toggles */}
+      {/* ===== TYPE FILTER BAR ===== */}
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface/50">
           <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mr-1">
@@ -539,9 +473,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                   });
                 }}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                  isHidden
-                    ? "opacity-40 bg-surface-sunken text-text-tertiary line-through"
-                    : "bg-surface-hover text-foreground"
+                  isHidden ? "opacity-40 bg-surface-sunken text-text-tertiary line-through" : "bg-surface-hover text-foreground"
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: isHidden ? "#3A3F47" : item.color }} />
@@ -560,7 +492,140 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
         </div>
       )}
 
-      {/* Edge legend */}
+      {/* ===== LENS SELECTOR ===== */}
+      {showLenses && (
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface/50">
+          <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mr-1">
+            {locale === "he" ? "עדשה:" : "Lens:"}
+          </span>
+          {LENSES.map((lens) => (
+            <button
+              key={lens.type}
+              onClick={() => setActiveLens(activeLens === lens.type ? "none" : lens.type)}
+              title={lens.desc[li]}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                activeLens === lens.type
+                  ? "text-white"
+                  : "bg-surface-hover text-text-secondary hover:text-foreground"
+              }`}
+              style={activeLens === lens.type ? { backgroundColor: lens.color + "30", color: lens.color } : {}}
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: lens.color }} />
+              {lens.label[li]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ===== GRAPH SETTINGS PANEL ===== */}
+      {showSettings && (
+        <div className="px-4 py-3 border-b border-border bg-surface/50 space-y-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Min connections */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold block mb-1">
+                {locale === "he" ? "מינימום חיבורים" : "Min connections"}
+                <span className="text-accent-gold ml-1">{settings.minConnections}</span>
+              </label>
+              <input
+                type="range" min={0} max={20} step={1}
+                value={settings.minConnections}
+                onChange={(e) => setSettings((s) => ({ ...s, minConnections: +e.target.value }))}
+                className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-accent-gold"
+              />
+            </div>
+            {/* Min confidence */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold block mb-1">
+                {locale === "he" ? "מינימום ביטחון" : "Min confidence"}
+                <span className="text-accent-gold ml-1">{Math.round(settings.minConfidence * 100)}%</span>
+              </label>
+              <input
+                type="range" min={0} max={1} step={0.05}
+                value={settings.minConfidence}
+                onChange={(e) => setSettings((s) => ({ ...s, minConfidence: +e.target.value }))}
+                className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-accent-gold"
+              />
+            </div>
+            {/* Min papers */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold block mb-1">
+                {locale === "he" ? "מינימום מאמרים" : "Min papers"}
+                <span className="text-accent-gold ml-1">{settings.minPapers}</span>
+              </label>
+              <input
+                type="range" min={0} max={50} step={1}
+                value={settings.minPapers}
+                onChange={(e) => setSettings((s) => ({ ...s, minPapers: +e.target.value }))}
+                className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer accent-accent-gold"
+              />
+            </div>
+            {/* Year range */}
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold block mb-1">
+                {locale === "he" ? "טווח שנים" : "Year range"}
+                <span className="text-accent-gold ml-1">{settings.yearRange[0]}–{settings.yearRange[1]}</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" min={1900} max={2030}
+                  value={settings.yearRange[0]}
+                  onChange={(e) => setSettings((s) => ({ ...s, yearRange: [+e.target.value, s.yearRange[1]] }))}
+                  className="w-16 px-1.5 py-0.5 bg-surface-sunken border border-border rounded text-xs text-foreground text-center"
+                />
+                <span className="text-text-tertiary text-xs">–</span>
+                <input
+                  type="number" min={1900} max={2030}
+                  value={settings.yearRange[1]}
+                  onChange={(e) => setSettings((s) => ({ ...s, yearRange: [s.yearRange[0], +e.target.value] }))}
+                  className="w-16 px-1.5 py-0.5 bg-surface-sunken border border-border rounded text-xs text-foreground text-center"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Edge type toggles */}
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold block mb-1.5">
+              {locale === "he" ? "סוגי קשרים:" : "Edge types:"}
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {ALL_EDGE_TYPES.map((edgeType) => {
+                const isHidden = settings.hiddenEdgeTypes.has(edgeType);
+                return (
+                  <button
+                    key={edgeType}
+                    onClick={() => {
+                      setSettings((s) => {
+                        const next = new Set(s.hiddenEdgeTypes);
+                        if (next.has(edgeType)) next.delete(edgeType);
+                        else next.add(edgeType);
+                        return { ...s, hiddenEdgeTypes: next };
+                      });
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                      isHidden ? "opacity-40 bg-surface-sunken text-text-tertiary line-through" : "bg-surface-hover text-foreground"
+                    }`}
+                  >
+                    <span className="w-3 h-0.5 rounded flex-shrink-0" style={{ backgroundColor: isHidden ? "#3A3F47" : EDGE_COLORS[edgeType] }} />
+                    {EDGE_LABELS[edgeType]?.[li] || edgeType.toLowerCase()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Reset button */}
+          <button
+            onClick={() => setSettings({ ...DEFAULT_GRAPH_SETTINGS })}
+            className="text-[10px] font-medium text-accent-gold hover:text-accent-gold/80 transition-colors"
+          >
+            {locale === "he" ? "אפס הגדרות" : "Reset settings"}
+          </button>
+        </div>
+      )}
+
+      {/* ===== EDGE LEGEND ===== */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-1.5 border-b border-border text-[10px] text-text-secondary">
         {Object.entries(EDGE_COLORS).map(([type, color]) => (
           <div key={type} className="flex items-center gap-1">
@@ -570,7 +635,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
         ))}
       </div>
 
-      {/* Graph + Info Panel */}
+      {/* ===== GRAPH + INFO PANEL ===== */}
       <div className="flex-1 relative overflow-hidden">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -646,7 +711,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
 
         <svg ref={svgRef} className="w-full h-full" />
 
-        {/* Info Panel — appears when a node is selected */}
+        {/* ===== INFO PANEL ===== */}
         {selected && (
           <div
             className={`absolute top-4 z-20 w-[34rem] max-h-[90%] bg-surface border border-border rounded-xl shadow-lg overflow-hidden flex flex-col ${
@@ -656,38 +721,30 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
           >
             {/* Navigation breadcrumb + controls */}
             <div className="flex items-center justify-between px-5 py-2 border-b border-border/50 bg-surface-sunken/50">
-              {/* Breadcrumb trail */}
               <div className="flex items-center gap-1 overflow-x-auto text-xs min-w-0">
                 {navHistory.map((h, i) => (
                   <span key={h.id} className="flex items-center gap-1 whitespace-nowrap">
                     {i > 0 && <ChevronRight size={10} className="text-text-tertiary flex-shrink-0" />}
                     <button
-                      onClick={() => { navigateToNode(h.id); }}
+                      onClick={() => navigateToNode(h.id)}
                       className={`hover:text-accent-gold transition-colors ${
                         h.id === selected.node.id ? "text-accent-gold font-semibold" : "text-text-tertiary"
                       }`}
                     >
-                      {h.name.length > 18 ? h.name.slice(0, 16) + "…" : h.name}
+                      {h.name.length > 18 ? h.name.slice(0, 16) + "..." : h.name}
                     </button>
                   </span>
                 ))}
               </div>
-              {/* Font size + close */}
               <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                 <button
                   onClick={() => setFontSize(Math.max(0, fontSize - 1))}
                   className={`px-1.5 py-0.5 rounded text-xs transition-colors ${fontSize === 0 ? "text-text-tertiary cursor-default" : "hover:bg-surface-hover text-text-secondary"}`}
-                  title={locale === "he" ? "טקסט קטן" : "Smaller text"}
-                >
-                  A-
-                </button>
+                >A-</button>
                 <button
                   onClick={() => setFontSize(Math.min(2, fontSize + 1))}
                   className={`px-1.5 py-0.5 rounded text-xs transition-colors ${fontSize === 2 ? "text-text-tertiary cursor-default" : "hover:bg-surface-hover text-text-secondary"}`}
-                  title={locale === "he" ? "טקסט גדול" : "Larger text"}
-                >
-                  A+
-                </button>
+                >A+</button>
                 <button
                   onClick={() => { selectNode(null); highlightSelection(null); setNavHistory([]); }}
                   className="p-1 rounded hover:bg-surface-hover text-text-secondary"
@@ -714,10 +771,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                     ) : null}
                     <div className="flex items-center gap-1.5 flex-1">
                       <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-accent-gold rounded-full"
-                          style={{ width: `${Math.round(selected.node.confidence * 100)}%` }}
-                        />
+                        <div className="h-full bg-accent-gold rounded-full" style={{ width: `${Math.round(selected.node.confidence * 100)}%` }} />
                       </div>
                       <span className={`${subSize} text-text-tertiary font-mono`}>
                         {Math.round(selected.node.confidence * 100)}%
@@ -729,7 +783,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              {/* Definition / What is this? */}
+              {/* Definition */}
               {(selected.node.definition || conceptDetail?.definition) && (
                 <div className="px-5 py-4 border-b border-border/50">
                   <h4 className={`${subSize} font-semibold text-foreground mb-2`}>
@@ -741,7 +795,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                 </div>
               )}
 
-              {/* Key Papers — educational context */}
+              {/* Key Papers */}
               {conceptDetail?.key_papers?.length > 0 && (
                 <div className="px-5 py-4 border-b border-border/50">
                   <h4 className={`${subSize} font-semibold text-foreground mb-2 flex items-center gap-2`}>
@@ -778,7 +832,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                 </div>
               )}
 
-              {/* Key Claims — what does research say? */}
+              {/* Key Claims */}
               {conceptDetail?.key_claims?.length > 0 && (
                 <div className="px-5 py-4 border-b border-border/50">
                   <h4 className={`${subSize} font-semibold text-foreground mb-2 flex items-center gap-2`}>
@@ -809,7 +863,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                 </div>
               )}
 
-              {/* Loading indicator for detail */}
+              {/* Loading detail */}
               {loadingDetail && (
                 <div className="px-5 py-3 text-xs text-text-tertiary flex items-center gap-2">
                   <div className="w-3 h-3 border border-accent-gold border-t-transparent rounded-full animate-spin" />
@@ -817,7 +871,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                 </div>
               )}
 
-              {/* No definition? Show helpful fallback */}
+              {/* No definition fallback */}
               {!selected.node.definition && !conceptDetail?.definition && !loadingDetail && (
                 <div className="px-5 py-4 border-b border-border/50">
                   <p className={`${bodySize} text-text-tertiary italic leading-relaxed`}>
@@ -828,7 +882,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                 </div>
               )}
 
-              {/* Connections with explanations */}
+              {/* Connections */}
               <div className="px-5 py-3">
                 <span className={`${subSize} uppercase tracking-wider font-semibold text-text-tertiary`}>
                   {t.connectedConcepts} ({selected.connections.length})
@@ -843,9 +897,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                   {selected.connections.map((conn, i) => (
                     <button
                       key={`${conn.node.id}-${i}`}
-                      onClick={() => {
-                        navigateToNode(conn.node.id);
-                      }}
+                      onClick={() => navigateToNode(conn.node.id)}
                       className="w-full px-3 py-2.5 rounded-lg hover:bg-surface-hover transition-colors text-left"
                     >
                       <div className="flex items-center gap-2.5">
@@ -853,10 +905,7 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                         <div className="min-w-0 flex-1">
                           <div className={`${subSize} text-foreground leading-snug`}>{conn.node.name}</div>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span
-                              className="w-3 h-0.5 rounded flex-shrink-0"
-                              style={{ backgroundColor: EDGE_COLORS[conn.edgeType] || "#2D3548" }}
-                            />
+                            <span className="w-3 h-0.5 rounded flex-shrink-0" style={{ backgroundColor: EDGE_COLORS[conn.edgeType] || "#2D3548" }} />
                             <span className="text-xs text-text-tertiary">
                               {conn.direction === "to"
                                 ? (EDGE_LABELS[conn.edgeType]?.[li] || conn.edgeType.toLowerCase())
@@ -869,19 +918,16 @@ export default function KnowledgeGraph({ onClose }: KnowledgeGraphProps) {
                           {Math.round(conn.node.confidence * 100)}%
                         </span>
                       </div>
-                      {/* Connection explanation — WHY these are connected */}
                       {conn.explanation && (
                         <p className={`${subSize} text-text-tertiary leading-relaxed mt-1.5 ml-5 italic`}>
                           {conn.explanation}
                         </p>
                       )}
-                      {/* Source paper that established this connection */}
                       {conn.source_paper && (
                         <p className="text-xs text-accent-gold/60 mt-1 ml-5 leading-snug">
                           {locale === "he" ? "מקור: " : "Source: "}{conn.source_paper}
                         </p>
                       )}
-                      {/* Agree/Disagree feedback */}
                       <div className="ml-5 mt-1">
                         <ConnectionFeedback relationshipId={conn.edgeId} />
                       </div>

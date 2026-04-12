@@ -9,6 +9,54 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
+## Current Phase: 9.0 — Advanced Visualization (COMPLETE)
+**Status:** All features implemented — 5 Graph Views, 5 Visual Lenses, Graph Settings Panel
+**Goal:** Make invisible knowledge structures visible through multiple visualization modes and analytical lenses.
+
+### Phase 9.1 — Multiple Graph Views (COMPLETE)
+- [x] Refactored KnowledgeGraph.tsx into modular shell + pluggable view architecture
+- [x] Shared types extracted to `Graph/types.ts` (GraphNode, GraphEdge, ViewType, LensType, GraphSettings)
+- [x] Data fetching extracted to `Graph/hooks/useGraphData.ts`
+- [x] **Force View** (existing) — extracted to `Graph/views/ForceView.ts`
+- [x] **Hierarchical View** — `Graph/views/HierarchicalView.ts` — d3.tree() layout showing prerequisite/builds-on relationships, BFS from root, cycle detection
+- [x] **Radial View** — `Graph/views/RadialView.ts` — d3.cluster() radial layout with concentric ring guides, centered on selected concept
+- [x] **Geographic View** — `Graph/views/GeographicView.ts` — world map (TopoJSON), institution pins sized by paper count, d3.geoNaturalEarth1() projection
+- [x] **Sankey View** — `Graph/views/SankeyView.ts` — d3-sankey showing idea flow between concept types, colored by source type
+- [x] View switcher UI in header (5 icons: Network, GitBranch, Target, Globe, BarChart)
+- [x] Root node selection: hierarchical/radial views use selected concept as root
+
+### Phase 9.2 — Visual Lenses (COMPLETE)
+- [x] Lens engine: `Graph/lenses/lensEngine.ts` — computes visual overrides per node/edge, applies to SVG
+- [x] **Confidence Lens** — node radius + edge width scale with confidence (0.5x to 2.5x)
+- [x] **Recency Lens** — node/edge opacity scaled by max publication year (bright = recent, faded = old)
+- [x] **Controversy Lens** — red edges for disagreed connections, red node borders for high controversy_score
+- [x] **Community Lens** — green glow/halo on nodes with high discussion + summary activity (log scale)
+- [x] **Gap Lens** — orphan nodes enlarged + purple border, well-connected areas dimmed
+- [x] Backend: `get_enriched_graph_data(include_lens_data=True)` fetches controversy_score, max_publication_year, community_activity, disagree_count
+- [x] Lens selector UI: collapsible row of 6 pill buttons (None + 5 lenses) with color indicators
+- [x] Lenses work across ALL views (consistent SVG class convention)
+
+### Phase 9.3 — Graph Settings Panel (COMPLETE)
+- [x] **Min connections slider** — hide nodes with fewer than N connections
+- [x] **Min confidence slider** — hide nodes/edges below threshold (0-100%)
+- [x] **Min papers slider** — show only concepts with N+ papers
+- [x] **Year range inputs** — filter by publication year range
+- [x] **Edge type toggles** — select which relationship types to display
+- [x] **Reset button** — restore all defaults
+- [x] Client-side filtering applied across all views and lenses
+- [x] Filtered count shown in header ("X nodes of Y")
+
+### Phase 9 Summary
+- **Architecture**: Monolithic 898-line KnowledgeGraph.tsx → modular shell + 5 view files + lens engine + data hook + shared types
+- **New files**: 10 (types.ts, ForceView.ts, HierarchicalView.ts, RadialView.ts, GeographicView.ts, SankeyView.ts, lensEngine.ts, useGraphData.ts, world-110m.json)
+- **Backend**: Extended concept_enricher.py with lens metadata queries, added geographic + sankey endpoints to features.py
+- **API**: 3 new functions (getGraphVisualizationWithLens, getGeographicData, getSankeyFlowData)
+- **Packages**: d3-sankey, topojson-client
+- **i18n**: ~30 new strings (EN/HE) for views, lenses, settings
+- **Personal Knowledge Overlay**: Deferred to after auth implementation
+
+---
+
 ## Hotfix: Mock User for Phase 7/8 Visibility (COMPLETE)
 - [x] Set `userId = "demo-researcher-1"` in page.tsx (enables Tree, Library)
 - [x] Pass `researcherId` through ConceptDetail to ConceptSummaries + DiscussionThread
@@ -17,7 +65,7 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 6.0 — Knowledge Liberation & Map Depth
+## Previous Phase: 6.0 — Knowledge Liberation & Map Depth
 **Status:** All 3 features implemented — Rich Map Nodes, Connection Transparency, Paper Translation
 **Goal:** Make the knowledge map deeply informative, transparent in its reasoning, and accessible across languages.
 
@@ -312,6 +360,16 @@ frontend/
 
 ## Completed
 
+### 2026-04-12 — Phase 9: Advanced Visualization
+- [x] Refactored KnowledgeGraph into modular shell + pluggable views architecture (10 new files)
+- [x] 5 Graph Views: Force (existing), Hierarchical (d3.tree), Radial (d3.cluster), Geographic (TopoJSON world map), Sankey (d3-sankey idea flow)
+- [x] 5 Visual Lenses: Confidence, Recency, Controversy, Community, Gaps — all cross-view compatible
+- [x] Graph Settings Panel: min connections/confidence/papers sliders, year range, edge type toggles
+- [x] Backend lens metadata: controversy_score, max_publication_year, community_activity, disagree_count
+- [x] 2 new backend endpoints: /visualization/geographic, /visualization/sankey
+- [x] 3 new frontend API functions, ~30 new i18n strings (EN/HE)
+- [x] New packages: d3-sankey, topojson-client
+
 ### 2026-04-05 — Phase 8: Timeline of Knowledge
 - [x] DB Migration 015: concept_history, graph_changelog, field_milestones tables
 - [x] Backend: timeline.py router — concept timeline, field evolution, changelog, milestones
@@ -442,7 +500,7 @@ frontend/
 - [x] Phase 4: Differentiation Features
 - [x] Phase 4.5: User Graph Layer 3 (Behavioral Patterns)
 - [x] Phase 5: Study/Research Platform (Library, Highlights, Syllabus, Community, Knowledge Tree)
-- [x] **Phase 6: Knowledge Liberation (Rich Map, Transparency, Translation)** ← JUST COMPLETED
-- [ ] Phase 7: Academic Social Network (profiles, summaries, collaborative editing)
-- [ ] Phase 8: Timeline of Knowledge (evolution tracking, animated history)
-- [ ] Phase 9: Advanced Visualization (multiple views, lenses, overlays)
+- [x] Phase 6: Knowledge Liberation (Rich Map, Transparency, Translation)
+- [x] Phase 7: Academic Social Network (profiles, summaries, collaborative editing)
+- [x] Phase 8: Timeline of Knowledge (evolution tracking, animated history)
+- [x] **Phase 9: Advanced Visualization (5 views, 5 lenses, graph settings)** ← JUST COMPLETED

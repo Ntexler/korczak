@@ -117,8 +117,22 @@ export async function getBriefingTopics(userId?: string) {
   return res.json();
 }
 
-export async function getGraphVisualization(limit: number = 100) {
-  const res = await fetchWithTimeout(`${API_BASE}/features/visualization/graph?limit=${limit}`, undefined, 30000);
+export async function getGraphVisualization(limit: number = 100, includeLensData: boolean = false) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (includeLensData) params.set("include_lens_data", "true");
+  const res = await fetchWithTimeout(`${API_BASE}/features/visualization/graph?${params}`, undefined, 30000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getGeographicData() {
+  const res = await fetchWithTimeout(`${API_BASE}/features/visualization/geographic`, undefined, 15000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getSankeyFlowData() {
+  const res = await fetchWithTimeout(`${API_BASE}/features/visualization/sankey`, undefined, 15000);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
