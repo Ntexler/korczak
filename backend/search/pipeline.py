@@ -17,6 +17,7 @@ from backend.search.retrievers import (
     retrieve_citations,
     retrieve_user_context,
     retrieve_controversies,
+    retrieve_perplexity,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,10 @@ async def run_search_pipeline(
         retrieval_tasks.append(
             retrieve_citations(analysis.concepts, analysis.requires_recency)
         )
+    # Perplexity web search — always runs if API key is configured
+    retrieval_tasks.append(
+        retrieve_perplexity(user_message, analysis.concepts)
+    )
     if analysis.requires_controversy:
         retrieval_tasks.append(retrieve_controversies(analysis.concepts))
 

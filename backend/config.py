@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
 
+    # Perplexity
+    perplexity_api_key: str = ""
+    perplexity_model: str = "sonar-pro"
+
     # OpenAlex
     openalex_email: str = ""  # Polite pool (faster rate limits)
 

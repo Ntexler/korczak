@@ -359,3 +359,98 @@ async def retrieve_controversies(concepts: list[str]) -> RetrievalResult:
         items=items[:8],
         token_estimate=sum(len(i.content) // 4 for i in items[:8]),
     )
+
+
+async def retrieve_perplexity(query: str, concepts: list[str]) -> RetrievalResult:
+    """Perplexity retrieval: use sonar-pro to search the web for academic knowledge."""
+    from backend.config import settings
+
+    if not settings.perplexity_api_key:
+        return RetrievalResult(source="perplexity", items=[], token_estimate=0)
+
+    items: list[RetrievalItem] = []
+
+    # Build a focused academic search query
+    concept_str = ", ".join(concepts[:4])
+    search_prompt = (
+        f"Find recent academic research and key findings about: {query}\n"
+        f"Focus on these concepts: {concept_str}\n"
+        f"Return factual information with specific paper references, author names, "
+        f"and publication years where possible. Focus on peer-reviewed sources."
+    )
+
+    try:
+        import httpx
+
+        headers = {
+            "Authorization": f"Bearer {settings.perplexity_api_key}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "model": settings.perplexity_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an academic research assistant. Return structured, "
+                        "factual information from peer-reviewed sources. Include specific "
+                        "paper titles, authors, and years when available. Be concise."
+                    ),
+                },
+                {"role": "user", "content": search_prompt},
+            ],
+            "max_tokens": 1000,
+            "temperature": 0.1,
+            "return_citations": True,
+        }
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                json=body,
+                headers=headers,
+                timeout=20,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        # Extract the response content
+        content = data["choices"][0]["message"]["content"]
+
+        # Extract citations if available
+        citations = data.get("citations", [])
+
+        # Main response as a retrieval item
+        items.append(RetrievalItem(
+            id="perplexity-main",
+            type="web_search",
+            title=f"Web research: {query[:60]}",
+            content=content,
+            score=0.8,
+            metadata={
+                "source": "perplexity",
+                "model": settings.perplexity_model,
+                "citations_count": len(citations),
+            },
+        ))
+
+        # Add individual citations as separate items
+        for i, citation in enumerate(citations[:5]):
+            url = citation if isinstance(citation, str) else citation.get("url", "")
+            items.append(RetrievalItem(
+                id=f"perplexity-cite-{i}",
+                type="web_source",
+                title=url[:80] if url else f"Citation {i+1}",
+                content=url,
+                score=0.6,
+                metadata={"source": "perplexity", "url": url},
+            ))
+
+    except Exception as e:
+        logger.warning(f"Perplexity retrieval failed: {e}")
+
+    return RetrievalResult(
+        source="perplexity",
+        items=items,
+        token_estimate=sum(len(i.content) // 4 for i in items),
+    )
