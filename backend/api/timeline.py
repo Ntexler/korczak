@@ -117,6 +117,92 @@ async def field_timeline(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/fields")
+async def list_fields():
+    """Get all distinct concept types (fields) for filtering."""
+    try:
+        client = get_client()
+        result = client.table("concepts").select("type").execute()
+        types: dict[str, int] = {}
+        for row in (result.data or []):
+            t = row.get("type", "concept")
+            types[t] = types.get(t, 0) + 1
+        fields = [{"type": t, "count": c} for t, c in sorted(types.items(), key=lambda x: -x[1])]
+        return {"fields": fields}
+    except Exception as e:
+        logger.error(f"List fields error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/concept-type")
+async def concept_type_timeline(
+    concept_type: str = Query(...),
+    year_start: int = Query(default=1950),
+    year_end: int = Query(default=2026),
+):
+    """Get timeline data filtered by concept type (field)."""
+    try:
+        client = get_client()
+
+        # Get concepts of this type
+        concepts = (
+            client.table("concepts")
+            .select("id, name, type, confidence, paper_count")
+            .eq("type", concept_type)
+            .order("confidence", desc=True)
+            .execute()
+        )
+        concept_ids = [c["id"] for c in (concepts.data or [])]
+
+        # Get papers linked to these concepts
+        year_counts: dict[int, int] = {}
+        top_papers_by_year: dict[int, list] = {}
+        if concept_ids:
+            paper_links = (
+                client.table("paper_concepts")
+                .select("papers(id, title, publication_year, cited_by_count, authors)")
+                .in_("concept_id", concept_ids[:200])
+                .execute()
+            )
+            seen_papers: set[str] = set()
+            for link in (paper_links.data or []):
+                p = link.get("papers")
+                if not p or not p.get("publication_year"):
+                    continue
+                pid = p["id"]
+                yr = p["publication_year"]
+                if yr < year_start or yr > year_end:
+                    continue
+                if pid not in seen_papers:
+                    seen_papers.add(pid)
+                    year_counts[yr] = year_counts.get(yr, 0) + 1
+                    if yr not in top_papers_by_year:
+                        top_papers_by_year[yr] = []
+                    if len(top_papers_by_year[yr]) < 3:
+                        top_papers_by_year[yr].append({
+                            "title": p.get("title", ""),
+                            "cited_by_count": p.get("cited_by_count", 0),
+                            "authors": (p.get("authors") or [])[:2],
+                        })
+
+        return {
+            "concept_type": concept_type,
+            "concept_count": len(concepts.data or []),
+            "papers_by_year": [
+                {"year": yr, "count": count}
+                for yr, count in sorted(year_counts.items())
+            ],
+            "top_papers_by_year": {str(yr): papers for yr, papers in top_papers_by_year.items()},
+            "top_concepts": [
+                {"id": c["id"], "name": c["name"], "confidence": c["confidence"], "paper_count": c.get("paper_count", 0)}
+                for c in (concepts.data or [])[:10]
+            ],
+        }
+    except Exception as e:
+        logger.error(f"Concept type timeline error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/changelog")
 async def graph_changelog(
     limit: int = Query(default=50, le=200),

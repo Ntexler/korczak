@@ -10,7 +10,8 @@ import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
 import KnowledgeGraph from "@/components/Graph/KnowledgeGraph";
-import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine, Clock } from "lucide-react";
+import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine, Clock, HelpCircle } from "lucide-react";
+import GuidedTour from "@/components/Welcome/GuidedTour";
 import { useLibraryStore } from "@/stores/libraryStore";
 import PaperLibrary from "@/components/Library/PaperLibrary";
 import KnowledgeTreeView from "@/components/Tree/KnowledgeTree";
@@ -38,9 +39,18 @@ export default function Home() {
   const [showGraph, setShowGraph] = useState(false);
   const [showTree, setShowTree] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showTour, setShowTour] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("korczak-tour-done");
+  });
 
   // TODO: Replace with actual Supabase Auth when implemented (Phase 9)
   const userId: string | undefined = "demo-researcher-1";
+
+  const completeTour = () => {
+    setShowTour(false);
+    localStorage.setItem("korczak-tour-done", "1");
+  };
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -98,6 +108,16 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Tour / Help button */}
+          <button
+            onClick={() => setShowTour(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
+              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+            title={locale === "en" ? "Guided tour" : "סיור מודרך"}
+          >
+            <HelpCircle size={14} />
+            <span className="hidden sm:inline font-medium">{locale === "en" ? "Tour" : "סיור"}</span>
+          </button>
           {/* Language toggle */}
           <button
             onClick={toggleLocale}
@@ -251,6 +271,9 @@ export default function Home() {
       {showTree && userId && (
         <KnowledgeTreeView userId={userId} onClose={() => setShowTree(false)} />
       )}
+
+      {/* Guided Tour */}
+      {showTour && <GuidedTour onComplete={completeTour} />}
     </div>
   );
 }

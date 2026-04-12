@@ -41,7 +41,7 @@ const STATUS_GLOW: Record<string, string> = {
 };
 
 export default function KnowledgeTree({ userId, onClose }: KnowledgeTreeProps) {
-  const { t } = useLocaleStore();
+  const { t, locale } = useLocaleStore();
   const svgRef = useRef<SVGSVGElement>(null);
   const [loading, setLoading] = useState(true);
   const [treeData, setTreeData] = useState<{ nodes: TreeNode[]; edges: any[]; stats: any } | null>(null);
@@ -269,6 +269,20 @@ export default function KnowledgeTree({ userId, onClose }: KnowledgeTreeProps) {
           <div className="text-center">
             <Loader2 size={24} className="animate-spin text-accent-gold mx-auto mb-2" />
             <p className="text-sm text-text-tertiary">{t.buildingTree}</p>
+          </div>
+        </div>
+      ) : !treeData || treeData.nodes.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center" style={{ background: "#0F1419" }}>
+          <div className="text-center max-w-md px-6">
+            <TreePine size={48} className="text-accent-gold/30 mx-auto mb-4" />
+            <p className="text-lg text-text-secondary mb-2">
+              {locale === "he" ? "העץ שלך עוד לא התחיל לצמוח" : "Your tree hasn't started growing yet"}
+            </p>
+            <p className="text-sm text-text-tertiary">
+              {locale === "he"
+                ? "התחל לחקור מושגים דרך הצ'אט או מפת הידע כדי לבנות את עץ הידע האישי שלך."
+                : "Start exploring concepts through the chat or knowledge map to build your personal knowledge tree."}
+            </p>
           </div>
         </div>
       ) : (

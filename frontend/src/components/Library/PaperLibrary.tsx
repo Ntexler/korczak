@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Search, Filter, X, Loader2 } from "lucide-react";
+import { BookOpen, Search, Filter, X, Loader2, Upload } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { getLibraryPapers } from "@/lib/api";
 import PaperCard from "./PaperCard";
 import ReadingListManager from "./ReadingListManager";
 import RecommendationFeed from "./RecommendationFeed";
+import PaperUpload from "./PaperUpload";
 
 interface PaperLibraryProps {
   userId: string;
@@ -29,7 +30,7 @@ export default function PaperLibrary({ userId, onClose }: PaperLibraryProps) {
     papers, isLoadingPapers, statusFilter, searchQuery,
     setPapers, setLoadingPapers, setStatusFilter, setSearchQuery,
   } = useLibraryStore();
-  const [activeTab, setActiveTab] = useState<"papers" | "lists">("papers");
+  const [activeTab, setActiveTab] = useState<"papers" | "lists" | "upload">("papers");
 
   useEffect(() => {
     loadPapers();
@@ -77,17 +78,18 @@ export default function PaperLibrary({ userId, onClose }: PaperLibraryProps) {
 
       {/* Tab bar */}
       <div className="flex border-b border-border">
-        {(["papers", "lists"] as const).map((tab) => (
+        {(["papers", "lists", "upload"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 text-xs font-medium transition-colors ${
+            className={`flex-1 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
               activeTab === tab
                 ? "text-accent-gold border-b-2 border-accent-gold"
                 : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
-            {tab === "papers" ? t.myPapers : t.readingLists}
+            {tab === "upload" && <Upload size={12} />}
+            {tab === "papers" ? t.myPapers : tab === "lists" ? t.readingLists : t.uploadPaper}
           </button>
         ))}
       </div>
@@ -145,9 +147,13 @@ export default function PaperLibrary({ userId, onClose }: PaperLibraryProps) {
             <RecommendationFeed userId={userId} />
           </div>
         </>
-      ) : (
+      ) : activeTab === "lists" ? (
         <div className="flex-1 overflow-y-auto px-3 py-2">
           <ReadingListManager userId={userId} />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          <PaperUpload userId={userId} onUploadComplete={() => { setActiveTab("papers"); loadPapers(); }} />
         </div>
       )}
     </motion.aside>

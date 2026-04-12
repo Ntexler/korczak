@@ -220,6 +220,22 @@ export const translations = {
     proposeConnection: "Propose Connection",
     proposalSubmitted: "Proposal submitted",
 
+    // Upload
+    uploadPaper: "Upload Paper",
+    dragDropHint: "Drag & drop a PDF here, or click to browse",
+    uploading: "Uploading...",
+    analyzing: "Analyzing paper quality...",
+    paperApproved: "Paper approved and added to knowledge graph!",
+    paperQuarantined: "Paper needs manual review",
+    paperRejected: "Paper was rejected",
+    paperDuplicate: "This paper already exists in the system",
+    qualityScore: "Quality Score",
+    methodology: "Methodology",
+    writingQuality: "Writing Quality",
+    academicRigor: "Academic Rigor",
+    concerns: "Concerns",
+    pdfOnly: "PDF files only, max 20MB",
+
     // Error
     errorMessage: "I apologize — something went wrong connecting to the knowledge graph. Please try again.",
   },
@@ -430,6 +446,22 @@ export const translations = {
     whyWrong: "למה לא נכון?",
     proposeConnection: "הצע חיבור",
     proposalSubmitted: "ההצעה נשלחה",
+
+    // Upload
+    uploadPaper: "העלה מאמר",
+    dragDropHint: "גרור ושחרר PDF כאן, או לחץ לעיון",
+    uploading: "מעלה...",
+    analyzing: "מנתח איכות המאמר...",
+    paperApproved: "המאמר אושר ונוסף לגרף הידע!",
+    paperQuarantined: "המאמר דורש בדיקה ידנית",
+    paperRejected: "המאמר נדחה",
+    paperDuplicate: "מאמר זה כבר קיים במערכת",
+    qualityScore: "ציון איכות",
+    methodology: "מתודולוגיה",
+    writingQuality: "איכות כתיבה",
+    academicRigor: "קפדנות אקדמית",
+    concerns: "חששות",
+    pdfOnly: "קבצי PDF בלבד, עד 20MB",
 
     // Error
     errorMessage: "מצטער — משהו השתבש בחיבור לגרף הידע. נסה שוב.",

@@ -25,13 +25,16 @@ async def get_concept_with_context(concept_id: str) -> dict | None:
 
     # Get key papers (top 5 by relevance)
     papers = await get_papers_for_concept(concept_id, limit=5)
+    import json as _json
     concept["key_papers"] = [
         {
             "id": str(p["id"]),
             "title": p.get("title", ""),
-            "authors": p.get("authors", []),
+            "authors": _json.loads(p["authors"]) if isinstance(p.get("authors"), str) else (p.get("authors") or []),
             "publication_year": p.get("publication_year"),
             "cited_by_count": p.get("cited_by_count", 0),
+            "doi": p.get("doi"),
+            "openalex_id": p.get("openalex_id"),
         }
         for p in papers
     ]

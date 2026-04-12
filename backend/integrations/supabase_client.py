@@ -118,7 +118,7 @@ async def get_papers_for_concept(concept_id: str, limit: int = 5) -> list[dict]:
     client = get_client()
     result = (
         client.table("paper_concepts")
-        .select("paper_id, relevance, papers(id, title, authors, publication_year, cited_by_count, abstract)")
+        .select("paper_id, relevance, papers(id, title, authors, publication_year, cited_by_count, abstract, doi, openalex_id)")
         .eq("concept_id", concept_id)
         .order("relevance", desc=True)
         .limit(limit)
