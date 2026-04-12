@@ -8,18 +8,13 @@ from pydantic import BaseModel
 
 from backend.integrations import supabase_client as db
 from backend.integrations.claude_client import navigate, tutor
-from backend.core.context_builder import (
-    build_context,
-    get_library_context,
-    get_highlight_context,
-    get_reading_behavior_context,
-    get_syllabus_context,
-)
+from backend.core.context_builder import build_context
 from backend.core.mode_detector import detect_mode
 from backend.core.level_detector import detect_level, response_level, LEVEL_DESCRIPTIONS
-from backend.user.profile_builder import update_from_conversation, get_user_context_string
+from backend.user.profile_builder import update_from_conversation
 from backend.user.context_extractor import extract_context, update_user_profile
-from backend.user.behavior_tracker import track_session, get_behavior_context_string
+from backend.user.behavior_tracker import track_session
+from backend.search.pipeline import run_search_pipeline
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -73,56 +68,49 @@ async def chat(msg: ChatMessage):
         user_level = detect_level(msg.message, history or None)
         resp_level = response_level(user_level)
 
-        # 6. Build graph context
-        graph_context, concepts_referenced = await build_context(msg.message)
-
-        # 7. Build user context (Layer 1 + Layer 3 behavior + library)
-        if msg.user_id:
-            user_context = await get_user_context_string(msg.user_id)
-            behavior_context = await get_behavior_context_string(msg.user_id)
-            if behavior_context:
-                user_context += "\n" + behavior_context
-            library_context = await get_library_context(msg.user_id)
-            if library_context:
-                user_context += "\n" + library_context
-            highlight_context = await get_highlight_context(msg.user_id)
-            if highlight_context:
-                user_context += "\n" + highlight_context
-            reading_context = await get_reading_behavior_context(msg.user_id)
-            if reading_context:
-                user_context += "\n" + reading_context
-            syllabus_context = await get_syllabus_context(msg.user_id)
-            if syllabus_context:
-                user_context += "\n" + syllabus_context
-        else:
-            user_context = "Anonymous user exploring the knowledge graph."
-
-        # Add language instruction
-        if msg.locale == "he":
-            user_context += "\nIMPORTANT: Respond in Hebrew. Use technical terms in English."
-        else:
-            user_context += "\nRespond in English."
-
-        # 8. Call appropriate mode
-        if active_mode == "tutor":
-            response_text = await tutor(
+        # 6-8. Run search pipeline (replaces old build_context + navigate/tutor)
+        socratic_level = min(resp_level, 2)
+        try:
+            pipeline_result = await run_search_pipeline(
                 user_message=msg.message,
-                graph_context=graph_context,
-                user_context=user_context,
+                conversation_history=history if history else None,
+                user_id=msg.user_id,
+                mode=active_mode,
                 level_description=LEVEL_DESCRIPTIONS[resp_level],
-                socratic_level=min(resp_level, 2),  # Cap at level 2 until user opts in
-                history=history if history else None,
+                socratic_level=socratic_level,
+                locale=msg.locale,
             )
-            insight = None  # Tutor doesn't add unsolicited insights
-        else:
-            # Navigator (default) or briefing (falls back to navigator for now)
-            response_text = await navigate(
-                user_message=msg.message,
-                graph_context=graph_context,
-                user_context=user_context,
-                history=history if history else None,
-            )
-            insight = _extract_insight(response_text)
+            response_text = pipeline_result.response_text
+            concepts_referenced = pipeline_result.concepts_referenced
+            insight = _extract_insight(response_text) if active_mode != "tutor" else None
+
+            if pipeline_result.token_usage.total > 0:
+                logger.info(
+                    f"Pipeline tokens: {pipeline_result.token_usage.total} "
+                    f"(stages: {pipeline_result.stages_completed})"
+                )
+        except Exception as e:
+            # Fallback to old pipeline if search pipeline fails entirely
+            logger.error(f"Search pipeline failed, falling back: {e}")
+            graph_context, concepts_referenced = await build_context(msg.message)
+            if active_mode == "tutor":
+                response_text = await tutor(
+                    user_message=msg.message,
+                    graph_context=graph_context,
+                    user_context="",
+                    level_description=LEVEL_DESCRIPTIONS[resp_level],
+                    socratic_level=socratic_level,
+                    history=history if history else None,
+                )
+                insight = None
+            else:
+                response_text = await navigate(
+                    user_message=msg.message,
+                    graph_context=graph_context,
+                    user_context="",
+                    history=history if history else None,
+                )
+                insight = _extract_insight(response_text)
 
         # 9. Save assistant response
         await db.save_message(

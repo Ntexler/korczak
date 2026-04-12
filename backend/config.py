@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     analysis_model: str = "claude-sonnet-4-20250514"
     navigator_model: str = "claude-sonnet-4-20250514"
+    haiku_model: str = "claude-haiku-4-5-20251001"
+    sonnet_model: str = "claude-sonnet-4-6-20250514"
 
     # Embeddings
     openai_api_key: str = ""  # For text-embedding-3-small

@@ -48,6 +48,37 @@ async def fetch_papers(
     }
 
 
+async def search_papers_by_keyword(
+    keyword: str,
+    from_year: int | None = None,
+    limit: int = 10,
+) -> list[dict]:
+    """Search OpenAlex for papers matching a keyword (uses the search parameter)."""
+    params = {
+        "search": keyword,
+        "per_page": limit,
+        "sort": "relevance_score:desc",
+        "select": (
+            "id,title,authorships,publication_year,abstract_inverted_index,"
+            "cited_by_count,doi,primary_location"
+        ),
+    }
+    if from_year:
+        params["filter"] = f"from_publication_date:{from_year}-01-01,has_abstract:true"
+    else:
+        params["filter"] = "has_abstract:true"
+
+    if settings.openalex_email:
+        params["mailto"] = settings.openalex_email
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{BASE_URL}/works", params=params, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+
+    return [_normalize_paper(p) for p in data.get("results", [])]
+
+
 def _normalize_paper(raw: dict) -> dict:
     """Normalize OpenAlex paper format to our internal format."""
     return {

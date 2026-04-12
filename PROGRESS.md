@@ -9,7 +9,38 @@ AI Knowledge Navigator that understands academic knowledge structure deeply and 
 
 ---
 
-## Current Phase: 9.0 — Advanced Visualization (COMPLETE)
+## Current Phase: 10.0 — Search Pipeline (COMPLETE)
+**Status:** Full 5-stage pipeline built — Query Analysis → Parallel Retrieval → Coverage Check → Synthesis → Skeptic Review
+**Goal:** Replace simple keyword-based context building with intelligent multi-stage search using embeddings, parallel retrieval, and adversarial review.
+
+### Phase 10 — Search Pipeline (COMPLETE)
+- [x] DB Migration 018: tsvector column on papers + GIN index + 3 new RPCs (fulltext_search_papers, search_concepts_by_embedding, search_claims_by_embedding)
+- [x] New module: `backend/search/` — 8 files (models, cache, embeddings, prompts, retrievers, stages, pipeline)
+- [x] Stage 1: Query Analysis (Haiku) — intent detection, concept extraction, sub-query generation
+- [x] Stage 2: Parallel Retrieval (asyncio.gather) — 5 retrievers: semantic (pgvector), graph (existing DB), citations (OpenAlex), user context (6 layers), controversies
+- [x] Stage 3: Coverage Check (Haiku) — max 2 retries, skip if bundle is rich (20+ items, 3+ sources)
+- [x] Stage 4: Synthesis (Sonnet) — mode-aware (navigator/tutor/briefing), inline source attribution
+- [x] Stage 5: Skeptic Review (Sonnet) — missing perspectives, overconfidence, source bias, scope creep; max 1 revision
+- [x] Claude client upgraded: `ClaudeResponse` dataclass with token counting (backward-compatible)
+- [x] Supabase client: 3 new helpers (semantic_search_concepts, semantic_search_claims, fulltext_search_papers)
+- [x] OpenAlex client: `search_papers_by_keyword()` — keyword search (previously unused in chat flow)
+- [x] Embedding helper: async OpenAI text-embedding-3-small calls with TTLCache
+- [x] Pipeline cache: in-memory TTLCache (embedding 1h, analysis 5m, full result 2m)
+- [x] Graceful fallback: if pipeline fails, old build_context + navigate/tutor still works
+- [x] Config: haiku_model + sonnet_model settings added
+- [x] Integration tests: 7 tests (5 query types + Hebrew + caching)
+
+### Phase 10 Summary
+- **Architecture**: Simple keyword→ILIKE→Claude → 5-stage pipeline with parallel retrieval + adversarial review
+- **New files**: 8 (search/ module) + 1 migration + 1 test file
+- **Modified files**: 6 (chat.py, claude_client.py, supabase_client.py, openalex_client.py, config.py, requirements.txt)
+- **Model routing**: Haiku for analysis+coverage (cheap), Sonnet for synthesis+skeptic (quality)
+- **Token tracking**: Every Claude call now returns input_tokens + output_tokens
+- **Packages**: cachetools
+
+---
+
+## Previous Phase: 9.0 — Advanced Visualization (COMPLETE)
 **Status:** All features implemented — 5 Graph Views, 5 Visual Lenses, Graph Settings Panel
 **Goal:** Make invisible knowledge structures visible through multiple visualization modes and analytical lenses.
 
@@ -360,6 +391,16 @@ frontend/
 
 ## Completed
 
+### 2026-04-12 — Phase 10: Search Pipeline
+- [x] 5-stage pipeline: Query Analysis → Parallel Retrieval → Coverage Check → Synthesis → Skeptic Review
+- [x] DB Migration 018: tsvector + GIN index + 3 RPCs (fulltext_search, concept/claim embedding search)
+- [x] 8 new files in backend/search/ module
+- [x] Claude client upgraded with token counting (ClaudeResponse dataclass)
+- [x] 5 retrievers running in parallel: semantic, graph, citations, user context, controversies
+- [x] Model routing: Haiku for fast stages, Sonnet for quality stages
+- [x] Graceful fallback to old pipeline on failure
+- [x] 7 integration tests
+
 ### 2026-04-12 — Phase 9: Advanced Visualization
 - [x] Refactored KnowledgeGraph into modular shell + pluggable views architecture (10 new files)
 - [x] 5 Graph Views: Force (existing), Hierarchical (d3.tree), Radial (d3.cluster), Geographic (TopoJSON world map), Sankey (d3-sankey idea flow)
@@ -503,4 +544,5 @@ frontend/
 - [x] Phase 6: Knowledge Liberation (Rich Map, Transparency, Translation)
 - [x] Phase 7: Academic Social Network (profiles, summaries, collaborative editing)
 - [x] Phase 8: Timeline of Knowledge (evolution tracking, animated history)
-- [x] **Phase 9: Advanced Visualization (5 views, 5 lenses, graph settings)** ← JUST COMPLETED
+- [x] Phase 9: Advanced Visualization (5 views, 5 lenses, graph settings)
+- [x] **Phase 10: Search Pipeline (5-stage: analysis → retrieval → coverage → synthesis → skeptic)** ← JUST COMPLETED

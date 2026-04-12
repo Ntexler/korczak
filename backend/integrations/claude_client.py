@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import dataclass
 
 import httpx
 
@@ -12,6 +13,18 @@ from backend.config import settings
 API_URL = "https://api.anthropic.com/v1/messages"
 
 
+@dataclass
+class ClaudeResponse:
+    """Response from Claude API with token usage."""
+    text: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens
+
+
 async def analyze_paper(title: str, authors: str, year: int, abstract: str) -> dict:
     """Analyze a paper using the Phase 0.5 prompt."""
     from backend.prompts.paper_analysis import ANALYSIS_PROMPT
@@ -20,7 +33,7 @@ async def analyze_paper(title: str, authors: str, year: int, abstract: str) -> d
         title=title, authors=authors, year=year, abstract=abstract,
     )
     response = await _call_claude(prompt, model=settings.analysis_model, max_tokens=2000)
-    return _parse_json_response(response)
+    return _parse_json_response(response.text)
 
 
 async def navigate(
@@ -42,13 +55,14 @@ async def navigate(
         for msg in history[-6:]:  # Last 3 exchanges = 6 messages max
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": user_message})
-        return await _call_claude_messages(
+        result = await _call_claude_messages(
             messages=messages, model=settings.navigator_model, system=system, max_tokens=1500,
         )
     else:
-        return await _call_claude(
+        result = await _call_claude(
             user_message, model=settings.navigator_model, system=system, max_tokens=1500,
         )
+    return result.text
 
 
 async def tutor(
@@ -74,15 +88,16 @@ async def tutor(
         for msg in history[-6:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": user_message})
-        return await _call_claude_messages(
+        result = await _call_claude_messages(
             messages=messages, model=settings.navigator_model, system=system,
             max_tokens=1200, temperature=0.4,
         )
     else:
-        return await _call_claude(
+        result = await _call_claude(
             user_message, model=settings.navigator_model, system=system,
             max_tokens=1200, temperature=0.4,
         )
+    return result.text
 
 
 async def _call_claude(
@@ -91,8 +106,8 @@ async def _call_claude(
     system: str | None = None,
     max_tokens: int = 1500,
     temperature: float = 0.3,
-) -> str:
-    """Low-level Claude API call."""
+) -> ClaudeResponse:
+    """Low-level Claude API call. Returns ClaudeResponse with text + token counts."""
     headers = {
         "x-api-key": settings.anthropic_api_key,
         "content-type": "application/json",
@@ -114,7 +129,13 @@ async def _call_claude(
             error_msg = error_body.get("error", {}).get("message", resp.text)
             logger.error(f"Claude API error {resp.status_code}: {error_msg}")
             raise RuntimeError(f"Claude API error: {error_msg}")
-        return resp.json()["content"][0]["text"]
+        data = resp.json()
+        usage = data.get("usage", {})
+        return ClaudeResponse(
+            text=data["content"][0]["text"],
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+        )
 
 
 async def _call_claude_messages(
@@ -123,8 +144,8 @@ async def _call_claude_messages(
     system: str | None = None,
     max_tokens: int = 1500,
     temperature: float = 0.3,
-) -> str:
-    """Claude API call with full messages array (for multi-turn)."""
+) -> ClaudeResponse:
+    """Claude API call with full messages array (for multi-turn). Returns ClaudeResponse."""
     headers = {
         "x-api-key": settings.anthropic_api_key,
         "content-type": "application/json",
@@ -146,7 +167,13 @@ async def _call_claude_messages(
             error_msg = error_body.get("error", {}).get("message", resp.text)
             logger.error(f"Claude API error {resp.status_code}: {error_msg}")
             raise RuntimeError(f"Claude API error: {error_msg}")
-        return resp.json()["content"][0]["text"]
+        data = resp.json()
+        usage = data.get("usage", {})
+        return ClaudeResponse(
+            text=data["content"][0]["text"],
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+        )
 
 
 def _parse_json_response(text: str) -> dict:

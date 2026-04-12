@@ -183,6 +183,38 @@ async def list_concepts(
     return result.data
 
 
+# -- Search pipeline helpers --
+
+async def semantic_search_concepts(query_embedding: list[float], threshold: float = 0.7, limit: int = 10) -> list[dict]:
+    """Semantic search on concepts via pgvector embedding similarity."""
+    client = get_client()
+    result = client.rpc(
+        "search_concepts_by_embedding",
+        {"query_embedding": query_embedding, "match_threshold": threshold, "match_count": limit},
+    ).execute()
+    return result.data
+
+
+async def semantic_search_claims(query_embedding: list[float], threshold: float = 0.6, limit: int = 10) -> list[dict]:
+    """Semantic search on claims via pgvector embedding similarity."""
+    client = get_client()
+    result = client.rpc(
+        "search_claims_by_embedding",
+        {"query_embedding": query_embedding, "match_threshold": threshold, "match_count": limit},
+    ).execute()
+    return result.data
+
+
+async def fulltext_search_papers(query: str, limit: int = 10) -> list[dict]:
+    """Full-text search on papers using tsvector + websearch_to_tsquery."""
+    client = get_client()
+    result = client.rpc(
+        "fulltext_search_papers",
+        {"search_query": query, "match_count": limit},
+    ).execute()
+    return result.data
+
+
 async def create_conversation(mode: str = "navigator", user_id: str | None = None) -> dict:
     """Create a new conversation."""
     client = get_client()
