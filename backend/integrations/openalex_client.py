@@ -82,7 +82,7 @@ async def search_papers_by_keyword(
 def _normalize_paper(raw: dict) -> dict:
     """Normalize OpenAlex paper format to our internal format."""
     return {
-        "openalex_id": raw.get("id", "").split("/")[-1],
+        "openalex_id": (raw.get("id") or "").split("/")[-1],
         "title": raw.get("title", ""),
         "authors": _extract_authors(raw.get("authorships", [])),
         "publication_year": raw.get("publication_year"),
@@ -90,10 +90,8 @@ def _normalize_paper(raw: dict) -> dict:
         "doi": raw.get("doi"),
         "cited_by_count": raw.get("cited_by_count", 0),
         "source_journal": (
-            raw.get("primary_location", {}).get("source", {}).get("display_name")
-            if raw.get("primary_location")
-            else None
-        ),
+            (raw.get("primary_location") or {}).get("source") or {}
+        ).get("display_name"),
     }
 
 
@@ -109,7 +107,7 @@ def _extract_authors(authorships: list) -> list[dict]:
         )
         authors.append({
             "name": author.get("display_name", "Unknown"),
-            "openalex_id": author.get("id", "").split("/")[-1],
+            "openalex_id": (author.get("id") or "").split("/")[-1],
             "orcid": author.get("orcid"),
             "institution": institution,
         })
