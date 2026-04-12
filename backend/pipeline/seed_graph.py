@@ -40,7 +40,33 @@ DOMAINS = {
         "label": "Sleep and Wakefulness Research",
         "target": 2500,
     },
+    "cognitive_science": {
+        "topic_id": "https://openalex.org/T10466",
+        "label": "Cognitive Science and Decision Making",
+        "target": 2500,
+    },
+    "philosophy_of_mind": {
+        "topic_id": "https://openalex.org/T11618",
+        "label": "Philosophy of Mind and Consciousness",
+        "target": 2500,
+    },
+    "linguistics": {
+        "topic_id": "https://openalex.org/T10641",
+        "label": "Linguistics and Language Evolution",
+        "target": 2500,
+    },
+    "sociology": {
+        "topic_id": "https://openalex.org/T10276",
+        "label": "Sociology and Social Theory",
+        "target": 2500,
+    },
 }
+
+# --- Budget Tracking ---
+COST_PER_INPUT_TOKEN = 3.0 / 1_000_000   # Sonnet input
+COST_PER_OUTPUT_TOKEN = 15.0 / 1_000_000  # Sonnet output
+budget_spent = 0.0
+budget_limit = 50.0
 
 # Supabase REST helpers
 HEADERS_SUPABASE = {
@@ -129,8 +155,15 @@ def normalize_paper(raw: dict) -> dict:
 
 def analyze_paper(title: str, authors_str: str, year: int, abstract: str) -> dict | None:
     """Analyze a paper with Claude. Returns parsed JSON or None on failure."""
+    global budget_spent
+
     if not abstract or len(abstract) < 50:
         return None
+
+    # Budget check
+    if budget_spent >= budget_limit:
+        print(f"\n*** BUDGET LIMIT REACHED (${budget_spent:.2f} / ${budget_limit:.2f}) ***")
+        return "STOP"
 
     prompt = ANALYSIS_PROMPT.format(
         title=title, authors=authors_str, year=year, abstract=abstract,
@@ -161,7 +194,15 @@ def analyze_paper(title: str, authors_str: str, year: int, abstract: str) -> dic
             return "STOP"
 
         resp.raise_for_status()
-        text = resp.json()["content"][0]["text"]
+        data = resp.json()
+        text = data["content"][0]["text"]
+
+        # Track cost
+        usage = data.get("usage", {})
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+        call_cost = (input_tokens * COST_PER_INPUT_TOKEN) + (output_tokens * COST_PER_OUTPUT_TOKEN)
+        budget_spent += call_cost
 
         # Parse JSON from response
         if "```json" in text:
@@ -341,9 +382,12 @@ def seed_domain(domain_key: str, limit: int, skip_analysis: bool = False):
     total_errors = 0
     batch_num = 0
 
+    consecutive_skips = 0
+    max_consecutive_skips = 200  # Stop if 200 papers in a row are all duplicates
+
     while total_inserted < limit:
         batch_num += 1
-        per_page = min(50, limit - total_inserted)
+        per_page = min(50, limit - total_inserted + 10)  # fetch a few extra to account for skips
         print(f"\n--- Batch {batch_num} (fetching {per_page}) ---")
 
         try:
@@ -369,12 +413,23 @@ def seed_domain(domain_key: str, limit: int, skip_analysis: bool = False):
             })
             if existing:
                 total_skipped += 1
+                consecutive_skips += 1
+                if consecutive_skips >= max_consecutive_skips:
+                    print(f"  Skipped {consecutive_skips} in a row — all existing, moving to next domain")
+                    return total_inserted
                 continue
 
             # Skip if no abstract
             if not paper["abstract"] or len(paper["abstract"]) < 50:
                 total_skipped += 1
                 continue
+
+            consecutive_skips = 0  # reset on new paper found
+
+            # Budget check
+            if budget_spent >= budget_limit:
+                print(f"\n*** BUDGET LIMIT (${budget_spent:.2f}/${budget_limit:.2f}) ***")
+                return total_inserted
 
             title_short = paper["title"][:55] if paper["title"] else "?"
             print(f"  [{total_inserted+1}/{limit}] {title_short}...")
@@ -415,7 +470,7 @@ def seed_domain(domain_key: str, limit: int, skip_analysis: bool = False):
                         total_inserted += 1
                         n_c = len(analysis.get("concepts", []))
                         n_r = len(analysis.get("relationships", []))
-                        print(f"    -> {n_c} concepts, {n_r} relationships")
+                        print(f"    -> {n_c} concepts, {n_r} rels | ${budget_spent:.2f}/${budget_limit:.2f}")
                     else:
                         total_errors += 1
                 else:
@@ -434,18 +489,24 @@ def seed_domain(domain_key: str, limit: int, skip_analysis: bool = False):
     print(f"  Analyzed: {total_analyzed}")
     print(f"  Skipped:  {total_skipped}")
     print(f"  Errors:   {total_errors}")
+    print(f"  Budget:   ${budget_spent:.2f} / ${budget_limit:.2f}")
     return total_inserted
 
 
 def main():
+    global budget_limit, budget_spent
+
     sys.stdout.reconfigure(encoding="utf-8")
 
     parser = argparse.ArgumentParser(description="Seed Korczak knowledge graph")
     parser.add_argument("--domain", choices=list(DOMAINS.keys()), help="Domain to seed")
     parser.add_argument("--all", action="store_true", help="Seed all domains")
-    parser.add_argument("--limit", type=int, default=10, help="Papers per domain")
+    parser.add_argument("--limit", type=int, default=2500, help="Papers per domain")
+    parser.add_argument("--budget", type=float, default=50.0, help="Max budget in USD")
     parser.add_argument("--skip-analysis", action="store_true", help="Insert papers without Claude analysis (testing)")
     args = parser.parse_args()
+
+    budget_limit = args.budget
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         print("ERROR: Set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env")
@@ -458,12 +519,20 @@ def main():
     if not args.all and not args.domain:
         parser.error("Specify --domain or --all")
 
+    print(f"Budget: ${budget_limit:.2f}")
+    print(f"Domains: {', '.join(domains_to_seed)}")
+    print(f"Limit per domain: {args.limit}")
+
     total = 0
     for d in domains_to_seed:
+        if budget_spent >= budget_limit:
+            print(f"\n*** Budget exhausted (${budget_spent:.2f}) — skipping {d} ***")
+            break
         total += seed_domain(d, args.limit, args.skip_analysis)
 
     print(f"\n{'='*60}")
     print(f"TOTAL PAPERS SEEDED: {total}")
+    print(f"TOTAL COST: ${budget_spent:.2f} / ${budget_limit:.2f}")
     print(f"{'='*60}")
 
 
