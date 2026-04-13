@@ -188,6 +188,7 @@ async def run_search_pipeline(
                     concept_type=primary_concept_type or "theory",
                     student_profile=student_profile,
                     concept_name=analysis.concepts[0] if analysis.concepts else "",
+                    mode=mode,
                     related_concepts=analysis.concepts[1:5] if len(analysis.concepts) > 1 else None,
                     student_knows=student_knows if student_knows else None,
                 )

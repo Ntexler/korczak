@@ -1,8 +1,9 @@
-"""Active Learning API — contradiction detection, depth slider, quiz mode."""
+"""Active Learning API — contradiction detection, depth slider, quiz mode, teaching preferences."""
 
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -99,4 +100,100 @@ async def generate_quiz(
         raise
     except Exception as e:
         logger.error(f"Quiz generation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Teaching Preferences (Settings UI) ─────────────────────────────────────
+
+class TeachingPreferencesUpdate(BaseModel):
+    formality: int | None = None       # -2 to 2
+    questioning: int | None = None     # -2 to 2
+    depth: int | None = None           # -2 to 2
+    examples: int | None = None        # -1 to 2
+    encouragement: int | None = None   # -2 to 1
+    tangents: int | None = None        # -1 to 2
+
+
+@router.get("/preferences")
+async def get_teaching_preferences(user_id: str = Query(default="mock-user")):
+    """Get current teaching preference settings for a user.
+
+    Returns all 6 dimensions with current values and metadata.
+    """
+    try:
+        from backend.core.teaching_preferences import (
+            get_user_preferences,
+            PREFERENCE_DIMENSIONS,
+        )
+        prefs = await get_user_preferences(user_id)
+        dimensions = []
+        for dim, config in PREFERENCE_DIMENSIONS.items():
+            dimensions.append({
+                "key": dim,
+                "value": prefs.get(dim, config["default"]),
+                "min": config["range"][0],
+                "max": config["range"][1],
+                "default": config["default"],
+                "description": config["description"],
+            })
+        return {"preferences": dimensions, "user_id": user_id}
+    except Exception as e:
+        logger.error(f"Get preferences error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/preferences")
+async def update_teaching_preferences(
+    update: TeachingPreferencesUpdate,
+    user_id: str = Query(default="mock-user"),
+):
+    """Update teaching preferences from Settings UI.
+
+    Each dimension is optional — only provided values are updated.
+    These are always PERMANENT changes (user explicitly setting via UI).
+    """
+    try:
+        from backend.core.teaching_preferences import (
+            get_user_preferences,
+            PREFERENCE_DIMENSIONS,
+        )
+        from backend.integrations.supabase_client import get_client
+
+        current = await get_user_preferences(user_id)
+
+        # Apply only provided values, clamp to valid range
+        updates = update.model_dump(exclude_none=True)
+        for dim, val in updates.items():
+            if dim in PREFERENCE_DIMENSIONS:
+                config = PREFERENCE_DIMENSIONS[dim]
+                current[dim] = max(config["range"][0], min(config["range"][1], val))
+
+        # Save
+        client = get_client()
+        client.table("user_profiles").update({
+            "teaching_preferences": current,
+        }).eq("user_id", user_id).execute()
+
+        return {"status": "updated", "preferences": current}
+    except Exception as e:
+        logger.error(f"Update preferences error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/preferences/reset")
+async def reset_teaching_preferences(user_id: str = Query(default="mock-user")):
+    """Reset all teaching preferences to defaults."""
+    try:
+        from backend.core.teaching_preferences import PREFERENCE_DIMENSIONS
+        from backend.integrations.supabase_client import get_client
+
+        defaults = {dim: config["default"] for dim, config in PREFERENCE_DIMENSIONS.items()}
+        client = get_client()
+        client.table("user_profiles").update({
+            "teaching_preferences": defaults,
+        }).eq("user_id", user_id).execute()
+
+        return {"status": "reset", "preferences": defaults}
+    except Exception as e:
+        logger.error(f"Reset preferences error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

@@ -3,12 +3,25 @@
 Korczak knows WHAT to teach (from the knowledge graph).
 This module teaches Korczak HOW to teach (from pedagogical research).
 
-Core ideas:
-1. Concept types need different teaching approaches
-2. Students have different learning profiles
-3. The same concept should be taught differently based on context
-4. Effective teaching follows research-backed patterns
-5. Misconceptions need specific remediation strategies
+Research-backed principles (updated April 2026):
+1. DEFAULT IS PEER, NOT TEACHER — teaching behavior only activates in tutor
+   mode or when user explicitly asks to learn. Navigator = knowledgeable colleague.
+   (Baylor & Kim 2005: co-learner agents > tutor agents for adult self-efficacy)
+2. ISRAELI TONE — direct, no hedging, no hollow praise, embrace intellectual
+   challenge. Low power distance culture. "Great question!" is patronizing.
+   (Cultural Atlas: Israeli communication; Knowles' andragogy for adult learners)
+3. EXPERTISE REVERSAL — scaffolding that helps beginners HARMS experts.
+   Must fade support as understanding grows, per-concept not globally.
+   (Kalyuga et al; 2025 meta-analysis on adaptive fading)
+4. FRUSTRATION-SENSITIVE — detect short responses, repeated questions,
+   "just tell me" signals, and drop Socratic level immediately.
+   (Dan Meyer: "AI tutors don't know when to stop shutting up")
+5. GRAPH-AWARE PROMPTS — every question must reference real graph data.
+   "How does X relate to Y?" only when the relationship actually exists.
+   (Guo 2022 meta-analysis: specific prompts >> generic "what do you think?")
+6. DESIRABLE DIFFICULTIES — in tutor mode, make user generate answers
+   before revealing them. But NEVER during casual exploration.
+   (Bjork: spacing, interleaving, retrieval practice)
 """
 
 import logging
@@ -306,60 +319,99 @@ def build_teaching_context(
     concept_type: str,
     student_profile: str,
     concept_name: str,
+    mode: str = "navigator",
     related_concepts: list[str] | None = None,
     student_knows: list[str] | None = None,
     misconceptions: list[str] | None = None,
 ) -> str:
     """Build a pedagogical instruction block to inject into Claude prompts.
 
-    This is the key function — it translates pedagogy into prompt instructions.
+    CRITICAL: In navigator mode, this is MINIMAL — just tone and student context.
+    Full teaching instructions only inject in tutor mode.
+    Research: default must be "peer", not "teacher" (Baylor & Kim 2005).
     """
     strategy = get_teaching_strategy(concept_type)
     profile = get_learning_profile(student_profile)
 
-    lines = [
-        "=== TEACHING INSTRUCTIONS (from Pedagogy Engine) ===",
-        "",
-        f"CONCEPT TYPE: {concept_type}",
-        f"TEACHING APPROACH: {strategy['approach']}",
-        f"STRATEGY: {strategy['description']}",
-        "",
-        "STEPS TO FOLLOW:",
-    ]
+    lines = []
+
+    # ── Navigator mode: lightweight peer context ──
+    if mode != "tutor":
+        lines.append("=== CONVERSATION CONTEXT ===")
+        lines.append("")
+        lines.append("IMPORTANT: You are a knowledgeable COLLEAGUE, not a teacher.")
+        lines.append("Talk at eye level. Be direct. No hollow praise ('Great question!').")
+        lines.append("Share knowledge like a peer who happens to know more about this topic.")
+        lines.append("If something is debated — say so directly with both sides.")
+        lines.append("")
+
+        if student_knows:
+            lines.append(f"USER ALREADY KNOWS: {', '.join(student_knows[:10])}")
+            lines.append("  → Don't explain these. Reference them as shared knowledge.")
+            lines.append("")
+
+        if related_concepts:
+            lines.append(f"RELATED TOPICS TO WEAVE IN (if natural): {', '.join(related_concepts[:5])}")
+            lines.append("")
+
+        lines.append("=== END CONTEXT ===")
+        return "\n".join(lines)
+
+    # ── Tutor mode: full pedagogical instructions ──
+    lines.append("=== TEACHING INSTRUCTIONS (Tutor Mode) ===")
+    lines.append("")
+    lines.append(f"CONCEPT TYPE: {concept_type}")
+    lines.append(f"TEACHING APPROACH: {strategy['approach']}")
+    lines.append(f"STRATEGY: {strategy['description']}")
+    lines.append("")
+    lines.append("STEPS:")
 
     for i, step in enumerate(strategy["steps"], 1):
         lines.append(f"  {i}. {step}")
 
     lines.append("")
-    lines.append("COMMON TEACHING MISTAKES TO AVOID:")
+    lines.append("AVOID:")
     for mistake in strategy["common_mistakes"]:
         lines.append(f"  - {mistake}")
+    # Research-backed additions
+    lines.append("  - Starting with praise ('Great question!', 'Fascinating topic!')")
+    lines.append("  - Explaining things the student already knows (expertise reversal effect)")
+    lines.append("  - Asking more than 1 question per response unless student is deeply engaged")
+    lines.append("  - Hedging ('This might be complex...') — just explain directly")
 
     lines.append("")
-    lines.append(f"ANALOGY GUIDANCE: {strategy.get('analogy_prompt', '')}")
+    lines.append(f"ANALOGY: {strategy.get('analogy_prompt', '')}")
 
     lines.append("")
     lines.append(f"STUDENT PROFILE: {student_profile}")
-    lines.append(f"  {profile['description']}")
-    lines.append(f"  ADAPTATION: {profile['strategy']}")
+    lines.append(f"  {profile['strategy']}")
     lines.append(f"  TONE: {profile['tone']}")
-    lines.append(f"  RISK: {profile['risk']}")
 
     if student_knows:
         lines.append("")
         lines.append(f"STUDENT ALREADY KNOWS: {', '.join(student_knows[:10])}")
-        lines.append("  → Connect new concept to these. Build bridges, don't repeat.")
+        lines.append("  → Skip basics for these. Build bridges to new concept.")
+        lines.append("  → If they reference these, match their level immediately.")
 
     if related_concepts:
         lines.append("")
-        lines.append(f"RELATED CONCEPTS TO WEAVE IN: {', '.join(related_concepts[:5])}")
+        lines.append(f"RELATED CONCEPTS (from graph): {', '.join(related_concepts[:5])}")
+        lines.append("  → Use these for genuine prompts: 'How does X connect to Y?'")
+        lines.append("  → Only ask if the connection EXISTS in the graph.")
 
     if misconceptions:
         lines.append("")
-        lines.append("KNOWN MISCONCEPTIONS TO ADDRESS:")
+        lines.append("KNOWN MISCONCEPTIONS:")
         for m in misconceptions[:3]:
             lines.append(f"  - {m}")
+        lines.append("  → Address directly: 'Actually, the evidence shows...'")
 
+    lines.append("")
+    lines.append("FRUSTRATION SIGNALS (drop to direct mode immediately):")
+    lines.append("  - Short responses ('ok', 'sure', 'I see')")
+    lines.append("  - Repeated same question")
+    lines.append("  - 'just tell me', 'I know', 'skip this'")
+    lines.append("  - If detected: give the answer directly, then offer depth.")
     lines.append("")
     lines.append("=== END TEACHING INSTRUCTIONS ===")
 
