@@ -14,12 +14,15 @@ import {
   FileArchive,
   MessageCircle,
   Brain,
+  List,
+  GitFork,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
 import { exportFieldToObsidian, exportAnkiDeck } from "@/lib/api";
 import SyllabusNav from "./SyllabusNav";
 import ContentPanel from "./ContentPanel";
+import ConceptGraph from "./ConceptGraph";
 import ProgressBar from "./ProgressBar";
 import VaultUpload from "@/components/Vault/VaultUpload";
 import InsightsPanel from "@/components/Vault/InsightsPanel";
@@ -51,6 +54,7 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [ankiExported, setAnkiExported] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
   const [vaultAnalysis, setVaultAnalysis] = useState<any>(null);
+  const [leftView, setLeftView] = useState<"graph" | "list">("graph");
 
   const userId = "mock-user";
   const he = locale === "he";
@@ -257,9 +261,42 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
 
       {/* ---- Main 3-panel layout ---- */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Syllabus Nav */}
-        <aside className="w-[280px] shrink-0 border-r border-border bg-surface overflow-hidden hidden md:block">
-          <SyllabusNav field={field} onSelectConcept={setSelectedConcept} />
+        {/* Left: Graph or Syllabus Nav */}
+        <aside className={`${leftView === "graph" ? "w-[400px]" : "w-[280px]"} shrink-0 border-r border-border bg-surface overflow-hidden hidden md:flex flex-col transition-all`}>
+          {/* View toggle */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+            <span className="text-[10px] text-text-tertiary uppercase tracking-wider">
+              {leftView === "graph" ? (he ? "גרף ידע" : "Knowledge Graph") : (he ? "סילבוס" : "Syllabus")}
+            </span>
+            <div className="flex items-center rounded border border-border bg-surface-sunken">
+              <button
+                onClick={() => setLeftView("graph")}
+                className={`p-1.5 transition-colors ${leftView === "graph" ? "text-accent-gold bg-accent-gold/10" : "text-text-tertiary hover:text-text-secondary"}`}
+                title={he ? "גרף" : "Graph"}
+              >
+                <GitFork size={13} />
+              </button>
+              <button
+                onClick={() => setLeftView("list")}
+                className={`p-1.5 transition-colors ${leftView === "list" ? "text-accent-gold bg-accent-gold/10" : "text-text-tertiary hover:text-text-secondary"}`}
+                title={he ? "רשימה" : "List"}
+              >
+                <List size={13} />
+              </button>
+            </div>
+          </div>
+          {/* Content */}
+          <div className="flex-1 overflow-hidden">
+            {leftView === "graph" ? (
+              <ConceptGraph
+                field={field}
+                onSelectConcept={setSelectedConcept}
+                selectedConceptId={selectedConcept}
+              />
+            ) : (
+              <SyllabusNav field={field} onSelectConcept={setSelectedConcept} />
+            )}
+          </div>
         </aside>
 
         {/* Center: Content Panel */}

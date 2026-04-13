@@ -531,29 +531,58 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
 
         concepts = client.table("concepts").select(
             "id, name, type, definition, paper_count, confidence"
-        ).in_("id", list(concept_ids)).order("paper_count", desc=True).limit(60).execute()
+        ).in_("id", list(concept_ids)).order("paper_count", desc=True).limit(80).execute()
 
         items = concepts.data or []
-        weeks = []
-        for i in range(0, len(items), 4):
-            week_items = items[i:i + 4]
-            week_num = (i // 4) + 1
-            if week_num <= 3:
-                week_label = "Foundations" if week_num == 1 else f"Core Concepts {week_num}"
-            elif week_num <= 7:
-                week_label = f"Intermediate — Week {week_num}"
-            else:
-                week_label = f"Advanced — Week {week_num}"
 
-            weeks.append({
-                "week_number": week_num,
-                "title": week_label,
-                "concepts": [
-                    {"id": c["id"], "name": c["name"], "type": c["type"],
-                     "definition": c.get("definition", ""), "paper_count": c.get("paper_count", 0)}
-                    for c in week_items
-                ],
-            })
+        # Smart distribution: group by importance tiers, then by type within each tier
+        # Tier 1 (Foundations): top 20% by paper_count — most cited = foundational
+        # Tier 2 (Core): next 30%
+        # Tier 3 (Intermediate): next 30%
+        # Tier 4 (Advanced): bottom 20%
+        total = len(items)
+        tier_cuts = [
+            int(total * 0.15),   # foundations
+            int(total * 0.40),   # core
+            int(total * 0.70),   # intermediate
+            total,               # advanced
+        ]
+
+        tier_labels = [
+            ("Foundations", "יסודות"),
+            ("Core Concepts", "מושגי ליבה"),
+            ("Intermediate", "רמה בינונית"),
+            ("Advanced", "מתקדם"),
+        ]
+
+        weeks = []
+        week_num = 0
+        for tier_idx in range(4):
+            start = 0 if tier_idx == 0 else tier_cuts[tier_idx - 1]
+            end = tier_cuts[tier_idx]
+            tier_items = items[start:end]
+            if not tier_items:
+                continue
+
+            # Split tier into weeks of 5-8 concepts
+            per_week = max(5, min(8, len(tier_items) // 2 + 1))
+            for chunk_start in range(0, len(tier_items), per_week):
+                chunk = tier_items[chunk_start:chunk_start + per_week]
+                week_num += 1
+                label_en, label_he = tier_labels[tier_idx]
+                if chunk_start > 0:
+                    label_en = f"{label_en} (cont.)"
+                    label_he = f"{label_he} (המשך)"
+
+                weeks.append({
+                    "week_number": week_num,
+                    "title": label_en,
+                    "concepts": [
+                        {"id": c["id"], "name": c["name"], "type": c.get("type", "concept"),
+                         "definition": c.get("definition", ""), "paper_count": c.get("paper_count", 0)}
+                        for c in chunk
+                    ],
+                })
 
         return {
             "department": field_name,
