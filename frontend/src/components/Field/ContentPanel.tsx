@@ -448,9 +448,18 @@ export default function ContentPanel({
     <div className="h-full overflow-y-auto">
       {/* Lesson header */}
       <div className="px-6 pt-6 pb-4 border-b border-border">
-        <div className="flex items-center gap-2 text-[10px] text-text-tertiary uppercase tracking-wider mb-2">
-          <BookOpen size={11} />
-          {he ? "שיעור" : "Lesson"} — {field}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-[10px] text-text-tertiary uppercase tracking-wider">
+            <BookOpen size={11} />
+            {he ? "שיעור" : "Lesson"} — {field}
+          </div>
+          <button
+            onClick={() => setSelectedConcept(null)}
+            className="p-1.5 rounded-md hover:bg-surface-hover text-text-tertiary hover:text-foreground transition-colors"
+            title={he ? "סגור" : "Close"}
+          >
+            <span className="text-lg leading-none">&times;</span>
+          </button>
         </div>
         <h2 className="text-2xl font-bold text-foreground mb-1">{concept.name}</h2>
         <div className="flex items-center gap-2">
@@ -887,6 +896,20 @@ function QuizCard({
   he: boolean;
 }) {
   const isLast = index >= total - 1;
+  const [userAnswer, setUserAnswer] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = () => {
+    if (!userAnswer.trim()) return;
+    setSubmitted(true);
+    onReveal();
+  };
+
+  const handleNext = () => {
+    setUserAnswer("");
+    setSubmitted(false);
+    onNext();
+  };
 
   return (
     <div className="rounded-xl border-2 border-accent-gold/30 bg-accent-gold/5 p-5 space-y-4">
@@ -917,39 +940,83 @@ function QuizCard({
         </p>
       )}
 
-      {/* Answer */}
+      {/* Answer area */}
       {showAnswer ? (
-        <div className="bg-surface rounded-lg p-3 border border-border">
-          <p className="text-sm text-text-secondary leading-relaxed">{question.answer}</p>
-          <div className="flex gap-2 mt-3">
+        <div className="space-y-3">
+          {/* User's answer */}
+          {submitted && userAnswer && (
+            <div className="bg-surface rounded-lg p-3 border border-border">
+              <p className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">
+                {he ? "התשובה שלך" : "Your answer"}
+              </p>
+              <p className="text-sm text-foreground leading-relaxed">{userAnswer}</p>
+            </div>
+          )}
+
+          {/* Correct answer */}
+          <div className="bg-accent-green/5 rounded-lg p-3 border border-accent-green/20">
+            <p className="text-[10px] text-accent-green uppercase tracking-wider mb-1">
+              {he ? "התשובה" : "Answer"}
+            </p>
+            <p className="text-sm text-text-secondary leading-relaxed">{question.answer}</p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
             {!isLast && (
               <button
-                onClick={onNext}
+                onClick={handleNext}
                 className="px-3 py-1.5 rounded text-xs bg-accent-gold/10 text-accent-gold hover:bg-accent-gold/20 transition-colors"
               >
                 {he ? "הבא" : "Next"} &rarr;
               </button>
             )}
             <button
-              onClick={() => onSend(question.question)}
+              onClick={() => onSend(
+                he
+                  ? `נתח את התשובה שלי על "${question.question}": "${userAnswer}". תגיד לי מה נכון, מה חסר, ומה לא מדויק.`
+                  : `Analyze my answer to "${question.question}": "${userAnswer}". Tell me what's correct, what's missing, and what's inaccurate.`
+              )}
               className="px-3 py-1.5 rounded text-xs bg-surface-sunken text-text-secondary hover:text-foreground transition-colors"
             >
               <span className="flex items-center gap-1">
                 <MessageCircle size={10} />
-                {he ? "שאל את קורצאק" : "Ask Korczak"}
+                {he ? "בקש ניתוח מקורצאק" : "Ask Korczak to analyze"}
               </span>
             </button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={onReveal}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
-            bg-accent-gold text-background font-medium hover:bg-accent-gold/90 transition-colors"
-        >
-          <Eye size={14} />
-          {he ? "גלה תשובה" : "Reveal Answer"}
-        </button>
+        <div className="space-y-3">
+          {/* Text input for student's answer */}
+          <textarea
+            value={userAnswer}
+            onChange={(e) => setUserAnswer(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+            placeholder={he ? "כתוב את התשובה שלך..." : "Write your answer..."}
+            className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-sm text-foreground
+                       placeholder:text-text-tertiary focus:outline-none focus:border-accent-gold/50
+                       transition-colors resize-none"
+            rows={3}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSubmit}
+              disabled={!userAnswer.trim()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+                bg-accent-gold text-background font-medium hover:bg-accent-gold/90
+                transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {he ? "בדוק תשובה" : "Check Answer"}
+            </button>
+            <button
+              onClick={onReveal}
+              className="px-3 py-2 rounded-lg text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+            >
+              {he ? "דלג — הראה תשובה" : "Skip — show answer"}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
