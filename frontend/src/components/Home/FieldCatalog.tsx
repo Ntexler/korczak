@@ -29,8 +29,9 @@ export default function FieldCatalog({ onSelectField }: FieldCatalogProps) {
       try {
         const res = await fetch(`${API_BASE}/features/fields`);
         if (!res.ok) throw new Error(`API error: ${res.status}`);
-        const data: FieldInfo[] = await res.json();
-        if (!cancelled) setFields(data);
+        const data = await res.json();
+        const list: FieldInfo[] = Array.isArray(data) ? data : data.fields || [];
+        if (!cancelled) setFields(list);
       } catch {
         // Fallback: show empty state
         if (!cancelled) setFields([]);

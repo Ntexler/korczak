@@ -46,10 +46,14 @@ export default function Home() {
   const [showTimeline, setShowTimeline] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const [showTour, setShowTour] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !localStorage.getItem("korczak-tour-done");
-  });
+  const [showTour, setShowTour] = useState(false);
+
+  // Check localStorage after mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    if (!localStorage.getItem("korczak-tour-done")) {
+      setShowTour(true);
+    }
+  }, []);
 
   // TODO: Replace with actual Supabase Auth when implemented (Phase 9)
   const userId: string | undefined = "demo-researcher-1";
