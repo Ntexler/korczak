@@ -8,6 +8,9 @@ import ChatMessage from "@/components/Chat/ChatMessage";
 import ChatInput from "@/components/Chat/ChatInput";
 import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
+import FieldCatalog from "@/components/Home/FieldCatalog";
+import FieldView from "@/components/Field/FieldView";
+import { useFieldStore } from "@/stores/fieldStore";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
 import KnowledgeGraph from "@/components/Graph/KnowledgeGraph";
 import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine, Clock, HelpCircle, Search, MoreHorizontal } from "lucide-react";
@@ -36,6 +39,7 @@ export default function Home() {
 
   const { locale, toggleLocale, t, fonts: f, isRtl } = useLocaleStore();
   const { libraryOpen, setLibraryOpen } = useLibraryStore();
+  const { currentField, setField, clearField } = useFieldStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showGraph, setShowGraph] = useState(false);
   const [showTree, setShowTree] = useState(false);
@@ -96,6 +100,27 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  // If a field is selected, show the FieldView (new domain-first UX)
+  if (currentField) {
+    return (
+      <div className="h-screen bg-background" dir={isRtl ? "rtl" : "ltr"} style={{ fontFamily: f.sans }}>
+        <FieldView
+          field={currentField}
+          onBack={clearField}
+          onSend={handleSend}
+        />
+        {/* Overlays still available */}
+        {showGraph && <KnowledgeGraph onClose={() => setShowGraph(false)} />}
+        {showTimeline && <KnowledgeTimeline onClose={() => setShowTimeline(false)} />}
+        {showTree && userId && (
+          <KnowledgeTreeView userId={userId} onClose={() => setShowTree(false)} />
+        )}
+        {showTour && <GuidedTour onComplete={completeTour} />}
+        <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} onSend={handleSend} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-background" dir={isRtl ? "rtl" : "ltr"} style={{ fontFamily: f.sans }}>
@@ -238,7 +263,9 @@ export default function Home() {
         <main className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
             {messages.length === 0 ? (
-              <WelcomeScreen onSend={handleSend} />
+              <div className="max-w-[900px] mx-auto">
+                <FieldCatalog onSelectField={setField} />
+              </div>
             ) : (
               <div className="max-w-[760px] mx-auto">
                 {messages.map((msg) => (

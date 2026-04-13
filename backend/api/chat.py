@@ -26,6 +26,7 @@ class ChatMessage(BaseModel):
     mode: str = "auto"  # auto | navigator | tutor | briefing
     user_id: str | None = None  # Optional for knowledge tracking
     locale: str = "en"  # en | he — for language-aware responses
+    field: str | None = None  # Knowledge field context (e.g., "Economics")
 
 
 class ChatResponse(BaseModel):

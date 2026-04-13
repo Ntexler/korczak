@@ -316,6 +316,75 @@ async def get_sankey_flow_data() -> dict:
     return {"flows": flow_list, "types": unique_types}
 
 
+async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | None:
+    """Generate a simple, TA-level explanation of a concept.
+
+    Returns a 2-3 sentence explanation suitable for a college student,
+    plus "explain simpler" and "go deeper" prompts.
+    """
+    client = get_client()
+
+    concept = client.table("concepts").select(
+        "id, name, type, definition, paper_count"
+    ).eq("id", concept_id).execute()
+
+    if not concept.data:
+        return None
+
+    c = concept.data[0]
+    definition = c.get("definition") or ""
+
+    # Get top 2 papers for context
+    papers = await get_papers_for_concept(concept_id, limit=2)
+    paper_context = ""
+    if papers:
+        paper_context = " Key works: " + ", ".join(
+            f"{p.get('title', '')} ({p.get('publication_year', '')})"
+            for p in papers[:2]
+        )
+
+    # Generate simple explanation using Claude
+    try:
+        from backend.config import settings
+        from backend.integrations.claude_client import _call_claude
+
+        lang = "Hebrew" if locale == "he" else "English"
+        prompt = (
+            f"Explain the academic concept \"{c['name']}\" ({c.get('type', 'concept')}) "
+            f"in 2-3 simple sentences, like a friendly college TA would explain it to a student. "
+            f"Context: {definition[:200]}.{paper_context}\n"
+            f"Respond in {lang}. Be warm and clear. No jargon without explanation."
+        )
+
+        response = await _call_claude(
+            prompt,
+            model=settings.haiku_model,
+            max_tokens=300,
+            temperature=0.4,
+        )
+
+        return {
+            "concept_id": c["id"],
+            "name": c["name"],
+            "type": c.get("type"),
+            "simple_explanation": response.text,
+            "definition": definition,
+            "paper_count": c.get("paper_count", 0),
+            "explain_simpler_prompt": f"Explain {c['name']} like I'm in high school",
+            "go_deeper_prompt": f"Give me the full academic analysis of {c['name']}",
+        }
+    except Exception as e:
+        logger.warning(f"Simple explanation failed: {e}")
+        return {
+            "concept_id": c["id"],
+            "name": c["name"],
+            "type": c.get("type"),
+            "simple_explanation": definition or f"{c['name']} is a concept in academic research.",
+            "definition": definition,
+            "paper_count": c.get("paper_count", 0),
+        }
+
+
 async def get_personal_overlay(user_id: str, limit: int = 100) -> dict:
     """Get personal knowledge overlay — fog of war data for the graph.
 
