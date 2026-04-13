@@ -364,13 +364,17 @@ async def list_fields():
 async def get_field_syllabus(field_name: str, level: str = "intro"):
     """Get the syllabus/course structure for a field.
 
-    Returns week-by-week structure with concepts and readings.
+    Uses a 3-tier strategy:
+    1. Generated course (if published)
+    2. Real syllabi data — readings ordered by teaching rank (Open Syllabus)
+       + week position (MIT OCW), with concepts linked via matched papers
+    3. Fallback — concepts ordered by paper_count
     """
     from backend.integrations.supabase_client import get_client
     client = get_client()
 
     try:
-        # Try generated course first
+        # --- Tier 1: Generated course ---
         course = client.table("generated_courses").select("*").eq(
             "department", field_name
         ).eq("level", level).eq("is_published", True).limit(1).execute()
@@ -383,16 +387,118 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
             c["readings"] = readings.data
             return c
 
-        # Fallback: get concepts ONLY from papers in this field
-        # Step 1: Find papers that belong to this field
+        # --- Tier 2: Real syllabus-driven structure ---
+        # Check if we have syllabi for this field
+        syllabi = client.table("syllabi").select(
+            "id, title, source, institution"
+        ).eq("department", field_name).execute()
+
+        syllabus_ids = [s["id"] for s in (syllabi.data or [])]
+
+        if syllabus_ids:
+            # Get readings with matched papers, ordered by week + position
+            readings = client.table("syllabus_readings").select(
+                "paper_id, external_title, external_authors, week, section, position, match_confidence"
+            ).in_("syllabus_id", syllabus_ids).order("week").order("position").execute()
+
+            matched_readings = readings.data or []
+
+            if matched_readings:
+                # Get concepts from matched papers
+                matched_paper_ids = [
+                    r["paper_id"] for r in matched_readings
+                    if r.get("paper_id")
+                ]
+
+                reading_concepts = {}  # paper_id -> [concept dicts]
+                if matched_paper_ids:
+                    concept_ids_from_readings = set()
+                    for i in range(0, len(matched_paper_ids), 50):
+                        batch = matched_paper_ids[i:i + 50]
+                        pc = client.table("paper_concepts").select(
+                            "concept_id, paper_id"
+                        ).in_("paper_id", batch).execute()
+                        for row in (pc.data or []):
+                            concept_ids_from_readings.add(row["concept_id"])
+                            reading_concepts.setdefault(row["paper_id"], []).append(row["concept_id"])
+
+                    # Fetch concept details
+                    concept_map = {}
+                    if concept_ids_from_readings:
+                        concepts_result = client.table("concepts").select(
+                            "id, name, type, definition, paper_count, confidence"
+                        ).in_("id", list(concept_ids_from_readings)).execute()
+                        concept_map = {c["id"]: c for c in (concepts_result.data or [])}
+
+                # Build weeks from readings (preserve syllabus order)
+                weeks_map: dict[int, dict] = {}  # week_num -> week data
+                seen_concepts = set()
+
+                for r in matched_readings:
+                    week_num = r.get("week", 1) or 1
+
+                    if week_num not in weeks_map:
+                        if week_num <= 2:
+                            label = "Foundations" if week_num == 1 else "Core Concepts"
+                        elif week_num <= 5:
+                            label = f"Intermediate — Week {week_num}"
+                        else:
+                            label = f"Advanced — Week {week_num}"
+
+                        weeks_map[week_num] = {
+                            "week_number": week_num,
+                            "title": label,
+                            "concepts": [],
+                            "readings": [],
+                        }
+
+                    week = weeks_map[week_num]
+
+                    # Add reading info
+                    week["readings"].append({
+                        "title": r.get("external_title", ""),
+                        "authors": r.get("external_authors", ""),
+                        "section": r.get("section", "required"),
+                        "matched": r.get("paper_id") is not None,
+                    })
+
+                    # Add concepts from this reading's paper
+                    if r.get("paper_id") and r["paper_id"] in reading_concepts:
+                        for cid in reading_concepts[r["paper_id"]]:
+                            if cid not in seen_concepts and cid in concept_map:
+                                seen_concepts.add(cid)
+                                c = concept_map[cid]
+                                week["concepts"].append({
+                                    "id": c["id"], "name": c["name"],
+                                    "type": c.get("type", "concept"),
+                                    "definition": c.get("definition", ""),
+                                    "paper_count": c.get("paper_count", 0),
+                                })
+
+                weeks = sorted(weeks_map.values(), key=lambda w: w["week_number"])
+                sources = list(set(s.get("source", "unknown") for s in (syllabi.data or [])))
+
+                if weeks and any(w["concepts"] for w in weeks):
+                    return {
+                        "department": field_name,
+                        "level": level,
+                        "title": f"{field_name} — {level.title()} Track",
+                        "weeks": weeks,
+                        "total_concepts": len(seen_concepts),
+                        "is_generated": False,
+                        "syllabus_sources": sources,
+                        "source_note": f"Based on real syllabi from: {', '.join(sources)}",
+                    }
+
+        # --- Tier 3: Fallback — concepts by paper_count ---
         all_papers = client.table("papers").select(
             "id, subfield"
         ).not_.is_("subfield", "null").execute()
 
-        field_paper_ids = []
-        for p in (all_papers.data or []):
-            if _normalize_field(p.get("subfield", "")) == field_name:
-                field_paper_ids.append(p["id"])
+        field_paper_ids = [
+            p["id"] for p in (all_papers.data or [])
+            if _normalize_field(p.get("subfield", "")) == field_name
+        ]
 
         if not field_paper_ids:
             return {
@@ -404,11 +510,9 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
                 "note": f"No papers found for {field_name} yet.",
             }
 
-        # Step 2: Get concept IDs linked to these papers
-        # (batch in chunks to avoid query limits)
         concept_ids = set()
         for i in range(0, len(field_paper_ids), 50):
-            batch = field_paper_ids[i:i+50]
+            batch = field_paper_ids[i:i + 50]
             pc = client.table("paper_concepts").select(
                 "concept_id"
             ).in_("paper_id", batch).execute()
@@ -425,18 +529,15 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
                 "note": f"No concepts linked to {field_name} papers yet.",
             }
 
-        # Step 3: Get the actual concepts
         concepts = client.table("concepts").select(
             "id, name, type, definition, paper_count, confidence"
         ).in_("id", list(concept_ids)).order("paper_count", desc=True).limit(60).execute()
 
-        # Organize: high paper_count = foundational (early weeks), low = advanced (later)
         items = concepts.data or []
         weeks = []
         for i in range(0, len(items), 4):
-            week_items = items[i:i+4]
+            week_items = items[i:i + 4]
             week_num = (i // 4) + 1
-            # Name the weeks based on position
             if week_num <= 3:
                 week_label = "Foundations" if week_num == 1 else f"Core Concepts {week_num}"
             elif week_num <= 7:
