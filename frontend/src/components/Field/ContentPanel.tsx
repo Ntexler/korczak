@@ -219,7 +219,7 @@ export default function ContentPanel({
 
   useEffect(() => { setSelectedConcept(conceptId); }, [conceptId]);
 
-  // Fetch concept
+  // Fetch concept — ALL requests in parallel for speed
   useEffect(() => {
     if (!selectedConcept) { setConcept(null); return; }
     let cancelled = false;
@@ -231,31 +231,48 @@ export default function ContentPanel({
 
     (async () => {
       try {
-        const explainRes = await fetch(
-          `${API_BASE}/features/explain/${encodeURIComponent(selectedConcept)}?locale=${locale}`
-        );
-        let data: any = {};
-        if (explainRes.ok) data = await explainRes.json();
+        // Fire all 3 requests simultaneously
+        const [explainRes, contextRes, evidenceRes] = await Promise.allSettled([
+          fetch(`${API_BASE}/features/explain/${encodeURIComponent(selectedConcept)}?locale=${locale}`),
+          fetch(`${API_BASE}/graph/concepts/${encodeURIComponent(selectedConcept)}`),
+          getClaimEvidenceMap(selectedConcept),
+        ]);
 
-        try {
-          const contextRes = await fetch(
-            `${API_BASE}/graph/concepts/${encodeURIComponent(selectedConcept)}/context`
-          );
-          if (contextRes.ok) {
-            const ctx = await contextRes.json();
-            data.key_papers = ctx.key_papers || data.key_papers || [];
-            data.key_claims = ctx.key_claims || [];
-            data.connections = ctx.neighbors?.map((n: any) => ({
+        let data: any = {};
+
+        // Explanation
+        if (explainRes.status === "fulfilled" && explainRes.value.ok) {
+          data = await explainRes.value.json();
+        }
+
+        // Context (papers, claims, neighbors)
+        if (contextRes.status === "fulfilled" && contextRes.value.ok) {
+          const ctx = await contextRes.value.json();
+          data.key_papers = ctx.key_papers || data.key_papers || [];
+          data.key_claims = ctx.key_claims || [];
+          // Neighbors from concept detail
+          if (ctx.neighbors || ctx.related) {
+            const neighbors = ctx.neighbors || ctx.related || [];
+            data.connections = neighbors.map((n: any) => ({
               id: n.concept?.id || n.id,
               name: n.concept?.name || n.name,
               relationship: n.relationship_type,
               explanation: n.explanation,
               confidence: n.confidence,
-            })) || [];
+            }));
           }
-        } catch { /* non-critical */ }
+        }
 
-        if (!cancelled) setConcept(data);
+        // Evidence map
+        if (evidenceRes.status === "fulfilled") {
+          const evData = evidenceRes.value;
+          if (!cancelled) setEvidenceClaims(evData.claims || []);
+        }
+
+        if (!cancelled) {
+          setConcept(data);
+          setEvidenceLoading(false);
+        }
       } catch {
         if (!cancelled) setConcept(null);
       } finally {
@@ -287,16 +304,10 @@ export default function ContentPanel({
     return () => { cancelled = true; };
   }, [field, selectedConcept]);
 
-  // Fetch evidence map when concept loaded
+  // Evidence map is now fetched in parallel with concept data above
+  // This placeholder keeps the dependency chain clean
   useEffect(() => {
-    if (!concept?.concept_id) return;
-    let cancelled = false;
-    setEvidenceLoading(true);
-    getClaimEvidenceMap(concept.concept_id)
-      .then((res) => { if (!cancelled) setEvidenceClaims(res.claims || []); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setEvidenceLoading(false); });
-    return () => { cancelled = true; };
+    // evidence already loaded in main fetch
   }, [concept?.concept_id]);
 
   const handleSelectConcept = (id: string) => setSelectedConcept(id);
@@ -356,8 +367,32 @@ export default function ContentPanel({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-text-tertiary text-sm">
-        {he ? "טוען..." : "Loading..."}
+      <div className="h-full overflow-hidden p-6 space-y-6 animate-pulse">
+        {/* Skeleton header */}
+        <div>
+          <div className="h-3 w-32 bg-border rounded mb-3" />
+          <div className="h-7 w-64 bg-border rounded mb-2" />
+          <div className="h-4 w-20 bg-border rounded-full" />
+        </div>
+        {/* Skeleton depth slider */}
+        <div className="h-20 bg-surface-sunken rounded-xl border border-border/50" />
+        {/* Skeleton explanation */}
+        <div className="space-y-2">
+          <div className="h-3 w-24 bg-border rounded" />
+          <div className="h-24 bg-surface-sunken rounded-xl border border-border/50" />
+        </div>
+        {/* Skeleton buttons */}
+        <div className="flex gap-2">
+          <div className="h-9 w-20 bg-border rounded-lg" />
+          <div className="h-9 w-28 bg-border rounded-lg" />
+          <div className="h-9 w-24 bg-border rounded-lg" />
+        </div>
+        {/* Skeleton claims */}
+        <div className="space-y-2">
+          <div className="h-3 w-28 bg-border rounded" />
+          <div className="h-20 bg-surface-sunken rounded-lg border border-border/50" />
+          <div className="h-20 bg-surface-sunken rounded-lg border border-border/50" />
+        </div>
       </div>
     );
   }
