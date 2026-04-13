@@ -11,6 +11,8 @@ import {
   Download,
   Check,
   Loader2,
+  FileArchive,
+  MessageCircle,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
@@ -18,6 +20,8 @@ import { exportFieldToObsidian } from "@/lib/api";
 import SyllabusNav from "./SyllabusNav";
 import ContentPanel from "./ContentPanel";
 import ProgressBar from "./ProgressBar";
+import VaultUpload from "@/components/Vault/VaultUpload";
+import InsightsPanel from "@/components/Vault/InsightsPanel";
 
 interface FieldViewProps {
   field: string;
@@ -32,6 +36,7 @@ const MODE_CONFIG = {
 } as const;
 
 type FieldMode = "learn" | "research" | "discover";
+type RightPanel = "chat" | "vault" | "insights";
 
 export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const { fonts: f, locale } = useLocaleStore();
@@ -41,9 +46,11 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [fieldExporting, setFieldExporting] = useState(false);
   const [fieldExported, setFieldExported] = useState(false);
+  const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
+  const [vaultAnalysis, setVaultAnalysis] = useState<any>(null);
 
-  // Placeholder userId — should come from auth context in production
   const userId = "mock-user";
+  const he = locale === "he";
 
   const handleExportField = async () => {
     if (fieldExporting) return;
@@ -74,11 +81,15 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
     }
   };
 
+  const handleVaultAnalysisComplete = (result: any) => {
+    setVaultAnalysis(result);
+    setRightPanel("insights");
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* ---- Header ---- */}
       <header className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-surface shrink-0">
-        {/* Back */}
         <button
           onClick={onBack}
           className="p-1.5 rounded-md hover:bg-surface-hover transition-colors text-text-secondary hover:text-foreground"
@@ -87,7 +98,6 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           <ArrowLeft size={18} />
         </button>
 
-        {/* Field name */}
         <h1
           className="text-base font-semibold text-foreground truncate"
           style={{ fontFamily: f.display }}
@@ -127,7 +137,7 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium
                      hover:bg-surface-hover transition-colors
                      text-text-secondary hover:text-accent-gold disabled:opacity-50"
-          title={locale === "he" ? "ייצוא ל-Obsidian" : "Export to Obsidian"}
+          title={he ? "ייצוא ל-Obsidian" : "Export to Obsidian"}
         >
           {fieldExporting ? (
             <Loader2 size={14} className="animate-spin" />
@@ -141,6 +151,23 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           </span>
         </button>
 
+        {/* Import Vault toggle */}
+        <button
+          onClick={() => setRightPanel(rightPanel === "vault" ? "chat" : "vault")}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium
+                     transition-colors
+                     ${rightPanel === "vault" || rightPanel === "insights"
+                       ? "bg-accent-gold/10 text-accent-gold"
+                       : "text-text-secondary hover:text-accent-gold hover:bg-surface-hover"
+                     }`}
+          title={he ? "ייבוא כספת" : "Import Vault"}
+        >
+          <FileArchive size={14} />
+          <span className="hidden sm:inline">
+            {he ? "כספת" : "Vault"}
+          </span>
+        </button>
+
         {/* Search toggle */}
         <button
           onClick={() => setSearchOpen((o) => !o)}
@@ -150,7 +177,6 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           <Search size={16} />
         </button>
 
-        {/* Settings placeholder */}
         <button
           className="p-1.5 rounded-md hover:bg-surface-hover transition-colors text-text-secondary hover:text-foreground"
           title="Settings"
@@ -159,7 +185,7 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
         </button>
       </header>
 
-      {/* Search bar (conditional) */}
+      {/* Search bar */}
       {searchOpen && (
         <div className="px-4 py-2 border-b border-border bg-surface shrink-0">
           <div className="flex items-center gap-2 max-w-lg">
@@ -201,31 +227,60 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           />
         </main>
 
-        {/* Right: Chat panel placeholder */}
-        <aside className="w-[320px] shrink-0 border-l border-border bg-surface overflow-y-auto hidden lg:flex flex-col">
-          <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm p-4 text-center">
-            Chat panel — send a message to start a conversation about {field}
-          </div>
-          <div className="p-3 border-t border-border">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Ask about this field..."
-                className="flex-1 px-3 py-2 rounded-lg bg-surface-sunken border border-border
-                           text-sm text-foreground placeholder:text-text-tertiary
-                           focus:outline-none focus:border-accent-gold/50 transition-colors"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const target = e.target as HTMLInputElement;
-                    if (target.value.trim()) {
-                      onSend(target.value.trim());
-                      target.value = "";
-                    }
-                  }
-                }}
-              />
+        {/* Right panel — dynamic */}
+        <aside className="w-[320px] shrink-0 border-l border-border bg-surface overflow-hidden hidden lg:flex flex-col">
+          {rightPanel === "insights" && vaultAnalysis ? (
+            <InsightsPanel
+              analysis={vaultAnalysis}
+              onSend={onSend}
+              onClose={() => setRightPanel("chat")}
+            />
+          ) : rightPanel === "vault" ? (
+            <div className="flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-border shrink-0">
+                <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: f.display }}>
+                  {he ? "ייבוא כספת Obsidian" : "Import Obsidian Vault"}
+                </h3>
+                <p className="text-[10px] text-text-tertiary mt-0.5">
+                  {he ? "שתף את הכספת שלך כדי שקורצאק ילמד מה אתה יודע" : "Share your vault so Korczak learns what you know"}
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <VaultUpload
+                  field={field}
+                  onAnalysisComplete={handleVaultAnalysisComplete}
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Default: Chat panel */
+            <>
+              <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm p-4 text-center">
+                <div className="space-y-3">
+                  <MessageCircle size={28} className="mx-auto text-text-tertiary/40" />
+                  <p>{he ? "שלח הודעה כדי להתחיל שיחה" : `Chat about ${field}`}</p>
+                </div>
+              </div>
+              <div className="p-3 border-t border-border">
+                <input
+                  type="text"
+                  placeholder={he ? "שאל על התחום..." : "Ask about this field..."}
+                  className="w-full px-3 py-2 rounded-lg bg-surface-sunken border border-border
+                             text-sm text-foreground placeholder:text-text-tertiary
+                             focus:outline-none focus:border-accent-gold/50 transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const target = e.target as HTMLInputElement;
+                      if (target.value.trim()) {
+                        onSend(target.value.trim());
+                        target.value = "";
+                      }
+                    }
+                  }}
+                />
+              </div>
+            </>
+          )}
         </aside>
       </div>
 

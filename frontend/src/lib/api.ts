@@ -722,3 +722,31 @@ export async function exportFieldToObsidian(fieldName: string): Promise<Blob> {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.blob();
 }
+
+export async function importVault(file: File, userId: string = "mock-user", fieldName?: string): Promise<any> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const params = new URLSearchParams({ user_id: userId });
+  if (fieldName) params.set("field_name", fieldName);
+  const res = await fetch(`${API_BASE}/obsidian/import/vault?${params}`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || `Upload error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getVaultInsights(userId: string = "mock-user", limit: number = 20) {
+  const res = await fetchWithTimeout(`${API_BASE}/obsidian/insights?user_id=${userId}&limit=${limit}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function dismissVaultInsight(insightId: string) {
+  const res = await fetchWithTimeout(`${API_BASE}/obsidian/insights/${insightId}/dismiss`, { method: "POST" });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
