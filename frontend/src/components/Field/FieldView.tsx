@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Search,
@@ -16,6 +16,7 @@ import {
   Brain,
   List,
   GitFork,
+  ChevronDown,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
@@ -55,6 +56,18 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
   const [vaultAnalysis, setVaultAnalysis] = useState<any>(null);
   const [leftView, setLeftView] = useState<"graph" | "list">(currentMode === "learn" ? "list" : "graph");
+  const [fieldSwitcherOpen, setFieldSwitcherOpen] = useState(false);
+  const [fieldSearch, setFieldSearch] = useState("");
+  const [availableFields, setAvailableFields] = useState<{ name: string; paper_count: number }[]>([]);
+
+  // Fetch available fields for switcher
+  useEffect(() => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    fetch(`${API_BASE}/features/fields`)
+      .then((res) => res.ok ? res.json() : { fields: [] })
+      .then((data) => setAvailableFields(data.fields || []))
+      .catch(() => {});
+  }, []);
 
   const userId = "mock-user";
   const he = locale === "he";
@@ -126,21 +139,72 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           <ArrowLeft size={18} />
         </button>
 
-        {/* Field name + current concept breadcrumb */}
-        <div className="flex items-center gap-1.5 min-w-0">
-          <h1
-            className="text-base font-semibold text-foreground truncate"
+        {/* Field switcher + concept breadcrumb */}
+        <div className="flex items-center gap-1.5 min-w-0 relative">
+          <button
+            onClick={() => setFieldSwitcherOpen((o) => !o)}
+            className="flex items-center gap-1 text-base font-semibold text-foreground hover:text-accent-gold transition-colors truncate"
             style={{ fontFamily: f.display }}
           >
             {field}
-          </h1>
+            <ChevronDown size={14} className="text-text-tertiary shrink-0" />
+          </button>
           {selectedConcept && (
             <>
               <span className="text-text-tertiary text-sm shrink-0">/</span>
               <span className="text-sm text-accent-gold truncate max-w-[200px]">
-                {/* concept name will show from state once loaded */}
                 {he ? "מושג" : "Concept"}
               </span>
+            </>
+          )}
+
+          {/* Field switcher dropdown */}
+          {fieldSwitcherOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setFieldSwitcherOpen(false)} />
+              <div className="absolute top-full left-0 mt-1 w-64 max-h-80 overflow-y-auto
+                              bg-surface border border-border rounded-lg shadow-xl z-50">
+                <div className="p-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={fieldSearch}
+                    onChange={(e) => setFieldSearch(e.target.value)}
+                    placeholder={he ? "חפש תחום..." : "Search field..."}
+                    className="w-full px-3 py-1.5 rounded bg-surface-sunken border border-border
+                               text-sm text-foreground placeholder:text-text-tertiary
+                               focus:outline-none focus:border-accent-gold/50 mb-1"
+                  />
+                </div>
+                <div className="px-1 pb-1">
+                  {availableFields
+                    .filter((af) => af.name.toLowerCase().includes(fieldSearch.toLowerCase()))
+                    .map((af) => (
+                      <button
+                        key={af.name}
+                        onClick={() => {
+                          setFieldSwitcherOpen(false);
+                          setFieldSearch("");
+                          if (af.name !== field) {
+                            onBack();
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded text-left text-sm transition-colors ${
+                          af.name === field
+                            ? "bg-accent-gold/10 text-accent-gold"
+                            : "text-foreground hover:bg-surface-hover"
+                        }`}
+                      >
+                        <span className="truncate">{af.name}</span>
+                        {af.paper_count > 0 && (
+                          <span className="text-[10px] text-text-tertiary shrink-0 ml-2">
+                            {af.paper_count} papers
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                </div>
+              </div>
             </>
           )}
         </div>
