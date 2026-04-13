@@ -13,6 +13,7 @@ from backend.core.white_space_finder import find_research_gaps
 from backend.core.rising_stars import get_rising_stars_report
 from backend.core.briefing_engine import generate_briefing, get_briefing_topics
 from backend.user.behavior_tracker import get_engagement_profile
+from backend.core.concept_enricher import get_personal_overlay
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -263,4 +264,21 @@ async def visualization_progress(
         return {"nodes": nodes, "total": len(nodes)}
     except Exception as e:
         logger.error(f"Progress visualization error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overlay/{user_id}")
+async def personal_knowledge_overlay(
+    user_id: str,
+    limit: int = Query(default=100, le=500),
+):
+    """Get personal knowledge overlay — fog of war data for the graph.
+
+    Returns each concept's status: explored (green), in_progress (amber), unexplored (fog).
+    """
+    try:
+        result = await get_personal_overlay(user_id, limit)
+        return result
+    except Exception as e:
+        logger.error(f"Overlay error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

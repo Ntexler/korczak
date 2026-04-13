@@ -314,3 +314,90 @@ async def get_sankey_flow_data() -> dict:
 
     unique_types = sorted(set(type_map.values()))
     return {"flows": flow_list, "types": unique_types}
+
+
+async def get_personal_overlay(user_id: str, limit: int = 100) -> dict:
+    """Get personal knowledge overlay — fog of war data for the graph.
+
+    Returns each concept's status for this user:
+    - explored: understanding_level > 0.3 (green)
+    - in_progress: understanding_level 0.1-0.3 (amber)
+    - unexplored: no entry or understanding_level < 0.1 (gray/fog)
+    Plus misconceptions and blind spots for explored concepts.
+    """
+    client = get_client()
+
+    # Get graph concepts
+    concepts = (
+        client.table("concepts")
+        .select("id, name, type, paper_count")
+        .order("paper_count", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    concept_ids = [c["id"] for c in concepts.data]
+
+    if not concept_ids:
+        return {"overlay": [], "stats": {}}
+
+    # Get user's knowledge state for these concepts
+    knowledge = (
+        client.table("user_knowledge")
+        .select("concept_id, understanding_level, misconceptions, blind_spots, interaction_count, last_interaction")
+        .eq("user_id", user_id)
+        .in_("concept_id", concept_ids)
+        .execute()
+    )
+    knowledge_map = {k["concept_id"]: k for k in (knowledge.data or [])}
+
+    # Build overlay
+    overlay = []
+    explored = 0
+    in_progress = 0
+    unexplored = 0
+
+    for concept in concepts.data:
+        cid = concept["id"]
+        k = knowledge_map.get(cid)
+
+        if k and k.get("understanding_level", 0) > 0.3:
+            status = "explored"
+            explored += 1
+        elif k and k.get("understanding_level", 0) >= 0.1:
+            status = "in_progress"
+            in_progress += 1
+        else:
+            status = "unexplored"
+            unexplored += 1
+
+        entry = {
+            "concept_id": cid,
+            "concept_name": concept["name"],
+            "status": status,
+            "understanding_level": k.get("understanding_level", 0) if k else 0,
+            "interaction_count": k.get("interaction_count", 0) if k else 0,
+        }
+
+        if k and status == "explored":
+            misconceptions = k.get("misconceptions") or []
+            blind_spots = k.get("blind_spots") or []
+            if misconceptions:
+                entry["misconceptions"] = len(misconceptions)
+            if blind_spots:
+                entry["blind_spots"] = len(blind_spots)
+
+        overlay.append(entry)
+
+    total = explored + in_progress + unexplored
+    return {
+        "overlay": overlay,
+        "stats": {
+            "total_concepts": total,
+            "explored": explored,
+            "explored_pct": round(explored / total * 100, 1) if total else 0,
+            "in_progress": in_progress,
+            "in_progress_pct": round(in_progress / total * 100, 1) if total else 0,
+            "unexplored": unexplored,
+            "unexplored_pct": round(unexplored / total * 100, 1) if total else 0,
+        },
+    }
