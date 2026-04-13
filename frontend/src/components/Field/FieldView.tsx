@@ -54,7 +54,7 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [ankiExported, setAnkiExported] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
   const [vaultAnalysis, setVaultAnalysis] = useState<any>(null);
-  const [leftView, setLeftView] = useState<"graph" | "list">("graph");
+  const [leftView, setLeftView] = useState<"graph" | "list">(currentMode === "learn" ? "list" : "graph");
 
   const userId = "mock-user";
   const he = locale === "he";
@@ -266,35 +266,46 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           {/* View toggle */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
             <span className="text-[10px] text-text-tertiary uppercase tracking-wider">
-              {leftView === "graph" ? (he ? "גרף ידע" : "Knowledge Graph") : (he ? "סילבוס" : "Syllabus")}
+              {currentMode === "learn"
+                ? (leftView === "graph" ? (he ? "גרף ידע" : "Knowledge Graph") : (he ? "מסלול למידה" : "Learning Path"))
+                : currentMode === "research"
+                  ? (he ? "גרף מחקר" : "Research Graph")
+                  : (he ? "חקירה חופשית" : "Free Exploration")}
             </span>
-            <div className="flex items-center rounded border border-border bg-surface-sunken">
-              <button
-                onClick={() => setLeftView("graph")}
-                className={`p-1.5 transition-colors ${leftView === "graph" ? "text-accent-gold bg-accent-gold/10" : "text-text-tertiary hover:text-text-secondary"}`}
-                title={he ? "גרף" : "Graph"}
-              >
-                <GitFork size={13} />
-              </button>
-              <button
-                onClick={() => setLeftView("list")}
-                className={`p-1.5 transition-colors ${leftView === "list" ? "text-accent-gold bg-accent-gold/10" : "text-text-tertiary hover:text-text-secondary"}`}
-                title={he ? "רשימה" : "List"}
-              >
-                <List size={13} />
-              </button>
-            </div>
+            {currentMode === "learn" && (
+              <div className="flex items-center rounded border border-border bg-surface-sunken">
+                <button
+                  onClick={() => setLeftView("graph")}
+                  className={`p-1.5 transition-colors ${leftView === "graph" ? "text-accent-gold bg-accent-gold/10" : "text-text-tertiary hover:text-text-secondary"}`}
+                  title={he ? "גרף" : "Graph"}
+                >
+                  <GitFork size={13} />
+                </button>
+                <button
+                  onClick={() => setLeftView("list")}
+                  className={`p-1.5 transition-colors ${leftView === "list" ? "text-accent-gold bg-accent-gold/10" : "text-text-tertiary hover:text-text-secondary"}`}
+                  title={he ? "רשימה" : "List"}
+                >
+                  <List size={13} />
+                </button>
+              </div>
+            )}
           </div>
-          {/* Content */}
+          {/* Content — mode-dependent */}
           <div className="flex-1 overflow-hidden">
-            {leftView === "graph" ? (
-              <ConceptGraph
-                field={field}
-                onSelectConcept={setSelectedConcept}
-                selectedConceptId={selectedConcept}
-              />
+            {currentMode === "learn" ? (
+              /* Learn: syllabus list by default, graph toggle available */
+              leftView === "graph" ? (
+                <ConceptGraph field={field} onSelectConcept={setSelectedConcept} selectedConceptId={selectedConcept} />
+              ) : (
+                <SyllabusNav field={field} onSelectConcept={setSelectedConcept} />
+              )
+            ) : currentMode === "research" ? (
+              /* Research: always graph — connections matter */
+              <ConceptGraph field={field} onSelectConcept={setSelectedConcept} selectedConceptId={selectedConcept} />
             ) : (
-              <SyllabusNav field={field} onSelectConcept={setSelectedConcept} />
+              /* Discover: always graph — free exploration */
+              <ConceptGraph field={field} onSelectConcept={setSelectedConcept} selectedConceptId={selectedConcept} />
             )}
           </div>
         </aside>
