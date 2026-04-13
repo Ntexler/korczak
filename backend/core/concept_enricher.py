@@ -327,12 +327,22 @@ async def get_sankey_flow_data() -> dict:
     return {"flows": flow_list, "types": unique_types}
 
 
-async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | None:
-    """Generate a simple, TA-level explanation of a concept.
+# In-memory explanation cache {concept_id:locale -> explanation_dict}
+_explanation_cache: dict[str, dict] = {}
 
-    Returns a 2-3 sentence explanation suitable for a college student,
-    plus "explain simpler" and "go deeper" prompts.
+
+async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | None:
+    """Generate a simple explanation — cached in memory + DB for instant loading.
+
+    First call: generates via Claude (~3s), saves to concepts.definition if empty.
+    Subsequent calls: instant from cache (<1ms).
     """
+    cache_key = f"{concept_id}:{locale}"
+
+    # Layer 1: Memory cache
+    if cache_key in _explanation_cache:
+        return _explanation_cache[cache_key]
+
     client = get_client()
 
     concept = client.table("concepts").select(
@@ -345,7 +355,22 @@ async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | 
     c = concept.data[0]
     definition = c.get("definition") or ""
 
-    # Get top 2 papers for context
+    # Layer 2: If definition is rich enough (>100 chars), use it directly — no Claude needed
+    if definition and len(definition) > 100:
+        result = {
+            "concept_id": c["id"],
+            "name": c["name"],
+            "type": c.get("type"),
+            "simple_explanation": definition,
+            "definition": definition,
+            "paper_count": c.get("paper_count", 0),
+            "explain_simpler_prompt": f"Explain {c['name']} like I'm in high school",
+            "go_deeper_prompt": f"Give me the full academic analysis of {c['name']}",
+        }
+        _explanation_cache[cache_key] = result
+        return result
+
+    # Layer 3: Generate via Claude (only if definition is short/empty)
     papers = await get_papers_for_concept(concept_id, limit=2)
     paper_context = ""
     if papers:
@@ -354,7 +379,6 @@ async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | 
             for p in papers[:2]
         )
 
-    # Generate simple explanation using Claude
     try:
         from backend.config import settings
         from backend.integrations.claude_client import _call_claude
@@ -362,28 +386,43 @@ async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | 
         lang = "Hebrew" if locale == "he" else "English"
         prompt = (
             f"Explain the academic concept \"{c['name']}\" ({c.get('type', 'concept')}) "
-            f"in 2-3 simple sentences, like a friendly college TA would explain it to a student. "
+            f"in 3-5 clear sentences. Be direct and informative — like a knowledgeable colleague "
+            f"explaining to someone new to the topic. "
             f"Context: {definition[:200]}.{paper_context}\n"
-            f"Respond in {lang}. Be warm and clear. No jargon without explanation."
+            f"Respond in {lang}. No hollow praise. No jargon without explanation."
         )
 
         response = await _call_claude(
             prompt,
             model=settings.haiku_model,
-            max_tokens=300,
+            max_tokens=400,
             temperature=0.4,
         )
 
-        return {
+        explanation = response.text
+
+        # Save back to DB so we never need to regenerate
+        try:
+            if not definition or len(definition) < 50:
+                client.table("concepts").update(
+                    {"definition": explanation}
+                ).eq("id", concept_id).execute()
+        except Exception:
+            pass  # non-critical
+
+        result = {
             "concept_id": c["id"],
             "name": c["name"],
             "type": c.get("type"),
-            "simple_explanation": response.text,
-            "definition": definition,
+            "simple_explanation": explanation,
+            "definition": definition or explanation,
             "paper_count": c.get("paper_count", 0),
             "explain_simpler_prompt": f"Explain {c['name']} like I'm in high school",
             "go_deeper_prompt": f"Give me the full academic analysis of {c['name']}",
         }
+        _explanation_cache[cache_key] = result
+        return result
+
     except Exception as e:
         logger.warning(f"Simple explanation failed: {e}")
         return {

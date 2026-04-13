@@ -362,26 +362,125 @@ export default function ContentPanel({
     );
   }
 
-  // ── Field Overview ──
+  // ── Field Overview — Teacher-led intro ──
   if (!selectedConcept) {
+    const firstConcept = overview?.top_concepts?.[0];
+    const conceptCount = overview?.concept_count || overview?.top_concepts?.length || 0;
+
     return (
       <div className="h-full overflow-y-auto p-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">{field}</h2>
-        <p className="text-text-secondary text-sm mb-4">
-          {he
-            ? `${overview?.concept_count || 0} קונספטים במאגר. לחץ על אחד כדי להתחיל ללמוד.`
-            : `${overview?.concept_count || 0} concepts in the knowledge base. Click one to start learning.`
-          }
-        </p>
+        {/* Welcome / field intro */}
+        <h2 className="text-2xl font-bold text-foreground mb-3">{field}</h2>
 
-        {/* Quiz button for field */}
-        <button
-          onClick={handleStartQuiz}
-          disabled={quizLoading}
-          className="flex items-center gap-2 px-4 py-2.5 mb-6 rounded-lg
-            bg-accent-gold/10 border border-accent-gold/20 text-accent-gold text-sm
-            hover:bg-accent-gold/20 transition-colors disabled:opacity-50"
-        >
+        {conceptCount > 0 && firstConcept ? (
+          <div className="space-y-6">
+            {/* Teacher message */}
+            <div className="bg-accent-gold/5 border border-accent-gold/20 rounded-xl p-5">
+              <p className="text-sm text-foreground leading-relaxed">
+                {he
+                  ? `יש כאן ${conceptCount} מושגים שממפים את התחום הזה. אני ממליץ להתחיל מ-`
+                  : `There are ${conceptCount} concepts mapping this field. I recommend starting with `}
+                <button
+                  onClick={() => handleSelectConcept(firstConcept.id)}
+                  className="text-accent-gold font-semibold hover:underline"
+                >
+                  {firstConcept.name}
+                </button>
+                {he
+                  ? ` — זה ${firstConcept.type || "מושג"} יסודי שמופיע ב-${firstConcept.paper_count || 0} מאמרים ומהווה בסיס לנושאים רבים בתחום.`
+                  : ` — it's a foundational ${firstConcept.type || "concept"} referenced in ${firstConcept.paper_count || 0} papers, and many other topics build on it.`}
+              </p>
+              <button
+                onClick={() => handleSelectConcept(firstConcept.id)}
+                className="flex items-center gap-2 mt-4 px-4 py-2.5 rounded-lg text-sm font-medium
+                  bg-accent-gold text-background hover:bg-accent-gold/90 transition-colors"
+              >
+                <BookOpen size={16} />
+                {he ? `התחל ללמוד: ${firstConcept.name}` : `Start learning: ${firstConcept.name}`}
+              </button>
+            </div>
+
+            {/* Quick actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleStartQuiz}
+                disabled={quizLoading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg
+                  bg-surface border border-border text-text-secondary text-sm
+                  hover:border-accent-gold/40 hover:text-accent-gold transition-colors disabled:opacity-50"
+              >
+                <Brain size={14} />
+                {quizLoading ? (he ? "מכין..." : "...") : (he ? "בחן אותי" : "Quiz me")}
+              </button>
+              <button
+                onClick={() => onSend(he ? `תן לי סקירה כללית על ${field}` : `Give me an overview of ${field}`)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg
+                  bg-surface border border-border text-text-secondary text-sm
+                  hover:border-accent-gold/40 hover:text-accent-gold transition-colors"
+              >
+                <MessageCircle size={14} />
+                {he ? "סקירה כללית" : "Field overview"}
+              </button>
+            </div>
+
+            {/* Quiz */}
+            {quizActive && quizQuestions.length > 0 && (
+              <QuizCard
+                question={quizQuestions[quizIndex]}
+                index={quizIndex}
+                total={quizQuestions.length}
+                showAnswer={showAnswer}
+                onReveal={() => setShowAnswer(true)}
+                onNext={() => { setQuizIndex((i) => i + 1); setShowAnswer(false); }}
+                onClose={() => setQuizActive(false)}
+                onSend={onSend}
+                he={he}
+              />
+            )}
+
+            {/* Concept list with types */}
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-tertiary mb-3">
+                {he ? "כל המושגים בתחום" : "All concepts in this field"}
+              </h3>
+              <div className="space-y-1.5">
+                {overview.top_concepts.map((c, i) => (
+                  <button
+                    key={c.id}
+                    onClick={() => handleSelectConcept(c.id)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg
+                      bg-surface border border-border hover:border-accent-gold/40
+                      text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-text-tertiary w-5 text-right">{i + 1}</span>
+                      <div>
+                        <span className="text-sm text-foreground group-hover:text-accent-gold transition-colors font-medium">
+                          {c.name}
+                        </span>
+                        {c.type && (
+                          <span className="text-[10px] text-text-tertiary ml-2 uppercase">{c.type}</span>
+                        )}
+                      </div>
+                    </div>
+                    {c.paper_count != null && c.paper_count > 0 && (
+                      <span className="text-[10px] text-text-tertiary flex items-center gap-1">
+                        <FileText size={10} /> {c.paper_count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-text-secondary text-sm">
+            {he ? "אין מושגים זמינים עדיין לתחום הזה." : "No concepts available yet for this field."}
+          </p>
+        )}
+      </div>
+    );
+  }
           <Brain size={16} />
           {quizLoading ? (he ? "מכין..." : "Generating...") : (he ? "בחן אותי על התחום" : "Quiz me on this field")}
         </button>
@@ -851,7 +950,8 @@ export default function ContentPanel({
         )}
 
         {/* Ask about this concept */}
-        <section className="pb-4">
+        {/* Chat about this concept */}
+        <section>
           <button
             onClick={() => onSend(
               he
@@ -866,6 +966,45 @@ export default function ContentPanel({
             {he ? `שוחח עם קורצאק על ${concept.name}` : `Chat with Korczak about ${concept.name}`}
           </button>
         </section>
+
+        {/* Next concept suggestion */}
+        {concept.connections && concept.connections.length > 0 && (
+          <section className="pb-6 border-t border-border pt-5">
+            <p className="text-xs text-text-tertiary uppercase tracking-wider mb-3">
+              {he ? "מה הלאה?" : "What's next?"}
+            </p>
+            <div className="bg-surface border border-border rounded-xl p-4">
+              <p className="text-sm text-text-secondary mb-3">
+                {he
+                  ? `עכשיו שאתה מכיר את ${concept.name}, הצעד הבא הוא:`
+                  : `Now that you know ${concept.name}, the next step is:`}
+              </p>
+              <button
+                onClick={() => handleSelectConcept(concept.connections![0].id)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-lg
+                  bg-accent-gold/5 border border-accent-gold/20 hover:bg-accent-gold/10
+                  text-left transition-all group"
+              >
+                <div>
+                  <span className="text-sm text-foreground font-semibold group-hover:text-accent-gold transition-colors">
+                    {concept.connections[0].name}
+                  </span>
+                  {concept.connections[0].relationship && (
+                    <span className="text-[10px] text-text-tertiary ml-2">
+                      {concept.connections[0].relationship.replace(/_/g, " ").toLowerCase()}
+                    </span>
+                  )}
+                  {concept.connections[0].explanation && (
+                    <p className="text-xs text-text-tertiary mt-1">
+                      {he ? "למה? " : "Why? "}{concept.connections[0].explanation.slice(0, 100)}
+                    </p>
+                  )}
+                </div>
+                <span className="text-accent-gold text-lg shrink-0 ml-3">&rarr;</span>
+              </button>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
