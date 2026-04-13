@@ -774,3 +774,33 @@ export async function generateQuiz(fieldName?: string, conceptIds?: string[], co
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+// --- Plugins API ---
+
+export async function importZotero(zoteroUserId: string, apiKey: string, userId: string = "mock-user", limit: number = 100) {
+  const res = await fetchWithTimeout(`${API_BASE}/plugins/zotero/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ zotero_user_id: zoteroUserId, api_key: apiKey, user_id: userId, limit }),
+  }, 30000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function exportAnkiDeck(fieldName?: string, conceptIds?: string[], locale: string = "en"): Promise<Blob> {
+  const params = new URLSearchParams({ locale });
+  if (fieldName) params.set("field_name", fieldName);
+  if (conceptIds?.length) params.set("concept_ids", conceptIds.join(","));
+  const res = await fetchWithTimeout(`${API_BASE}/plugins/anki/export?${params}`, undefined, 30000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.blob();
+}
+
+export async function extensionLookup(doi?: string, title?: string) {
+  const params = new URLSearchParams();
+  if (doi) params.set("doi", doi);
+  if (title) params.set("title", title);
+  const res = await fetchWithTimeout(`${API_BASE}/plugins/extension/lookup?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}

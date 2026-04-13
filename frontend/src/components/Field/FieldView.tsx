@@ -13,10 +13,11 @@ import {
   Loader2,
   FileArchive,
   MessageCircle,
+  Brain,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
-import { exportFieldToObsidian } from "@/lib/api";
+import { exportFieldToObsidian, exportAnkiDeck } from "@/lib/api";
 import SyllabusNav from "./SyllabusNav";
 import ContentPanel from "./ContentPanel";
 import ProgressBar from "./ProgressBar";
@@ -46,6 +47,8 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [fieldExporting, setFieldExporting] = useState(false);
   const [fieldExported, setFieldExported] = useState(false);
+  const [ankiExporting, setAnkiExporting] = useState(false);
+  const [ankiExported, setAnkiExported] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
   const [vaultAnalysis, setVaultAnalysis] = useState<any>(null);
 
@@ -70,6 +73,27 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
       console.error("Field export failed:", e);
     } finally {
       setFieldExporting(false);
+    }
+  };
+
+  const handleExportAnki = async () => {
+    if (ankiExporting) return;
+    setAnkiExporting(true);
+    try {
+      const blob = await exportAnkiDeck(field, undefined, locale);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName = field.replace(/\s+/g, "_").replace(/&/g, "and");
+      a.download = `Korczak_${safeName}_anki.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setAnkiExported(true);
+      setTimeout(() => setAnkiExported(false), 3000);
+    } catch (e) {
+      console.error("Anki export failed:", e);
+    } finally {
+      setAnkiExporting(false);
     }
   };
 
@@ -148,6 +172,27 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           )}
           <span className="hidden sm:inline">
             {fieldExported ? "Exported!" : "Obsidian"}
+          </span>
+        </button>
+
+        {/* Anki export */}
+        <button
+          onClick={handleExportAnki}
+          disabled={ankiExporting}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium
+                     hover:bg-surface-hover transition-colors
+                     text-text-secondary hover:text-accent-gold disabled:opacity-50"
+          title={he ? "ייצוא ל-Anki" : "Export to Anki"}
+        >
+          {ankiExporting ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : ankiExported ? (
+            <Check size={14} className="text-accent-green" />
+          ) : (
+            <Brain size={14} />
+          )}
+          <span className="hidden sm:inline">
+            {ankiExported ? "Exported!" : "Anki"}
           </span>
         </button>
 
