@@ -181,14 +181,14 @@ def analyze_paper(title: str, authors_str: str, year: int, abstract: str) -> dic
     }
 
     try:
-        resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=60)
+        resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=120)
 
         # Handle credit/rate limit errors
         if resp.status_code == 429:
             retry_after = int(resp.headers.get("retry-after", 30))
             print(f"    Rate limited — waiting {retry_after}s...")
             time.sleep(retry_after)
-            resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=60)
+            resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=120)
         if resp.status_code in (402, 529):
             print(f"\n*** CREDITS EXHAUSTED (HTTP {resp.status_code}) — stopping gracefully ***")
             return "STOP"
@@ -216,6 +216,24 @@ def analyze_paper(title: str, authors_str: str, year: int, abstract: str) -> dic
             return "STOP"
         print(f"    Analysis error: {e}")
         return None
+    except httpx.ReadTimeout:
+        print(f"    Timeout — retrying once...")
+        try:
+            resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=120)
+            resp.raise_for_status()
+            data = resp.json()
+            text = data["content"][0]["text"]
+            usage = data.get("usage", {})
+            call_cost = (usage.get("input_tokens", 0) * COST_PER_INPUT_TOKEN) + (usage.get("output_tokens", 0) * COST_PER_OUTPUT_TOKEN)
+            budget_spent += call_cost
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0]
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0]
+            return json.loads(text.strip())
+        except Exception:
+            print(f"    Retry also failed")
+            return None
     except Exception as e:
         print(f"    Analysis error: {e}")
         return None

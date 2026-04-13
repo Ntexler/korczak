@@ -118,14 +118,36 @@ async def generate_briefing(
         briefing_type=briefing_type,
     )
 
-    return {
-        "briefing_type": briefing_type,
-        "user_id": user_id,
-        "prompt": prompt,
-        "raw_data": data,
-        "formatted_data": formatted,
-        "status": "ready_for_generation",  # Will be "generated" when Claude processes it
-    }
+    # Actually generate the briefing with Claude
+    try:
+        from backend.config import settings
+        from backend.integrations.claude_client import _call_claude
+
+        response = await _call_claude(
+            prompt,
+            model=settings.haiku_model,
+            max_tokens=1000,
+            temperature=0.4,
+        )
+
+        return {
+            "briefing_type": briefing_type,
+            "user_id": user_id,
+            "content": response.text,
+            "raw_data": data,
+            "tokens_used": response.total_tokens,
+            "status": "generated",
+        }
+    except Exception as e:
+        logger.warning(f"Briefing generation failed: {e}")
+        return {
+            "briefing_type": briefing_type,
+            "user_id": user_id,
+            "prompt": prompt,
+            "raw_data": data,
+            "formatted_data": formatted,
+            "status": "ready_for_generation",
+        }
 
 
 async def get_briefing_topics(user_id: str | None = None) -> list[dict]:
