@@ -481,55 +481,6 @@ export default function ContentPanel({
       </div>
     );
   }
-          <Brain size={16} />
-          {quizLoading ? (he ? "מכין..." : "Generating...") : (he ? "בחן אותי על התחום" : "Quiz me on this field")}
-        </button>
-
-        {/* Quiz mode */}
-        {quizActive && quizQuestions.length > 0 && (
-          <QuizCard
-            question={quizQuestions[quizIndex]}
-            index={quizIndex}
-            total={quizQuestions.length}
-            showAnswer={showAnswer}
-            onReveal={() => setShowAnswer(true)}
-            onNext={() => { setQuizIndex((i) => i + 1); setShowAnswer(false); }}
-            onClose={() => setQuizActive(false)}
-            onSend={onSend}
-            he={he}
-          />
-        )}
-
-        {overview?.top_concepts && overview.top_concepts.length > 0 && (
-          <div className="space-y-2">
-            {overview.top_concepts.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => handleSelectConcept(c.id)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-lg
-                  bg-surface border border-border hover:border-accent-gold/40
-                  text-left transition-all group"
-              >
-                <div>
-                  <span className="text-sm text-foreground group-hover:text-accent-gold transition-colors font-medium">
-                    {c.name}
-                  </span>
-                  {c.type && (
-                    <span className="text-[10px] text-text-tertiary ml-2 uppercase">{c.type}</span>
-                  )}
-                </div>
-                {c.paper_count != null && c.paper_count > 0 && (
-                  <span className="text-[10px] text-text-tertiary flex items-center gap-1">
-                    <FileText size={10} /> {c.paper_count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   // ── Concept Lesson View ──
   if (!concept) {
