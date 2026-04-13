@@ -47,6 +47,7 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const { fonts: f, locale } = useLocaleStore();
   const { currentMode, setMode } = useFieldStore();
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
+  const [selectedConceptName, setSelectedConceptName] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [fieldExporting, setFieldExporting] = useState(false);
@@ -59,6 +60,18 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [fieldSwitcherOpen, setFieldSwitcherOpen] = useState(false);
   const [fieldSearch, setFieldSearch] = useState("");
   const [availableFields, setAvailableFields] = useState<{ name: string; paper_count: number }[]>([]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedConcept) {
+        setSelectedConcept(null);
+        setSelectedConceptName(null);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [selectedConcept]);
 
   // Fetch available fields for switcher
   useEffect(() => {
@@ -149,11 +162,11 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
             {field}
             <ChevronDown size={14} className="text-text-tertiary shrink-0" />
           </button>
-          {selectedConcept && (
+          {selectedConcept && selectedConceptName && (
             <>
               <span className="text-text-tertiary text-sm shrink-0">/</span>
               <span className="text-sm text-accent-gold truncate max-w-[200px]">
-                {he ? "מושג" : "Concept"}
+                {selectedConceptName}
               </span>
             </>
           )}
@@ -393,6 +406,7 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
             field={field}
             locale={locale}
             onSend={onSend}
+            onConceptLoaded={setSelectedConceptName}
           />
         </main>
 

@@ -54,7 +54,7 @@ export default function ChatMessage({
                 : "bg-surface border border-border-subtle text-foreground rounded-bl-sm"
             }`}
           >
-            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm" style={{ lineHeight: '1.75' }}>
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm" style={{ lineHeight: '1.75' }} dir="auto">
               {renderContent(content)}
             </div>
           </div>

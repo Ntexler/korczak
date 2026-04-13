@@ -87,6 +87,7 @@ interface ContentPanelProps {
   field: string;
   locale: string;
   onSend: (text: string) => void;
+  onConceptLoaded?: (name: string) => void;
 }
 
 const DEPTH_LABELS = [
@@ -192,6 +193,7 @@ export default function ContentPanel({
   field,
   locale,
   onSend,
+  onConceptLoaded,
 }: ContentPanelProps) {
   const [concept, setConcept] = useState<ConceptData | null>(null);
   const [overview, setOverview] = useState<FieldOverview | null>(null);
@@ -272,6 +274,7 @@ export default function ContentPanel({
         if (!cancelled) {
           setConcept(data);
           setEvidenceLoading(false);
+          if (data?.name && onConceptLoaded) onConceptLoaded(data.name);
         }
       } catch {
         if (!cancelled) setConcept(null);
