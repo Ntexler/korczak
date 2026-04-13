@@ -529,11 +529,19 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
                 "note": f"No concepts linked to {field_name} papers yet.",
             }
 
-        concepts = client.table("concepts").select(
-            "id, name, type, definition, paper_count, confidence"
-        ).in_("id", list(concept_ids)).order("paper_count", desc=True).limit(80).execute()
+        # Batch concept fetching to avoid Supabase URL length limits
+        items = []
+        concept_id_list = list(concept_ids)
+        for i in range(0, len(concept_id_list), 50):
+            batch = concept_id_list[i:i + 50]
+            result = client.table("concepts").select(
+                "id, name, type, definition, paper_count, confidence"
+            ).in_("id", batch).execute()
+            items.extend(result.data or [])
 
-        items = concepts.data or []
+        # Sort by paper_count descending, cap at 80
+        items.sort(key=lambda c: c.get("paper_count", 0), reverse=True)
+        items = items[:80]
 
         # Smart distribution: group by importance tiers, then by type within each tier
         # Tier 1 (Foundations): top 20% by paper_count — most cited = foundational
@@ -627,11 +635,21 @@ async def get_field_concepts(
         if not concept_ids:
             return {"field": field_name, "concepts": [], "total": 0}
 
-        concepts = client.table("concepts").select(
-            "id, name, type, definition, paper_count, confidence, trend, controversy_score"
-        ).in_("id", list(concept_ids)).order("paper_count", desc=True).limit(limit).execute()
+        # Batch concept fetching to avoid Supabase URL length limits
+        all_concepts = []
+        concept_id_list = list(concept_ids)
+        for i in range(0, len(concept_id_list), 50):
+            batch = concept_id_list[i:i + 50]
+            result = client.table("concepts").select(
+                "id, name, type, definition, paper_count, confidence, trend, controversy_score"
+            ).in_("id", batch).execute()
+            all_concepts.extend(result.data or [])
 
-        return {"field": field_name, "concepts": concepts.data, "total": len(concepts.data or [])}
+        # Sort by paper_count and limit
+        all_concepts.sort(key=lambda c: c.get("paper_count", 0), reverse=True)
+        all_concepts = all_concepts[:limit]
+
+        return {"field": field_name, "concepts": all_concepts, "total": len(all_concepts)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
