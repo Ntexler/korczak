@@ -26,6 +26,7 @@ from backend.api.briefings import router as briefings_router
 from backend.api.obsidian import router as obsidian_router
 from backend.api.active_learning import router as learning_router
 from backend.api.plugins import router as plugins_router
+from backend.middleware.rate_limiter import RateLimitMiddleware
 
 
 @asynccontextmanager
@@ -52,6 +53,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware)
 
 # Routes
 app.include_router(health_router, prefix="/api", tags=["health"])
