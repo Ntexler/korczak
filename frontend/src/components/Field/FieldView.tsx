@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft,
   Search,
   Settings,
   GraduationCap,
   FlaskConical,
-  Compass,
+  Compass as CompassIcon,
+  Send,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
+import { useChatStore } from "@/stores/chatStore";
+import { sendMessage } from "@/lib/api";
+import ChatMessage from "@/components/Chat/ChatMessage";
 import SyllabusNav from "./SyllabusNav";
 import ContentPanel from "./ContentPanel";
 import ProgressBar from "./ProgressBar";
@@ -24,7 +28,7 @@ interface FieldViewProps {
 const MODE_CONFIG = {
   learn: { label: "Learn", icon: GraduationCap },
   research: { label: "Research", icon: FlaskConical },
-  discover: { label: "Discover", icon: Compass },
+  discover: { label: "Discover", icon: CompassIcon },
 } as const;
 
 type FieldMode = "learn" | "research" | "discover";
@@ -32,16 +36,46 @@ type FieldMode = "learn" | "research" | "discover";
 export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const { fonts: f, locale } = useLocaleStore();
   const { currentMode, setMode } = useFieldStore();
+  const { messages, isLoading, conversationId, addMessage, setLoading, setConversationId } = useChatStore();
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Placeholder userId — should come from auth context in production
-  const userId = "mock-user";
+  const userId = "demo-researcher-1";
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  const handleChatSend = async (text: string) => {
+    const prefixedText = `[${field}] ${text}`;
+    addMessage({ role: "user", content: text });
+    setLoading(true);
+    try {
+      const res = await sendMessage(prefixedText, conversationId ?? undefined, "navigator", locale);
+      if (res.conversation_id) setConversationId(res.conversation_id);
+      addMessage({
+        role: "assistant",
+        content: res.response,
+        conceptsReferenced: res.concepts_referenced,
+        insight: res.insight,
+      });
+    } catch {
+      addMessage({ role: "assistant", content: "An error occurred. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendFromContent = (text: string) => {
+    handleChatSend(text);
+  };
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
-      onSend(searchQuery.trim());
+      handleChatSend(searchQuery.trim());
       setSearchQuery("");
       setSearchOpen(false);
     }
@@ -149,33 +183,74 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
             conceptId={selectedConcept}
             field={field}
             locale={locale}
-            onSend={onSend}
+            onSend={handleSendFromContent}
           />
         </main>
 
-        {/* Right: Chat panel placeholder */}
-        <aside className="w-[320px] shrink-0 border-l border-border bg-surface overflow-y-auto hidden lg:flex flex-col">
-          <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm p-4 text-center">
-            Chat panel — send a message to start a conversation about {field}
+        {/* Right: Live Chat */}
+        <aside className="w-[320px] shrink-0 border-l border-border bg-surface hidden lg:flex flex-col">
+          {/* Chat header */}
+          <div className="px-3 py-2 border-b border-border text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+            {locale === "he" ? "צ'אט — " : "Chat — "}{field}
           </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+            {messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-text-tertiary text-xs text-center px-4">
+                {locale === "he"
+                  ? `שאל שאלה על ${field}, או לחץ "תסביר עוד" בתוכן`
+                  : `Ask about ${field}, or click "Explain more" in content`
+                }
+              </div>
+            ) : (
+              <>
+                {messages.map((msg) => (
+                  <ChatMessage
+                    key={msg.id}
+                    role={msg.role}
+                    content={msg.content}
+                    conceptsReferenced={msg.conceptsReferenced}
+                    insight={msg.insight}
+                    onSend={handleChatSend}
+                  />
+                ))}
+                {isLoading && (
+                  <div className="flex gap-1.5 py-2">
+                    <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-1" />
+                    <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-2" />
+                    <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-3" />
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </>
+            )}
+          </div>
+
+          {/* Input */}
           <div className="p-3 border-t border-border">
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Ask about this field..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder={locale === "he" ? "שאל על התחום..." : "Ask about this field..."}
                 className="flex-1 px-3 py-2 rounded-lg bg-surface-sunken border border-border
                            text-sm text-foreground placeholder:text-text-tertiary
                            focus:outline-none focus:border-accent-gold/50 transition-colors"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const target = e.target as HTMLInputElement;
-                    if (target.value.trim()) {
-                      onSend(target.value.trim());
-                      target.value = "";
-                    }
+                  if (e.key === "Enter" && chatInput.trim()) {
+                    handleChatSend(chatInput.trim());
+                    setChatInput("");
                   }
                 }}
               />
+              <button
+                onClick={() => { if (chatInput.trim()) { handleChatSend(chatInput.trim()); setChatInput(""); }}}
+                className="p-2 rounded-lg bg-accent-gold text-background hover:bg-accent-gold/90 transition-colors"
+              >
+                <Send size={14} />
+              </button>
             </div>
           </div>
         </aside>

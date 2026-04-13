@@ -383,6 +383,66 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
             c["readings"] = readings.data
             return c
 
+        # Try real syllabi readings from scraped sources (MIT OCW, Stanford, etc.)
+        field_syllabi = client.table("syllabi").select("id, title, institution, source").eq(
+            "department", field_name
+        ).execute()
+        # Also try partial match on department name
+        if not field_syllabi.data:
+            field_syllabi = client.table("syllabi").select(
+                "id, title, institution, source"
+            ).ilike("department", f"%{field_name}%").execute()
+
+        if field_syllabi.data:
+            syl_ids = [s["id"] for s in field_syllabi.data]
+            all_readings = []
+            for i in range(0, len(syl_ids), 20):
+                batch = syl_ids[i:i+20]
+                rd = client.table("syllabus_readings").select(
+                    "id, external_title, external_authors, external_year, week, section, paper_id, match_confidence"
+                ).in_("syllabus_id", batch).order("week").order("position").execute()
+                all_readings.extend(rd.data or [])
+
+            # Filter out "Course description:" entries
+            real_readings = [
+                r for r in all_readings
+                if r.get("external_title") and not r["external_title"].startswith("Course")
+            ]
+
+            if real_readings:
+                # Group by week
+                weeks_map: dict[int, list] = {}
+                for r in real_readings:
+                    w = r.get("week") or 1
+                    if w not in weeks_map:
+                        weeks_map[w] = []
+                    weeks_map[w].append({
+                        "id": r.get("paper_id") or r["id"],
+                        "name": r["external_title"],
+                        "type": "reading",
+                        "authors": r.get("external_authors", ""),
+                        "year": r.get("external_year"),
+                    })
+
+                weeks = []
+                for w_num in sorted(weeks_map.keys()):
+                    weeks.append({
+                        "week_number": w_num,
+                        "title": f"Week {w_num}",
+                        "concepts": weeks_map[w_num],
+                    })
+
+                sources = list(set(s["institution"] or s["source"] for s in field_syllabi.data))
+                return {
+                    "department": field_name,
+                    "level": level,
+                    "title": f"{field_name} — Based on {len(field_syllabi.data)} syllabi",
+                    "weeks": weeks,
+                    "total_readings": len(real_readings),
+                    "sources": sources,
+                    "is_generated": False,
+                }
+
         # Fallback: get concepts ONLY from papers in this field
         # Step 1: Find papers that belong to this field
         all_papers = client.table("papers").select(
