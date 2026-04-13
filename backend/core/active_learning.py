@@ -179,6 +179,20 @@ async def explain_at_depth(
     except Exception:
         pass
 
+    # Build pedagogical context
+    pedagogy_block = ""
+    try:
+        from backend.core.pedagogy import get_teaching_strategy
+        strategy = get_teaching_strategy(c.get("type", "concept"))
+        pedagogy_block = (
+            f"\n\nTEACHING APPROACH for {c.get('type', 'concept')}s: {strategy['description']}\n"
+            f"Steps: {'; '.join(strategy['steps'][:3])}\n"
+            f"Avoid: {'; '.join(strategy['common_mistakes'][:2])}\n"
+            f"{strategy.get('analogy_prompt', '')}"
+        )
+    except Exception:
+        pass
+
     # Build prompt
     lang = "Hebrew" if locale == "he" else "English"
     user_note = ""
@@ -189,7 +203,7 @@ async def explain_at_depth(
         f"{level['prompt']}\n\n"
         f"Concept: \"{c['name']}\" (type: {c.get('type', 'concept')})\n"
         f"Definition: {c.get('definition', 'N/A')[:300]}\n"
-        f"{paper_context}{neighbor_context}{user_note}\n\n"
+        f"{paper_context}{neighbor_context}{pedagogy_block}{user_note}\n\n"
         f"Respond in {lang}. Be warm and engaging."
     )
 

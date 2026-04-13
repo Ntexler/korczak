@@ -138,10 +138,12 @@ async def synthesize(
     locale: str = "en",
     skeptic_feedback: str | None = None,
     intent: QueryIntent = QueryIntent.FACTUAL,
+    teaching_context: str | None = None,
 ) -> tuple[SynthesisOutput, int]:
     """Stage 4: Synthesize retrieved knowledge into a coherent response.
     Returns (SynthesisOutput, total_tokens).
     Uses Haiku for factual/exploration queries, Sonnet for comparison/controversy.
+    Optionally includes pedagogical teaching instructions.
     """
     language_instruction = (
         "Respond in Hebrew. Use Hebrew for all text except technical/academic terms."
@@ -179,6 +181,9 @@ async def synthesize(
             language_instruction=language_instruction,
             query=query,
         )
+
+    if teaching_context:
+        prompt += f"\n\n{teaching_context}"
 
     if skeptic_feedback:
         prompt += f"\n\nIMPORTANT — Skeptic feedback from prior attempt (address these issues):\n{skeptic_feedback}"
