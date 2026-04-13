@@ -845,7 +845,13 @@ export default function ContentPanel({
                         {paper.title}
                       </div>
                       <div className="flex items-center gap-2 mt-1 text-[10px] text-text-tertiary">
-                        {paper.authors && <span className="truncate max-w-[200px]">{paper.authors}</span>}
+                        {paper.authors && <span className="truncate max-w-[200px]">{
+                          typeof paper.authors === "string"
+                            ? paper.authors
+                            : Array.isArray(paper.authors)
+                              ? paper.authors.map((a: any) => typeof a === "string" ? a : a?.name || "").filter(Boolean).join(", ")
+                              : ""
+                        }</span>}
                         {paper.year && <span>({paper.year})</span>}
                         {paper.cited_by_count != null && paper.cited_by_count > 0 && (
                           <span>{paper.cited_by_count} citations</span>
