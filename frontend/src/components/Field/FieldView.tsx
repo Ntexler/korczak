@@ -126,12 +126,24 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           <ArrowLeft size={18} />
         </button>
 
-        <h1
-          className="text-base font-semibold text-foreground truncate"
-          style={{ fontFamily: f.display }}
-        >
-          {field}
-        </h1>
+        {/* Field name + current concept breadcrumb */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h1
+            className="text-base font-semibold text-foreground truncate"
+            style={{ fontFamily: f.display }}
+          >
+            {field}
+          </h1>
+          {selectedConcept && (
+            <>
+              <span className="text-text-tertiary text-sm shrink-0">/</span>
+              <span className="text-sm text-accent-gold truncate max-w-[200px]">
+                {/* concept name will show from state once loaded */}
+                {he ? "מושג" : "Concept"}
+              </span>
+            </>
+          )}
+        </div>
 
         {/* Mode toggle */}
         <div className="flex items-center rounded-lg border border-border bg-surface-sunken ml-auto">
