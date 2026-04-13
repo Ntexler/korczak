@@ -10,8 +10,9 @@ import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
 import KnowledgeGraph from "@/components/Graph/KnowledgeGraph";
-import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine, Clock, HelpCircle } from "lucide-react";
+import { Compass, Menu, PanelRightOpen, Languages, GraduationCap, Navigation, Radio, Map, BookOpen, TreePine, Clock, HelpCircle, Search, MoreHorizontal } from "lucide-react";
 import GuidedTour from "@/components/Welcome/GuidedTour";
+import GlobalSearch from "@/components/Search/GlobalSearch";
 import { useLibraryStore } from "@/stores/libraryStore";
 import PaperLibrary from "@/components/Library/PaperLibrary";
 import KnowledgeTreeView from "@/components/Tree/KnowledgeTree";
@@ -39,6 +40,8 @@ export default function Home() {
   const [showGraph, setShowGraph] = useState(false);
   const [showTree, setShowTree] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const [showTour, setShowTour] = useState(() => {
     if (typeof window === "undefined") return false;
     return !localStorage.getItem("korczak-tour-done");
@@ -51,6 +54,18 @@ export default function Home() {
     setShowTour(false);
     localStorage.setItem("korczak-tour-done", "1");
   };
+
+  // Cmd+K to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearch((s) => !s);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -84,8 +99,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen bg-background" dir={isRtl ? "rtl" : "ltr"} style={{ fontFamily: f.sans }}>
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface/30 backdrop-blur-sm z-10">
+      {/* Header — simplified */}
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-surface/30 backdrop-blur-sm z-10">
+        {/* Left: Menu + Logo */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -95,85 +111,39 @@ export default function Home() {
           </button>
           <div className="flex items-center gap-2">
             <Compass size={20} className="text-accent-gold" />
-            <h1
-              className="text-lg font-bold text-foreground tracking-tight"
-              style={{ fontFamily: f.display }}
-            >
+            <h1 className="text-lg font-bold text-foreground tracking-tight" style={{ fontFamily: f.display }}>
               {t.appName}
             </h1>
-            <span className="hidden sm:inline text-text-secondary text-sm">
-              {t.subtitle}
-            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Tour / Help button */}
+        {/* Center: Search bar */}
+        <button
+          onClick={() => setShowSearch(true)}
+          className="hidden sm:flex items-center gap-2 px-4 py-1.5 rounded-xl
+            bg-surface-sunken border border-border/50 text-sm text-text-tertiary
+            hover:border-accent-gold/30 hover:text-text-secondary transition-all
+            min-w-[280px] max-w-[400px]"
+        >
+          <Search size={14} />
+          <span className="flex-1 text-left truncate">
+            {locale === "he" ? "חפש קונספטים או שאל..." : "Search concepts or ask..."}
+          </span>
+          <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border text-[10px]">
+            {"\u2318"}K
+          </kbd>
+        </button>
+
+        {/* Right: Essential controls only */}
+        <div className="flex items-center gap-1.5">
+          {/* Mobile search */}
           <button
-            onClick={() => setShowTour(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
-              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
-            title={locale === "en" ? "Guided tour" : "סיור מודרך"}
+            onClick={() => setShowSearch(true)}
+            className="sm:hidden p-1.5 rounded-lg hover:bg-surface-hover text-text-secondary"
           >
-            <HelpCircle size={14} />
-            <span className="hidden sm:inline font-medium">{locale === "en" ? "Tour" : "סיור"}</span>
+            <Search size={18} />
           </button>
-          {/* Language toggle */}
-          <button
-            onClick={toggleLocale}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
-              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
-            title={locale === "en" ? "עברית" : "English"}
-          >
-            <Languages size={14} />
-            <span className="font-medium">{locale === "en" ? "HE" : "EN"}</span>
-          </button>
-          {/* Library button */}
-          <button
-            onClick={() => setLibraryOpen(!libraryOpen)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors ${
-              libraryOpen
-                ? "bg-accent-gold/15 text-accent-gold"
-                : "hover:bg-surface-hover text-text-secondary hover:text-foreground"
-            }`}
-            title={t.library}
-          >
-            <BookOpen size={14} />
-            <span className="hidden sm:inline font-medium">{t.library}</span>
-          </button>
-          {/* Knowledge Tree button */}
-          {userId && (
-            <button
-              onClick={() => setShowTree(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
-                hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
-              title={t.knowledgeTree}
-            >
-              <TreePine size={14} />
-              <span className="hidden sm:inline font-medium">{t.knowledgeTree}</span>
-            </button>
-          )}
-          {/* Knowledge Map button */}
-          <button
-            onClick={() => setShowGraph(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
-              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
-            title={t.knowledgeMap}
-          >
-            <Map size={14} />
-            <span className="hidden sm:inline font-medium">{t.knowledgeMap}</span>
-          </button>
-          {/* Timeline button */}
-          <button
-            onClick={() => setShowTimeline(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs
-              hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
-            title={locale === "he" ? "ציר זמן" : "Timeline"}
-          >
-            <Clock size={14} />
-            <span className="hidden sm:inline font-medium">{locale === "he" ? "ציר זמן" : "Timeline"}</span>
-          </button>
-          {/* Mode selector */}
+          {/* Mode selector — compact */}
           <div className="flex items-center bg-surface-sunken rounded-full p-0.5 gap-0.5">
             {(["auto", "navigator", "tutor"] as const).map((m) => {
               const icons = { auto: Radio, navigator: Navigation, tutor: GraduationCap };
@@ -183,7 +153,7 @@ export default function Home() {
                 <button
                   key={m}
                   onClick={() => setMode(m)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-all
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-all
                     ${active
                       ? "bg-accent-gold-dim text-accent-gold"
                       : "text-text-tertiary hover:text-text-secondary"
@@ -191,11 +161,60 @@ export default function Home() {
                   title={t[m]}
                 >
                   <Icon size={11} />
-                  <span className="hidden sm:inline">{t[m]}</span>
+                  <span className="hidden lg:inline">{t[m]}</span>
                 </button>
               );
             })}
           </div>
+          {/* Language */}
+          <button
+            onClick={toggleLocale}
+            className="px-2 py-1 rounded-lg text-xs hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+            title={locale === "en" ? "עברית" : "English"}
+          >
+            {locale === "en" ? "HE" : "EN"}
+          </button>
+          {/* Tools menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowTools(!showTools)}
+              className="p-1.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+              title={locale === "he" ? "כלים" : "Tools"}
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            {showTools && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setShowTools(false)} />
+                <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-xl shadow-xl z-30 py-1 overflow-hidden">
+                  <button onClick={() => { setShowGraph(true); setShowTools(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-foreground transition-colors text-left">
+                    <Map size={14} className="text-accent-gold/70" /> {t.knowledgeMap}
+                  </button>
+                  {userId && (
+                    <button onClick={() => { setShowTree(true); setShowTools(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-foreground transition-colors text-left">
+                      <TreePine size={14} className="text-accent-gold/70" /> {t.knowledgeTree}
+                    </button>
+                  )}
+                  <button onClick={() => { setShowTimeline(true); setShowTools(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-foreground transition-colors text-left">
+                    <Clock size={14} className="text-accent-gold/70" /> {locale === "he" ? "ציר זמן" : "Timeline"}
+                  </button>
+                  <button onClick={() => { setLibraryOpen(!libraryOpen); setShowTools(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-foreground transition-colors text-left">
+                    <BookOpen size={14} className="text-accent-gold/70" /> {t.library}
+                  </button>
+                  <div className="border-t border-border my-1" />
+                  <button onClick={() => { setShowTour(true); setShowTools(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover hover:text-foreground transition-colors text-left">
+                    <HelpCircle size={14} className="text-text-tertiary" /> {locale === "he" ? "סיור מודרך" : "Guided Tour"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          {/* Panel toggle */}
           <button
             onClick={() => setConceptPanelOpen(!conceptPanelOpen)}
             className="p-1.5 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
@@ -274,6 +293,9 @@ export default function Home() {
 
       {/* Guided Tour */}
       {showTour && <GuidedTour onComplete={completeTour} />}
+
+      {/* Global Search */}
+      <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} onSend={handleSend} />
     </div>
   );
 }
