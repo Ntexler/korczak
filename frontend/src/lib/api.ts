@@ -704,3 +704,21 @@ export async function getUserUploads(userId: string) {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+// --- Obsidian Export API ---
+
+export async function exportConceptToObsidian(conceptId: string): Promise<{ filename: string; content: string }> {
+  const res = await fetchWithTimeout(`${API_BASE}/obsidian/export/concept/${conceptId}/json`, undefined, 15000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function exportFieldToObsidian(fieldName: string): Promise<Blob> {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/obsidian/export/field/${encodeURIComponent(fieldName)}`,
+    undefined,
+    60000,
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.blob();
+}

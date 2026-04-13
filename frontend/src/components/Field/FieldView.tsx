@@ -8,9 +8,13 @@ import {
   GraduationCap,
   FlaskConical,
   Compass,
+  Download,
+  Check,
+  Loader2,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
+import { exportFieldToObsidian } from "@/lib/api";
 import SyllabusNav from "./SyllabusNav";
 import ContentPanel from "./ContentPanel";
 import ProgressBar from "./ProgressBar";
@@ -35,9 +39,32 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [fieldExporting, setFieldExporting] = useState(false);
+  const [fieldExported, setFieldExported] = useState(false);
 
   // Placeholder userId — should come from auth context in production
   const userId = "mock-user";
+
+  const handleExportField = async () => {
+    if (fieldExporting) return;
+    setFieldExporting(true);
+    try {
+      const blob = await exportFieldToObsidian(field);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName = field.replace(/\s+/g, "_").replace(/&/g, "and");
+      a.download = `Korczak_${safeName}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setFieldExported(true);
+      setTimeout(() => setFieldExported(false), 3000);
+    } catch (e) {
+      console.error("Field export failed:", e);
+    } finally {
+      setFieldExporting(false);
+    }
+  };
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
@@ -92,6 +119,27 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
             );
           })}
         </div>
+
+        {/* Export to Obsidian */}
+        <button
+          onClick={handleExportField}
+          disabled={fieldExporting}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium
+                     hover:bg-surface-hover transition-colors
+                     text-text-secondary hover:text-accent-gold disabled:opacity-50"
+          title={locale === "he" ? "ייצוא ל-Obsidian" : "Export to Obsidian"}
+        >
+          {fieldExporting ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : fieldExported ? (
+            <Check size={14} className="text-accent-green" />
+          ) : (
+            <Download size={14} />
+          )}
+          <span className="hidden sm:inline">
+            {fieldExported ? "Exported!" : "Obsidian"}
+          </span>
+        </button>
 
         {/* Search toggle */}
         <button
