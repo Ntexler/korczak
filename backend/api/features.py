@@ -383,19 +383,70 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
             c["readings"] = readings.data
             return c
 
-        # Fallback: get concepts for this field, ordered by paper_count
+        # Fallback: get concepts ONLY from papers in this field
+        # Step 1: Find papers that belong to this field
+        all_papers = client.table("papers").select(
+            "id, subfield"
+        ).not_.is_("subfield", "null").execute()
+
+        field_paper_ids = []
+        for p in (all_papers.data or []):
+            if _normalize_field(p.get("subfield", "")) == field_name:
+                field_paper_ids.append(p["id"])
+
+        if not field_paper_ids:
+            return {
+                "department": field_name,
+                "level": level,
+                "title": f"{field_name} — {level.title()} Track",
+                "weeks": [],
+                "is_generated": False,
+                "note": f"No papers found for {field_name} yet.",
+            }
+
+        # Step 2: Get concept IDs linked to these papers
+        # (batch in chunks to avoid query limits)
+        concept_ids = set()
+        for i in range(0, len(field_paper_ids), 50):
+            batch = field_paper_ids[i:i+50]
+            pc = client.table("paper_concepts").select(
+                "concept_id"
+            ).in_("paper_id", batch).execute()
+            for row in (pc.data or []):
+                concept_ids.add(row["concept_id"])
+
+        if not concept_ids:
+            return {
+                "department": field_name,
+                "level": level,
+                "title": f"{field_name} — {level.title()} Track",
+                "weeks": [],
+                "is_generated": False,
+                "note": f"No concepts linked to {field_name} papers yet.",
+            }
+
+        # Step 3: Get the actual concepts
         concepts = client.table("concepts").select(
             "id, name, type, definition, paper_count, confidence"
-        ).order("paper_count", desc=True).limit(50).execute()
+        ).in_("id", list(concept_ids)).order("paper_count", desc=True).limit(60).execute()
 
-        # Organize into a basic syllabus structure
-        weeks = []
+        # Organize: high paper_count = foundational (early weeks), low = advanced (later)
         items = concepts.data or []
-        for i in range(0, len(items), 3):
-            week_items = items[i:i+3]
+        weeks = []
+        for i in range(0, len(items), 4):
+            week_items = items[i:i+4]
+            week_num = (i // 4) + 1
+            # Name the weeks based on position
+            if week_num <= 3:
+                week_label = "Foundations" if week_num == 1 else f"Core Concepts {week_num}"
+            elif week_num <= 7:
+                week_label = f"Intermediate — Week {week_num}"
+            else:
+                week_label = f"Advanced — Week {week_num}"
+
             weeks.append({
-                "week_number": (i // 3) + 1,
-                "title": f"Week {(i // 3) + 1}",
+                "week_number": week_num,
+                "title": week_label,
                 "concepts": [
                     {"id": c["id"], "name": c["name"], "type": c["type"],
                      "definition": c.get("definition", ""), "paper_count": c.get("paper_count", 0)}
@@ -408,8 +459,8 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
             "level": level,
             "title": f"{field_name} — {level.title()} Track",
             "weeks": weeks,
+            "total_concepts": len(items),
             "is_generated": False,
-            "note": "Auto-organized by paper count. Generated courses coming soon.",
         }
     except Exception as e:
         logger.error(f"Field syllabus error: {e}", exc_info=True)
@@ -426,10 +477,29 @@ async def get_field_concepts(
     client = get_client()
 
     try:
-        # Search concepts that match the field
+        # Get concepts that belong to papers in this field
+        all_papers = client.table("papers").select("id, subfield").not_.is_("subfield", "null").execute()
+        field_paper_ids = [
+            p["id"] for p in (all_papers.data or [])
+            if _normalize_field(p.get("subfield", "")) == field_name
+        ]
+
+        if not field_paper_ids:
+            return {"field": field_name, "concepts": [], "total": 0}
+
+        concept_ids = set()
+        for i in range(0, len(field_paper_ids), 50):
+            batch = field_paper_ids[i:i+50]
+            pc = client.table("paper_concepts").select("concept_id").in_("paper_id", batch).execute()
+            for row in (pc.data or []):
+                concept_ids.add(row["concept_id"])
+
+        if not concept_ids:
+            return {"field": field_name, "concepts": [], "total": 0}
+
         concepts = client.table("concepts").select(
             "id, name, type, definition, paper_count, confidence, trend, controversy_score"
-        ).order("paper_count", desc=True).limit(limit).execute()
+        ).in_("id", list(concept_ids)).order("paper_count", desc=True).limit(limit).execute()
 
         return {"field": field_name, "concepts": concepts.data, "total": len(concepts.data or [])}
     except Exception as e:
