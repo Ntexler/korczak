@@ -828,8 +828,10 @@ export default function ContentPanel({
               <FileText size={12} className="text-accent-gold" />
               {he ? "מאמרים מרכזיים" : "Key Papers"}
             </h3>
-            <div className="space-y-2">
-              {concept.key_papers.map((paper) => (
+            <div className="space-y-3">
+              {concept.key_papers.map((paper, paperIdx) => {
+                const isExpanded = expandedPaper === paper.id || paperIdx < 2; // first 2 auto-expanded
+                return (
                 <div key={paper.id} className="rounded-lg bg-surface border border-border/50 overflow-hidden">
                   <button
                     onClick={() => setExpandedPaper(expandedPaper === paper.id ? null : paper.id)}
@@ -847,18 +849,17 @@ export default function ContentPanel({
                         )}
                       </div>
                     </div>
-                    {expandedPaper === paper.id
+                    {isExpanded
                       ? <ChevronUp size={14} className="text-text-tertiary flex-shrink-0" />
                       : <ChevronDown size={14} className="text-text-tertiary flex-shrink-0" />
                     }
                   </button>
 
-                  {expandedPaper === paper.id && (
+                  {isExpanded && (
                     <div className="px-4 pb-4 border-t border-border/30">
                       {paper.abstract ? (
                         <div className="mt-3">
-                          <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1.5">Abstract</div>
-                          <p className="text-xs text-text-secondary leading-relaxed">
+                          <p className="text-sm text-text-secondary leading-relaxed">
                             {paper.abstract}
                           </p>
                         </div>
@@ -877,6 +878,16 @@ export default function ContentPanel({
                         >
                           <MessageCircle size={10} /> {he ? "הסבר על המאמר" : "Explain this paper"}
                         </button>
+                        <button
+                          onClick={() => onSend(
+                            he ? `מה הטענות העיקריות של "${paper.title}" ומה הראיות?`
+                              : `What are the key claims of "${paper.title}" and what's the evidence?`
+                          )}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px]
+                            bg-surface-sunken text-text-tertiary hover:text-text-secondary transition-colors"
+                        >
+                          <Quote size={10} /> {he ? "טענות ומקורות" : "Claims & evidence"}
+                        </button>
                         {paper.doi && (
                           <a
                             href={paper.doi}
@@ -892,7 +903,8 @@ export default function ContentPanel({
                     </div>
                   )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           </section>
         )}

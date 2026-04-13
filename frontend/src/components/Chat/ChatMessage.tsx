@@ -129,26 +129,86 @@ export default function ChatMessage({
 function renderContent(content: string) {
   const lines = content.split("\n");
   return lines.map((line, i) => {
-    let processed: React.ReactNode = line;
-    if (typeof processed === "string") {
-      const parts = processed.split(/\*\*(.+?)\*\*/g);
-      if (parts.length > 1) {
-        processed = parts.map((part, j) =>
-          j % 2 === 1 ? (
-            <strong key={j} className="text-foreground font-semibold">
-              {part}
-            </strong>
-          ) : (
-            part
-          )
-        );
-      }
+    const trimmed = line.trim();
+
+    // Headers
+    if (trimmed.startsWith("### ")) {
+      return <h4 key={i} className="text-sm font-bold text-foreground mt-3 mb-1">{renderInline(trimmed.slice(4))}</h4>;
     }
+    if (trimmed.startsWith("## ")) {
+      return <h3 key={i} className="text-sm font-bold text-foreground mt-4 mb-1">{renderInline(trimmed.slice(3))}</h3>;
+    }
+    if (trimmed.startsWith("# ")) {
+      return <h2 key={i} className="text-base font-bold text-foreground mt-4 mb-1">{renderInline(trimmed.slice(2))}</h2>;
+    }
+
+    // Bullet lists
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      return (
+        <div key={i} className="flex gap-2 ml-1 my-0.5">
+          <span className="text-accent-gold mt-0.5 shrink-0">•</span>
+          <span>{renderInline(trimmed.slice(2))}</span>
+        </div>
+      );
+    }
+
+    // Numbered lists
+    const numMatch = trimmed.match(/^(\d+)\.\s(.+)/);
+    if (numMatch) {
+      return (
+        <div key={i} className="flex gap-2 ml-1 my-0.5">
+          <span className="text-text-tertiary shrink-0 w-4 text-right">{numMatch[1]}.</span>
+          <span>{renderInline(numMatch[2])}</span>
+        </div>
+      );
+    }
+
+    // Blockquotes
+    if (trimmed.startsWith("> ")) {
+      return (
+        <div key={i} className="border-l-2 border-accent-gold/40 pl-3 my-1 text-text-secondary italic">
+          {renderInline(trimmed.slice(2))}
+        </div>
+      );
+    }
+
+    // Horizontal rule
+    if (trimmed === "---" || trimmed === "***") {
+      return <hr key={i} className="border-border my-2" />;
+    }
+
+    // Empty line
+    if (!trimmed) {
+      return <div key={i} className="h-2" />;
+    }
+
+    // Regular line with inline formatting
     return (
       <span key={i}>
-        {processed}
+        {renderInline(line)}
         {i < lines.length - 1 && "\n"}
       </span>
     );
+  });
+}
+
+function renderInline(text: string): React.ReactNode {
+  // Process inline markdown: **bold**, *italic*, `code`, [source_id]
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\])/g);
+  return parts.map((part, j) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={j} className="text-foreground font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*") && !part.startsWith("**")) {
+      return <em key={j} className="italic">{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={j} className="px-1 py-0.5 rounded bg-surface-sunken text-accent-gold text-[11px] font-mono">{part.slice(1, -1)}</code>;
+    }
+    // Source citations [source_id]
+    if (part.startsWith("[") && part.endsWith("]") && part.length < 40) {
+      return <span key={j} className="text-[10px] text-accent-blue align-super">{part}</span>;
+    }
+    return part;
   });
 }
