@@ -15,6 +15,13 @@ from backend.user.profile_builder import update_from_conversation
 from backend.user.context_extractor import extract_context, update_user_profile
 from backend.user.behavior_tracker import track_session
 from backend.search.pipeline import run_search_pipeline
+from backend.core.teaching_preferences import (
+    detect_preference_feedback,
+    detect_preference_scope,
+    update_preferences,
+    get_user_preferences,
+    preferences_to_prompt,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -148,6 +155,35 @@ async def chat(msg: ChatMessage):
                 await track_session(msg.user_id, msg.message, active_mode, concepts_referenced)
             except Exception as e:
                 logger.warning(f"Behavior tracking failed: {e}")
+
+        # 13. Detect and apply teaching preference feedback
+        if msg.user_id:
+            try:
+                pref_adjustments = detect_preference_feedback(msg.message)
+                if pref_adjustments:
+                    scope = detect_preference_scope(msg.message)
+
+                    if scope == "permanent":
+                        # User explicitly said "always" / "from now on"
+                        await update_preferences(msg.user_id, pref_adjustments)
+                        logger.info(f"Permanent preference update: {pref_adjustments}")
+                    elif scope == "session":
+                        # Just for this session — don't persist
+                        # Session preferences are handled via conversation context
+                        logger.info(f"Session-only preference: {pref_adjustments}")
+                    else:
+                        # Ambiguous — Korczak applies for now but asks
+                        # The response already reflects the change (via pipeline),
+                        # and we append a gentle question
+                        dim_names = ", ".join(pref_adjustments.keys())
+                        if msg.locale == "he":
+                            clarification = f"\n\n---\n*שמתי לב שאתה מעדיף סגנון שונה ({dim_names}). אתחיל להתאים את עצמי. רוצה שאזכור את זה תמיד, או רק לעכשיו?*"
+                        else:
+                            clarification = f"\n\n---\n*I noticed you'd like me to adjust my style ({dim_names}). I'll adapt. Should I remember this preference going forward, or just for now?*"
+                        response_text += clarification
+                        logger.info(f"Ambiguous preference — asking user: {pref_adjustments}")
+            except Exception as e:
+                logger.warning(f"Preference detection failed: {e}")
 
         return ChatResponse(
             response=response_text,
