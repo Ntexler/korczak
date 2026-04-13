@@ -97,12 +97,63 @@ const DEPTH_LABELS = [
   { depth: 5, label: "Expert", label_he: "מומחה", emoji: "🧠" },
 ];
 
-const STATUS_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string; label_he: string }> = {
-  well_supported: { icon: ThumbsUp, color: "text-green-400", bg: "bg-green-500/10", label: "Well Supported", label_he: "נתמך היטב" },
-  supported: { icon: Shield, color: "text-blue-400", bg: "bg-blue-500/10", label: "Supported", label_he: "נתמך" },
-  debated: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10", label: "Actively Debated", label_he: "שנוי במחלוקת" },
-  challenged: { icon: ThumbsDown, color: "text-red-400", bg: "bg-red-500/10", label: "Challenged", label_he: "מאותגר" },
-  single_source: { icon: FileText, color: "text-text-tertiary", bg: "bg-surface-sunken", label: "Single Source", label_he: "מקור יחיד" },
+const STATUS_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string; label_he: string; why: string; why_he: string }> = {
+  well_supported: {
+    icon: ThumbsUp, color: "text-green-400", bg: "bg-green-500/10",
+    label: "Well Supported", label_he: "נתמך היטב",
+    why: "Multiple independent studies confirm this claim",
+    why_he: "מספר מחקרים בלתי תלויים מאשרים את הטענה הזו",
+  },
+  supported: {
+    icon: Shield, color: "text-blue-400", bg: "bg-blue-500/10",
+    label: "Supported", label_he: "נתמך",
+    why: "Evidence exists but from limited sources",
+    why_he: "קיימות ראיות אך ממספר מצומצם של מקורות",
+  },
+  debated: {
+    icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10",
+    label: "Actively Debated", label_he: "שנוי במחלוקת",
+    why: "Some studies support this while others contradict it",
+    why_he: "חלק מהמחקרים תומכים וחלק סותרים — יש מחלוקת פעילה",
+  },
+  challenged: {
+    icon: ThumbsDown, color: "text-red-400", bg: "bg-red-500/10",
+    label: "Challenged", label_he: "מאותגר",
+    why: "Contradicting evidence exists — treat with caution",
+    why_he: "קיימות ראיות סותרות — יש להתייחס בזהירות",
+  },
+  single_source: {
+    icon: FileText, color: "text-text-tertiary", bg: "bg-surface-sunken",
+    label: "Single Source", label_he: "מקור יחיד",
+    why: "Based on one paper only — not yet independently verified",
+    why_he: "מבוסס על מאמר יחיד בלבד — עדיין לא אומת באופן עצמאי",
+  },
+};
+
+const STRENGTH_EXPLAIN: Record<string, { label: string; why: string; why_he: string }> = {
+  strong: {
+    label: "strong",
+    why: "Backed by robust methodology and clear data",
+    why_he: "מבוסס על מתודולוגיה חזקה ונתונים ברורים",
+  },
+  moderate: {
+    label: "moderate",
+    why: "Reasonable evidence but with some methodological limitations",
+    why_he: "ראיות סבירות אך עם מגבלות מתודולוגיות מסוימות",
+  },
+  weak: {
+    label: "weak",
+    why: "Limited evidence — preliminary finding or small sample",
+    why_he: "ראיות מוגבלות — ממצא ראשוני או מדגם קטן",
+  },
+};
+
+const EVIDENCE_TYPE_EXPLAIN: Record<string, { why: string; why_he: string }> = {
+  empirical: { why: "Based on observed data or experiments", why_he: "מבוסס על נתונים או ניסויים" },
+  theoretical: { why: "Derived from logical reasoning or models", why_he: "נגזר מהיגיון תיאורטי או מודלים" },
+  comparative: { why: "Based on comparison across cases or cultures", why_he: "מבוסס על השוואה בין מקרים או תרבויות" },
+  methodological: { why: "About research methods themselves", why_he: "עוסק בשיטות המחקר עצמן" },
+  meta_analytic: { why: "Aggregated from multiple studies", why_he: "מצטבר ממספר מחקרים" },
 };
 
 function renderTextWithConcepts(
@@ -567,22 +618,21 @@ export default function ContentPanel({
                       </p>
 
                       {/* Evidence indicator bar */}
-                      <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+                      <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                         {/* Status badge */}
                         <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${config.bg} ${config.color}`}>
                           <StatusIcon size={10} />
                           {he ? config.label_he : config.label}
                         </span>
 
-                        {/* Support/contradict counts */}
                         {claim.support_count > 0 && (
                           <span className="flex items-center gap-1 text-[10px] text-green-400">
-                            <ThumbsUp size={9} /> {claim.support_count} {he ? "תומכים" : "support"}
+                            <ThumbsUp size={9} /> {claim.support_count}
                           </span>
                         )}
                         {claim.contradict_count > 0 && (
                           <span className="flex items-center gap-1 text-[10px] text-red-400">
-                            <ThumbsDown size={9} /> {claim.contradict_count} {he ? "סותרים" : "contradict"}
+                            <ThumbsDown size={9} /> {claim.contradict_count}
                           </span>
                         )}
 
@@ -597,6 +647,17 @@ export default function ContentPanel({
                             claim.strength === "moderate" ? "bg-yellow-500/10 text-yellow-400" :
                             "bg-red-500/10 text-red-400"
                           }`}>{claim.strength}</span>
+                        )}
+                      </div>
+
+                      {/* Why this rating — always visible explanation */}
+                      <div className="mt-2 px-2.5 py-1.5 rounded bg-surface-sunken/50 text-[10px] text-text-tertiary leading-relaxed space-y-0.5">
+                        <p>{he ? config.why_he : config.why}</p>
+                        {claim.strength && STRENGTH_EXPLAIN[claim.strength] && (
+                          <p>{he ? `חוזק: ${STRENGTH_EXPLAIN[claim.strength].why_he}` : `Strength: ${STRENGTH_EXPLAIN[claim.strength].why}`}</p>
+                        )}
+                        {claim.evidence_type && EVIDENCE_TYPE_EXPLAIN[claim.evidence_type] && (
+                          <p>{he ? `סוג ראיה: ${EVIDENCE_TYPE_EXPLAIN[claim.evidence_type].why_he}` : `Evidence: ${EVIDENCE_TYPE_EXPLAIN[claim.evidence_type].why}`}</p>
                         )}
                       </div>
 
