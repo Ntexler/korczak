@@ -42,15 +42,20 @@ async def get_concept_with_context(concept_id: str) -> dict | None:
     # Get claims related to this concept's papers
     if papers:
         paper_ids = [str(p["id"]) for p in papers]
-        claims_result = (
-            client.table("claims")
-            .select("claim_text, evidence_type, strength, confidence")
-            .in_("paper_id", paper_ids)
-            .order("confidence", desc=True)
-            .limit(5)
-            .execute()
-        )
-        concept["key_claims"] = claims_result.data or []
+        all_claims = []
+        for ci in range(0, len(paper_ids), 30):
+            batch = paper_ids[ci:ci + 30]
+            claims_result = (
+                client.table("claims")
+                .select("claim_text, evidence_type, strength, confidence")
+                .in_("paper_id", batch)
+                .order("confidence", desc=True)
+                .limit(5)
+                .execute()
+            )
+            all_claims.extend(claims_result.data or [])
+        all_claims.sort(key=lambda c: c.get("confidence", 0), reverse=True)
+        concept["key_claims"] = all_claims[:5]
     else:
         concept["key_claims"] = []
 
@@ -144,13 +149,18 @@ async def get_enriched_graph_data(limit: int = 100, include_lens_data: bool = Fa
     if include_lens_data:
         # Max publication year per concept via paper_concepts → papers
         try:
-            pc_result = (
-                client.table("paper_concepts")
-                .select("concept_id, papers(publication_year)")
-                .in_("concept_id", concept_id_list)
-                .execute()
-            )
-            for row in (pc_result.data or []):
+            pc_data = []
+            for ci in range(0, len(concept_id_list), 50):
+                batch = concept_id_list[ci:ci + 50]
+                pc_batch = (
+                    client.table("paper_concepts")
+                    .select("concept_id, papers(publication_year)")
+                    .in_("concept_id", batch)
+                    .execute()
+                )
+                pc_data.extend(pc_batch.data or [])
+            pc_result_data = pc_data
+            for row in pc_result_data:
                 cid = row["concept_id"]
                 year = row.get("papers", {}).get("publication_year")
                 if year and (cid not in max_pub_year or year > max_pub_year[cid]):
@@ -160,27 +170,28 @@ async def get_enriched_graph_data(limit: int = 100, include_lens_data: bool = Fa
 
         # Community activity: discussions + concept_summaries
         try:
-            discussions_result = (
-                client.table("discussions")
-                .select("target_id")
-                .eq("target_type", "concept")
-                .in_("target_id", concept_id_list)
-                .execute()
-            )
-            for row in (discussions_result.data or []):
+            disc_data = []
+            for ci in range(0, len(concept_id_list), 50):
+                batch = concept_id_list[ci:ci + 50]
+                disc_batch = client.table("discussions").select("target_id").eq(
+                    "target_type", "concept"
+                ).in_("target_id", batch).execute()
+                disc_data.extend(disc_batch.data or [])
+            for row in disc_data:
                 tid = row["target_id"]
                 community_activity[tid] = community_activity.get(tid, 0) + 1
         except Exception as e:
             logger.warning(f"Failed to fetch discussions for lenses: {e}")
 
         try:
-            summaries_result = (
-                client.table("concept_summaries")
-                .select("concept_id")
-                .in_("concept_id", concept_id_list)
-                .execute()
-            )
-            for row in (summaries_result.data or []):
+            summ_data = []
+            for ci in range(0, len(concept_id_list), 50):
+                batch = concept_id_list[ci:ci + 50]
+                summ_batch = client.table("concept_summaries").select(
+                    "concept_id"
+                ).in_("concept_id", batch).execute()
+                summ_data.extend(summ_batch.data or [])
+            for row in summ_data:
                 cid = row["concept_id"]
                 community_activity[cid] = community_activity.get(cid, 0) + 1
         except Exception as e:
@@ -410,13 +421,18 @@ async def get_personal_overlay(user_id: str, limit: int = 100) -> dict:
         return {"overlay": [], "stats": {}}
 
     # Get user's knowledge state for these concepts
-    knowledge = (
-        client.table("user_knowledge")
-        .select("concept_id, understanding_level, misconceptions, blind_spots, interaction_count, last_interaction")
-        .eq("user_id", user_id)
-        .in_("concept_id", concept_ids)
-        .execute()
-    )
+    knowledge_data = []
+    for ci in range(0, len(concept_ids), 50):
+        batch = concept_ids[ci:ci + 50]
+        kn_batch = (
+            client.table("user_knowledge")
+            .select("concept_id, understanding_level, misconceptions, blind_spots, interaction_count, last_interaction")
+            .eq("user_id", user_id)
+            .in_("concept_id", batch)
+            .execute()
+        )
+        knowledge_data.extend(kn_batch.data or [])
+    knowledge = type("R", (), {"data": knowledge_data})()
     knowledge_map = {k["concept_id"]: k for k in (knowledge.data or [])}
 
     # Build overlay
