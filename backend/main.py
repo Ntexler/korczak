@@ -24,6 +24,7 @@ from backend.api.upload import router as upload_router
 from backend.api.courses import router as courses_router
 from backend.api.briefings import router as briefings_router
 from backend.api.obsidian import router as obsidian_router
+from backend.api.active_learning import router as learning_router
 
 
 @asynccontextmanager
@@ -70,3 +71,4 @@ app.include_router(upload_router, prefix="/api", tags=["upload"])
 app.include_router(courses_router, prefix="/api/courses", tags=["courses"])
 app.include_router(briefings_router, prefix="/api/briefings", tags=["briefings"])
 app.include_router(obsidian_router, prefix="/api/obsidian", tags=["obsidian"])
+app.include_router(learning_router, prefix="/api/learning", tags=["learning"])

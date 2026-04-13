@@ -750,3 +750,27 @@ export async function dismissVaultInsight(insightId: string) {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+// --- Active Learning API ---
+
+export async function getClaimEvidenceMap(conceptId: string) {
+  const res = await fetchWithTimeout(`${API_BASE}/learning/evidence/${conceptId}`, undefined, 15000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function explainAtDepth(conceptId: string, depth: number, locale: string = "en") {
+  const params = new URLSearchParams({ depth: String(depth), locale });
+  const res = await fetchWithTimeout(`${API_BASE}/learning/explain/${conceptId}?${params}`, undefined, 20000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function generateQuiz(fieldName?: string, conceptIds?: string[], count: number = 5, locale: string = "en") {
+  const params = new URLSearchParams({ count: String(count), locale });
+  if (fieldName) params.set("field_name", fieldName);
+  if (conceptIds?.length) params.set("concept_ids", conceptIds.join(","));
+  const res = await fetchWithTimeout(`${API_BASE}/learning/quiz?${params}`, undefined, 15000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
