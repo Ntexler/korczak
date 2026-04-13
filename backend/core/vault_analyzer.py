@@ -458,6 +458,8 @@ async def save_analysis(
         "status": "complete",
     }).execute()
 
+    if not analysis.data:
+        raise RuntimeError("Failed to save vault analysis")
     analysis_id = analysis.data[0]["id"]
 
     # Save note mappings (batch insert)

@@ -7,6 +7,7 @@ reports findings back to the user.
 """
 
 import logging
+from datetime import datetime, timezone
 
 from backend.integrations.supabase_client import get_client
 
@@ -68,7 +69,7 @@ async def process_signal(signal_id: str) -> dict | None:
         client.table("attention_signals").update({
             "status": "resolved",
             "resolution": resolution,
-            "resolved_at": "now()",
+            "resolved_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", signal_id).execute()
 
         return resolution
