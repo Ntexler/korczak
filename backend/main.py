@@ -27,6 +27,7 @@ from backend.api.obsidian import router as obsidian_router
 from backend.api.active_learning import router as learning_router
 from backend.api.plugins import router as plugins_router
 from backend.api.learner import router as learner_router
+from backend.api.private_papers import router as private_papers_router
 from backend.api.claims import router as claims_router
 from backend.api.authors import router as authors_router
 from backend.middleware.rate_limiter import RateLimitMiddleware
@@ -80,5 +81,6 @@ app.include_router(obsidian_router, prefix="/api/obsidian", tags=["obsidian"])
 app.include_router(learning_router, prefix="/api/learning", tags=["learning"])
 app.include_router(plugins_router, prefix="/api/plugins", tags=["plugins"])
 app.include_router(learner_router, prefix="/api/learner", tags=["learner"])
+app.include_router(private_papers_router, prefix="/api", tags=["privacy"])
 app.include_router(claims_router, prefix="/api/claims", tags=["claims"])
 app.include_router(authors_router, prefix="/api/authors", tags=["authors"])
