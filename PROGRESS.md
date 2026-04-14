@@ -545,4 +545,49 @@ frontend/
 - [x] Phase 7: Academic Social Network (profiles, summaries, collaborative editing)
 - [x] Phase 8: Timeline of Knowledge (evolution tracking, animated history)
 - [x] Phase 9: Advanced Visualization (5 views, 5 lenses, graph settings)
-- [x] **Phase 10: Search Pipeline (5-stage: analysis → retrieval → coverage → synthesis → skeptic)** ← JUST COMPLETED
+- [x] Phase 10: Search Pipeline (5-stage: analysis → retrieval → coverage → synthesis → skeptic)
+- [x] **Phase 11: Canonical Corpus + Multilingual + Discovery Engine** ← JUST COMPLETED
+
+---
+
+## Phase 11 — Canonical Corpus + Discovery Engine (2026-04-14)
+
+**Canonical corpus (260+ foundational works tagged in graph):**
+- 85 English canonical works across 12 fields.
+- 83 foreign canonical works across 9 languages (German, French, Russian,
+  Japanese, Chinese, Spanish, Italian, Arabic, Amharic).
+- 94 of the Google Scholar Top 100 most-cited papers tagged canonical.
+
+**Claude Knowledge Reconstruction (breakthrough):**
+- 99 canonical stubs (books without accessible abstracts) enriched with
+  deep Haiku-generated analyses from training: ~15 concepts, ~8 claims,
+  ~10 relationships each. Total cost $1.48.
+- Solves the problem that OpenAlex indexes *reviews of* canonical books,
+  not the books themselves. Kant, Heidegger, Dogen, Ibn Khaldun now
+  present with real knowledge graph representation.
+
+**Seeding pipelines added:**
+- seed_foreign, seed_optimized --journals, seed_citations, seed_gutenberg,
+  seed_from_training.
+- mark_canonical + mark_canonical_foreign + mark_scholar_top100.
+
+**Discovery Engine (discover_connections.py):**
+- 6 discovery kinds implemented. First run: 78 findings at $0.17.
+- Top findings: Foucault↔criminology (imp 0.95), de Beauvoir↔English
+  feminism (0.89), Mauss↔Anglo economics (0.89), Ibn Khaldun↔political
+  theory (0.88).
+
+**Learner State + Discovery API (migration 027):**
+- user_concept_mastery, learning_paths, learning_path_steps,
+  user_interactions, discoveries, research_hypotheses, discovery_runs.
+- 6 REST endpoints under /api/learner.
+
+**Open gaps for Phase 12:**
+- Learning-path generator (tables exist, no algorithm yet).
+- Prerequisite computation (unseen_ready TODO).
+- Assessment / Socratic engine.
+- Frontend dashboards (deferred — Next.js version newer than training).
+- User-upload pipeline for copyrighted texts.
+- On-demand translation endpoint.
+- Gutenberg title-matching fix.
+- User-auth wiring to learner tables.
