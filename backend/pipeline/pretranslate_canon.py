@@ -86,6 +86,8 @@ async def supabase_post(client, table, data):
     )
     if r.status_code in (200, 201):
         return r.json()
+    if r.status_code != 409:  # 409 = unique conflict, expected
+        print(f"    POST {table} {r.status_code}: {r.text[:200]}")
     return None
 
 
@@ -170,17 +172,15 @@ async def translate_one(client, paper, target_lang):
     except Exception as e:
         return None
 
-    await supabase_post(client, "paper_translations", {
+    res = await supabase_post(client, "paper_translations", {
         "paper_id": paper_id,
         "source_language": source_lang,
         "target_language": target_lang,
         "translated_title": parsed.get("translated_title", ""),
         "translated_abstract": parsed.get("translated_abstract", ""),
-        "quality_notes": parsed.get("quality_notes"),
-        "model": "claude-haiku-4-5-20251001",
-        "translated_at": datetime.now(tz=timezone.utc).isoformat(),
+        "translator_model": "claude-haiku-4-5-20251001",
     })
-    return "ok"
+    return "ok" if res is not None else "post_failed"
 
 
 async def async_main():
