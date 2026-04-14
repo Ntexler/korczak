@@ -158,6 +158,43 @@ GROUP BY p.id, p.title, p.language, p.canonical_field, p.abstract
 LIMIT %s
 """
 
+QUERY_ORPHAN_CONCEPT = """
+-- Concepts in multiple papers but with NO concept-to-concept relationships.
+-- Uses a precomputed "wired concepts" set (LEFT JOIN) which is much
+-- faster than NOT EXISTS across the relationships table.
+WITH wired AS (
+    SELECT DISTINCT source_id AS cid FROM relationships
+      WHERE source_type = 'concept'
+    UNION
+    SELECT DISTINCT target_id AS cid FROM relationships
+      WHERE target_type = 'concept'
+),
+concept_usage AS (
+    SELECT pc.concept_id, COUNT(DISTINCT pc.paper_id) AS paper_count
+    FROM paper_concepts pc
+    GROUP BY pc.concept_id
+    HAVING COUNT(DISTINCT pc.paper_id) >= 3
+)
+SELECT c.id, c.name, c.definition, c.type, cu.paper_count,
+       (SELECT array_agg(p.title ORDER BY p.cited_by_count DESC NULLS LAST)
+          FROM (
+            SELECT pp.title, pp.cited_by_count
+            FROM paper_concepts ppc
+            JOIN papers pp ON pp.id = ppc.paper_id
+            WHERE ppc.concept_id = c.id
+            ORDER BY pp.cited_by_count DESC NULLS LAST
+            LIMIT 5
+          ) p
+       ) AS sample_titles
+FROM concepts c
+JOIN concept_usage cu ON cu.concept_id = c.id
+LEFT JOIN wired w ON w.cid = c.id
+WHERE c.definition IS NOT NULL
+  AND w.cid IS NULL
+ORDER BY cu.paper_count DESC
+LIMIT %s
+"""
+
 QUERY_CONTRADICTION = """
 SELECT
     cl1.id as claim_a, cl2.id as claim_b,
@@ -317,6 +354,35 @@ Return JSON:
   "verdict": "supported|refuted|mixed|untested",
   "modern_test_suggestion": "one specific approach" or null,
   "why_untested": "reason" or null,
+  "confidence": 0.0-1.0,
+  "novelty": 0.0-1.0,
+  "importance": 0.0-1.0
+}}
+"""
+
+
+def prompt_orphan_concept(concept_name, definition, paper_count, sample_titles):
+    samples = "\n".join(f"  - {t[:80]}" for t in (sample_titles or [])[:5])
+    return f"""A concept appears in {paper_count} papers in our graph but has ZERO recorded relationships to other concepts — it's an orphan node.
+
+Concept: "{concept_name}"
+Definition: {definition or '(none)'}
+Sample papers discussing it:
+{samples}
+
+Two possibilities:
+  (a) The concept is legitimately isolated — unrelated to anything else in the graph.
+  (b) The concept actually DOES connect to other concepts, but the analyzers haven't caught the relationships yet.
+
+Evaluate:
+1. Which is more likely — legitimate isolate, or missing edges?
+2. If missing edges: name 2-4 specific other concepts it should connect to and the relationship type (BUILDS_ON / CONTRADICTS / EXTENDS / APPLIES / ANALOGOUS_TO / RESPONDS_TO).
+3. How important is it to wire this concept in? (0-1)
+
+Return JSON:
+{{
+  "likely_status": "legitimate_isolate|missing_edges",
+  "suggested_edges": [{{"to_concept": "name", "edge_type": "BUILDS_ON", "reason": "..."}}],
   "confidence": 0.0-1.0,
   "novelty": 0.0-1.0,
   "importance": 0.0-1.0
@@ -523,6 +589,41 @@ async def run_unrealized_potential(conn, client, limit, stats):
     await asyncio.gather(*[process(c) for c in candidates])
 
 
+async def run_orphan_concept(conn, client, limit, stats):
+    print("\n--- Orphan Concepts ---")
+    with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+        cur.execute(QUERY_ORPHAN_CONCEPT, (limit,))
+        candidates = [dict(r) for r in cur.fetchall()]
+    print(f"  Found {len(candidates)} candidates")
+
+    sem = asyncio.Semaphore(CONCURRENCY)
+
+    async def process(c):
+        if budget_spent >= budget_limit: return
+        async with sem:
+            if budget_spent >= budget_limit: return
+            result = await call_claude(client, prompt_orphan_concept(
+                c["name"], c["definition"], c["paper_count"], c["sample_titles"]
+            ))
+            if not result: return
+            await insert_discovery(client, {
+                "kind": "orphan_concept",
+                "title": f"Orphan: '{c['name']}'",
+                "description": result.get("likely_status", "") + " — " + (
+                    json.dumps(result.get("suggested_edges", []), ensure_ascii=False)[:200]
+                ),
+                "claude_reasoning": json.dumps(result, ensure_ascii=False)[:2000],
+                "concept_ids": [c["id"]],
+                "confidence": float(result.get("confidence", 0.5)),
+                "novelty": float(result.get("novelty", 0.5)),
+                "importance": float(result.get("importance", 0.5)),
+            })
+            stats["orphan_concept"] += 1
+            print(f"  ✓ '{c['name']}' — {result.get('likely_status')}")
+
+    await asyncio.gather(*[process(c) for c in candidates])
+
+
 async def run_contradiction(conn, client, limit, stats):
     print("\n--- Contradictions ---")
     with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -649,7 +750,8 @@ async def async_main():
     _lock = asyncio.Lock()
 
     all_kinds = ["analogical_bridge", "citation_gap", "unrealized_potential",
-                 "contradiction", "temporal_gap", "cross_lingual_bridge"]
+                 "contradiction", "temporal_gap", "cross_lingual_bridge",
+                 "orphan_concept"]
     selected = all_kinds if args.kinds == "all" else [k.strip() for k in args.kinds.split(",")]
 
     print(f"\n{'='*60}")
@@ -679,6 +781,7 @@ async def async_main():
                 "contradiction": run_contradiction,
                 "temporal_gap": run_temporal_gap,
                 "cross_lingual_bridge": run_cross_lingual,
+                "orphan_concept": run_orphan_concept,
             }
             for k in selected:
                 if budget_spent >= budget_limit: break

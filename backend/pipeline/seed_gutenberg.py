@@ -131,6 +131,7 @@ async def search_gutenberg(client, title, author):
                 "https://gutendex.com/books",
                 params={"search": q},
                 timeout=20,
+                follow_redirects=True,
             )
             if r.status_code != 200:
                 continue
