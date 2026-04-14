@@ -388,20 +388,35 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
             return c
 
         # --- Tier 2: Real syllabus-driven structure ---
-        # Check if we have syllabi for this field
+        # Check if we have syllabi for this field. Try exact department match
+        # first, then a partial ILIKE match (brought in from main — catches
+        # e.g. "Anthropology" ↔ "Socio-Cultural Anthropology").
         syllabi = client.table("syllabi").select(
             "id, title, source, institution"
         ).eq("department", field_name).execute()
+
+        if not syllabi.data:
+            syllabi = client.table("syllabi").select(
+                "id, title, source, institution"
+            ).ilike("department", f"%{field_name}%").execute()
 
         syllabus_ids = [s["id"] for s in (syllabi.data or [])]
 
         if syllabus_ids:
             # Get readings with matched papers, ordered by week + position
-            readings = client.table("syllabus_readings").select(
-                "paper_id, external_title, external_authors, week, section, position, match_confidence"
-            ).in_("syllabus_id", syllabus_ids).order("week").order("position").execute()
+            all_readings = []
+            for i in range(0, len(syllabus_ids), 20):
+                batch = syllabus_ids[i:i + 20]
+                rd = client.table("syllabus_readings").select(
+                    "paper_id, external_title, external_authors, external_year, week, section, position, match_confidence"
+                ).in_("syllabus_id", batch).order("week").order("position").execute()
+                all_readings.extend(rd.data or [])
 
-            matched_readings = readings.data or []
+            # Drop scraper artefacts like "Course description: ..."
+            matched_readings = [
+                r for r in all_readings
+                if r.get("external_title") and not r["external_title"].startswith("Course")
+            ]
 
             if matched_readings:
                 # Get concepts from matched papers
@@ -458,6 +473,7 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
                     week["readings"].append({
                         "title": r.get("external_title", ""),
                         "authors": r.get("external_authors", ""),
+                        "year": r.get("external_year"),
                         "section": r.get("section", "required"),
                         "matched": r.get("paper_id") is not None,
                     })
@@ -476,15 +492,19 @@ async def get_field_syllabus(field_name: str, level: str = "intro"):
                                 })
 
                 weeks = sorted(weeks_map.values(), key=lambda w: w["week_number"])
-                sources = list(set(s.get("source", "unknown") for s in (syllabi.data or [])))
+                sources = list(set(
+                    s.get("institution") or s.get("source") or "unknown"
+                    for s in (syllabi.data or [])
+                ))
 
-                if weeks and any(w["concepts"] for w in weeks):
+                if weeks and any(w["concepts"] or w["readings"] for w in weeks):
                     return {
                         "department": field_name,
                         "level": level,
                         "title": f"{field_name} — {level.title()} Track",
                         "weeks": weeks,
                         "total_concepts": len(seen_concepts),
+                        "total_readings": len(matched_readings),
                         "is_generated": False,
                         "syllabus_sources": sources,
                         "source_note": f"Based on real syllabi from: {', '.join(sources)}",

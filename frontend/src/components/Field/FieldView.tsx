@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft,
   Search,
@@ -17,10 +17,13 @@ import {
   List,
   GitFork,
   ChevronDown,
+  Send,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
-import { exportFieldToObsidian, exportAnkiDeck } from "@/lib/api";
+import { useChatStore } from "@/stores/chatStore";
+import { exportFieldToObsidian, exportAnkiDeck, sendMessage } from "@/lib/api";
+import ChatMessage from "@/components/Chat/ChatMessage";
 import SyllabusNav from "./SyllabusNav";
 import ContentPanel from "./ContentPanel";
 import ConceptGraph from "./ConceptGraph";
@@ -46,6 +49,7 @@ type RightPanel = "chat" | "vault" | "insights";
 export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const { fonts: f, locale } = useLocaleStore();
   const { currentMode, setMode } = useFieldStore();
+  const { messages, isLoading, conversationId, addMessage, setLoading, setConversationId } = useChatStore();
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
   const [selectedConceptName, setSelectedConceptName] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -60,6 +64,9 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   const [fieldSwitcherOpen, setFieldSwitcherOpen] = useState(false);
   const [fieldSearch, setFieldSearch] = useState("");
   const [availableFields, setAvailableFields] = useState<{ name: string; paper_count: number }[]>([]);
+  // Live chat state (merged in from main)
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -82,8 +89,37 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
       .catch(() => {});
   }, []);
 
+  // Auto-scroll the chat pane to the newest message (from main)
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
   const userId = "mock-user";
   const he = locale === "he";
+
+  const handleChatSend = async (text: string) => {
+    const prefixedText = `[${field}] ${text}`;
+    addMessage({ role: "user", content: text });
+    setLoading(true);
+    try {
+      const res = await sendMessage(prefixedText, conversationId ?? undefined, "navigator", locale);
+      if (res.conversation_id) setConversationId(res.conversation_id);
+      addMessage({
+        role: "assistant",
+        content: res.response,
+        conceptsReferenced: res.concepts_referenced,
+        insight: res.insight,
+      });
+    } catch {
+      addMessage({ role: "assistant", content: "An error occurred. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendFromContent = (text: string) => {
+    handleChatSend(text);
+  };
 
   const handleExportField = async () => {
     if (fieldExporting) return;
@@ -129,7 +165,7 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
-      onSend(searchQuery.trim());
+      handleChatSend(searchQuery.trim());
       setSearchQuery("");
       setSearchOpen(false);
     }
@@ -405,17 +441,17 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
             conceptId={selectedConcept}
             field={field}
             locale={locale}
-            onSend={onSend}
+            onSend={handleSendFromContent}
             onConceptLoaded={setSelectedConceptName}
           />
         </main>
 
-        {/* Right panel — dynamic */}
+        {/* Right panel — dynamic: insights / vault / live chat */}
         <aside className="w-[320px] shrink-0 border-l border-border bg-surface overflow-hidden hidden lg:flex flex-col">
           {rightPanel === "insights" && vaultAnalysis ? (
             <InsightsPanel
               analysis={vaultAnalysis}
-              onSend={onSend}
+              onSend={handleChatSend}
               onClose={() => setRightPanel("chat")}
             />
           ) : rightPanel === "vault" ? (
@@ -436,31 +472,81 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
               </div>
             </div>
           ) : (
-            /* Default: Chat panel */
+            /* Default: Live chat (merged in from main) */
             <>
-              <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm p-4 text-center">
-                <div className="space-y-3">
-                  <MessageCircle size={28} className="mx-auto text-text-tertiary/40" />
-                  <p>{he ? "שלח הודעה כדי להתחיל שיחה" : `Chat about ${field}`}</p>
-                </div>
+              {/* Chat header */}
+              <div className="px-3 py-2 border-b border-border text-xs font-semibold text-text-tertiary uppercase tracking-wider shrink-0">
+                {he ? "צ'אט — " : "Chat — "}{field}
               </div>
-              <div className="p-3 border-t border-border">
-                <input
-                  type="text"
-                  placeholder={he ? "שאל על התחום..." : "Ask about this field..."}
-                  className="w-full px-3 py-2 rounded-lg bg-surface-sunken border border-border
-                             text-sm text-foreground placeholder:text-text-tertiary
-                             focus:outline-none focus:border-accent-gold/50 transition-colors"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const target = e.target as HTMLInputElement;
-                      if (target.value.trim()) {
-                        onSend(target.value.trim());
-                        target.value = "";
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+                {messages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-text-tertiary text-xs text-center px-4">
+                    <div className="space-y-3">
+                      <MessageCircle size={28} className="mx-auto text-text-tertiary/40" />
+                      <p>
+                        {he
+                          ? `שאל שאלה על ${field}, או לחץ "תסביר עוד" בתוכן`
+                          : `Ask about ${field}, or click "Explain more" in content`}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {messages.map((msg) => (
+                      <ChatMessage
+                        key={msg.id}
+                        role={msg.role}
+                        content={msg.content}
+                        conceptsReferenced={msg.conceptsReferenced}
+                        insight={msg.insight}
+                        onSend={handleChatSend}
+                      />
+                    ))}
+                    {isLoading && (
+                      <div className="flex gap-1.5 py-2">
+                        <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-1" />
+                        <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-2" />
+                        <span className="w-1.5 h-1.5 bg-accent-gold/60 rounded-full dot-bounce-3" />
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </>
+                )}
+              </div>
+
+              {/* Input */}
+              <div className="p-3 border-t border-border shrink-0">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder={he ? "שאל על התחום..." : "Ask about this field..."}
+                    className="flex-1 px-3 py-2 rounded-lg bg-surface-sunken border border-border
+                               text-sm text-foreground placeholder:text-text-tertiary
+                               focus:outline-none focus:border-accent-gold/50 transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && chatInput.trim()) {
+                        handleChatSend(chatInput.trim());
+                        setChatInput("");
                       }
-                    }
-                  }}
-                />
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (chatInput.trim()) {
+                        handleChatSend(chatInput.trim());
+                        setChatInput("");
+                      }
+                    }}
+                    className="p-2 rounded-lg bg-accent-gold text-background hover:bg-accent-gold/90 transition-colors"
+                    aria-label={he ? "שלח" : "Send"}
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
               </div>
             </>
           )}
