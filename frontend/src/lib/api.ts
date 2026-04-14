@@ -804,3 +804,138 @@ export async function extensionLookup(doi?: string, title?: string) {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+// --- Claims + Provenance (Feature 6.5) ---
+
+export interface ClaimAuthor {
+  name: string;
+  openalex_id?: string | null;
+  orcid?: string | null;
+  institution?: string | null;
+  country?: string | null;
+  profile_id?: string | null;
+  bio?: string | null;
+}
+
+export interface ClaimExample {
+  text: string;
+  kind?: string;
+  location?: string;
+}
+
+export interface ClaimPaper {
+  id: string;
+  title?: string | null;
+  publication_year?: number | null;
+  doi?: string | null;
+  access_url?: string | null;
+  access_status?: string | null;
+  access_ui?: { label: string; tone: string; cta: string | null } | null;
+  authors: ClaimAuthor[];
+  funding: Array<{ funder?: string | null; funder_id?: string | null; grant_id?: string | null }>;
+}
+
+export interface ClaimDetail {
+  id: string;
+  claim_text: string;
+  evidence_type?: string | null;
+  strength?: string | null;
+  confidence?: number | null;
+  testable?: boolean | null;
+  verbatim_quote?: string | null;
+  quote_location?: string | null;
+  claim_category?: "main" | "supporting" | "background" | "limitation" | null;
+  examples: ClaimExample[];
+  provenance_sources: Array<Record<string, unknown>>;
+  provenance_extracted_at?: string | null;
+  paper: ClaimPaper;
+}
+
+export interface ProvenanceResponse {
+  claim_id: string;
+  verbatim_quote: string | null;
+  quote_location: string | null;
+  claim_category: string | null;
+  examples: ClaimExample[];
+  provenance_sources: Array<Record<string, unknown>>;
+  extracted_at: string | null;
+  cached: boolean;
+}
+
+export async function getClaimDetail(claimId: string): Promise<ClaimDetail> {
+  const res = await fetchWithTimeout(`${API_BASE}/claims/${claimId}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getClaimProvenance(claimId: string): Promise<ProvenanceResponse> {
+  const res = await fetchWithTimeout(`${API_BASE}/claims/${claimId}/provenance`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function extractClaimProvenance(claimId: string, force = false): Promise<ProvenanceResponse> {
+  // The aggregator runs Claude; allow up to 45s.
+  const res = await fetchWithTimeout(
+    `${API_BASE}/claims/${claimId}/extract-provenance`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ force }),
+    },
+    45000
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+// --- Author profiles (Feature 6.5) ---
+
+export interface AuthorProfile {
+  id: string;
+  openalex_id?: string | null;
+  orcid?: string | null;
+  name: string;
+  primary_institution?: string | null;
+  primary_institution_ror_id?: string | null;
+  country?: string | null;
+  institution_history?: Array<{
+    institution?: string | null;
+    ror_id?: string | null;
+    country?: string | null;
+    years?: number[];
+  }>;
+  primary_field?: string | null;
+  concepts?: Array<{ id?: string; name?: string; level?: number; score?: number }>;
+  works_count?: number;
+  cited_by_count?: number;
+  h_index?: number | null;
+  bio?: string | null;
+  bio_generated_at?: string | null;
+  enriched_at?: string | null;
+}
+
+export async function getAuthorProfileByOpenAlex(openalexId: string, autoEnrich = true): Promise<AuthorProfile> {
+  // First view of an un-enriched profile runs OpenAlex + Claude inline; 30s ceiling.
+  const res = await fetchWithTimeout(
+    `${API_BASE}/authors/profile/by-openalex/${encodeURIComponent(openalexId)}?auto_enrich=${autoEnrich}`,
+    undefined,
+    30000
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getAuthorProfile(profileId: string): Promise<AuthorProfile> {
+  const res = await fetchWithTimeout(`${API_BASE}/authors/profile/${profileId}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getAuthorProfilePapers(profileId: string, limit = 20) {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/authors/profile/${profileId}/papers?limit=${limit}`
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json() as Promise<{ papers: Array<Record<string, unknown>>; total: number }>;
+}
