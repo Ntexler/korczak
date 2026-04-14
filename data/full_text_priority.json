@@ -1,0 +1,151 @@
+{
+  "description": "Priority papers for full-text analysis — canonical works across disciplines",
+  "strategy": "Seed these with full abstracts first (already done), then fetch full text for deep analysis",
+  "papers": [
+    {
+      "field": "Philosophy",
+      "works": [
+        {"title": "Tractatus Logico-Philosophicus", "author": "Ludwig Wittgenstein", "year": 1921, "why": "Foundational work in analytic philosophy and logic"},
+        {"title": "Being and Time", "author": "Martin Heidegger", "year": 1927, "why": "Foundational existentialist/phenomenological philosophy"},
+        {"title": "The Structure of Scientific Revolutions", "author": "Thomas Kuhn", "year": 1962, "why": "Paradigm shifts — foundational for philosophy of science"},
+        {"title": "A Theory of Justice", "author": "John Rawls", "year": 1971, "why": "Most influential political philosophy of 20th century"},
+        {"title": "Philosophical Investigations", "author": "Ludwig Wittgenstein", "year": 1953, "why": "Language games, meaning as use"},
+        {"title": "Anti-Oedipus: Capitalism and Schizophrenia", "author": "Deleuze & Guattari", "year": 1972, "why": "Post-structuralist critique of psychoanalysis"},
+        {"title": "The Order of Things", "author": "Michel Foucault", "year": 1966, "why": "Epistemes, archaeology of knowledge"},
+        {"title": "Naming and Necessity", "author": "Saul Kripke", "year": 1980, "why": "Rigid designators, necessary a posteriori truths"}
+      ]
+    },
+    {
+      "field": "Psychology",
+      "works": [
+        {"title": "Thinking, Fast and Slow", "author": "Daniel Kahneman", "year": 2011, "why": "Dual process theory, cognitive biases — Nobel-winning research"},
+        {"title": "The Interpretation of Dreams", "author": "Sigmund Freud", "year": 1900, "why": "Foundational psychoanalysis"},
+        {"title": "Principles of Psychology", "author": "William James", "year": 1890, "why": "Founded American psychology"},
+        {"title": "Influence: The Psychology of Persuasion", "author": "Robert Cialdini", "year": 1984, "why": "Social psychology of compliance"},
+        {"title": "Flow: The Psychology of Optimal Experience", "author": "Mihaly Csikszentmihalyi", "year": 1990, "why": "Positive psychology, flow states"},
+        {"title": "Man's Search for Meaning", "author": "Viktor Frankl", "year": 1946, "why": "Logotherapy, existential psychology"},
+        {"title": "Mindset: The New Psychology of Success", "author": "Carol Dweck", "year": 2006, "why": "Growth vs fixed mindset research"},
+        {"title": "The Body Keeps the Score", "author": "Bessel van der Kolk", "year": 2014, "why": "Trauma, neuroscience of PTSD"}
+      ]
+    },
+    {
+      "field": "Sociology",
+      "works": [
+        {"title": "The Social Construction of Reality", "author": "Berger & Luckmann", "year": 1966, "why": "Sociology of knowledge, social constructionism"},
+        {"title": "Distinction: A Social Critique of the Judgement of Taste", "author": "Pierre Bourdieu", "year": 1979, "why": "Cultural capital, habitus, field theory"},
+        {"title": "The Presentation of Self in Everyday Life", "author": "Erving Goffman", "year": 1956, "why": "Dramaturgical analysis, impression management"},
+        {"title": "Discipline and Punish", "author": "Michel Foucault", "year": 1975, "why": "Power, surveillance, panopticism"},
+        {"title": "The Protestant Ethic and the Spirit of Capitalism", "author": "Max Weber", "year": 1905, "why": "Religion and economic systems"},
+        {"title": "Capital in the Twenty-First Century", "author": "Thomas Piketty", "year": 2013, "why": "Wealth inequality dynamics"},
+        {"title": "Bowling Alone", "author": "Robert Putnam", "year": 2000, "why": "Social capital decline in America"},
+        {"title": "The Sociological Imagination", "author": "C. Wright Mills", "year": 1959, "why": "Personal troubles vs public issues"}
+      ]
+    },
+    {
+      "field": "Economics",
+      "works": [
+        {"title": "The Wealth of Nations", "author": "Adam Smith", "year": 1776, "why": "Foundation of modern economics"},
+        {"title": "The General Theory of Employment, Interest and Money", "author": "John Maynard Keynes", "year": 1936, "why": "Keynesian economics foundation"},
+        {"title": "Freakonomics", "author": "Levitt & Dubner", "year": 2005, "why": "Accessible behavioral economics"},
+        {"title": "Nudge", "author": "Thaler & Sunstein", "year": 2008, "why": "Behavioral economics, choice architecture"},
+        {"title": "Why Nations Fail", "author": "Acemoglu & Robinson", "year": 2012, "why": "Institutional economics, extractive vs inclusive"},
+        {"title": "The Road to Serfdom", "author": "Friedrich Hayek", "year": 1944, "why": "Classical liberal economics"},
+        {"title": "Prospect Theory: An Analysis of Decision under Risk", "author": "Kahneman & Tversky", "year": 1979, "why": "Nobel-winning behavioral economics paper"},
+        {"title": "Development as Freedom", "author": "Amartya Sen", "year": 1999, "why": "Capability approach to development"}
+      ]
+    },
+    {
+      "field": "Neuroscience",
+      "works": [
+        {"title": "Sleep Drives Metabolite Clearance from the Adult Brain", "author": "Xie et al.", "year": 2013, "why": "Glymphatic system discovery — 5,122 citations"},
+        {"title": "The Brain That Changes Itself", "author": "Norman Doidge", "year": 2007, "why": "Neuroplasticity for general audience"},
+        {"title": "Descartes' Error", "author": "Antonio Damasio", "year": 1994, "why": "Somatic marker hypothesis, emotion in reasoning"},
+        {"title": "The Man Who Mistook His Wife for a Hat", "author": "Oliver Sacks", "year": 1985, "why": "Clinical neurology case studies"},
+        {"title": "Synaptic Self", "author": "Joseph LeDoux", "year": 2002, "why": "Neural basis of personality and self"},
+        {"title": "Phantoms in the Brain", "author": "V.S. Ramachandran", "year": 1998, "why": "Phantom limbs, mirror neurons, brain plasticity"},
+        {"title": "A Wandering Mind Is an Unhappy Mind", "author": "Killingsworth & Gilbert", "year": 2010, "why": "Mind-wandering research — 2,473 citations"},
+        {"title": "Connectome: How the Brain's Wiring Makes Us Who We Are", "author": "Sebastian Seung", "year": 2012, "why": "Neural connectivity and identity"}
+      ]
+    },
+    {
+      "field": "Computer Science",
+      "works": [
+        {"title": "Attention Is All You Need", "author": "Vaswani et al.", "year": 2017, "why": "Transformer architecture — foundational for modern AI"},
+        {"title": "GPT-4 Technical Report", "author": "OpenAI", "year": 2023, "why": "State of large language models — 2,274 citations"},
+        {"title": "Deep Learning", "author": "Goodfellow, Bengio, Courville", "year": 2016, "why": "Definitive deep learning textbook"},
+        {"title": "Introduction to Algorithms", "author": "Cormen et al.", "year": 1990, "why": "The algorithms textbook (CLRS)"},
+        {"title": "Design Patterns", "author": "Gang of Four", "year": 1994, "why": "Software engineering patterns bible"},
+        {"title": "The Mythical Man-Month", "author": "Fred Brooks", "year": 1975, "why": "Software project management classic"},
+        {"title": "Computing Machinery and Intelligence", "author": "Alan Turing", "year": 1950, "why": "The Turing Test, AI foundations"},
+        {"title": "A Mathematical Theory of Communication", "author": "Claude Shannon", "year": 1948, "why": "Information theory foundation"}
+      ]
+    },
+    {
+      "field": "Political Science",
+      "works": [
+        {"title": "The Prince", "author": "Niccolò Machiavelli", "year": 1532, "why": "Political realism foundation"},
+        {"title": "Democracy in America", "author": "Alexis de Tocqueville", "year": 1835, "why": "Analysis of democratic governance"},
+        {"title": "The Origins of Totalitarianism", "author": "Hannah Arendt", "year": 1951, "why": "Understanding authoritarianism"},
+        {"title": "Leviathan", "author": "Thomas Hobbes", "year": 1651, "why": "Social contract theory"},
+        {"title": "On Liberty", "author": "John Stuart Mill", "year": 1859, "why": "Individual freedom, harm principle"},
+        {"title": "The Clash of Civilizations", "author": "Samuel Huntington", "year": 1996, "why": "Post-Cold War geopolitics"},
+        {"title": "Orientalism", "author": "Edward Said", "year": 1978, "why": "Postcolonial theory, cultural imperialism"},
+        {"title": "Manufacturing Consent", "author": "Chomsky & Herman", "year": 1988, "why": "Media propaganda model"}
+      ]
+    },
+    {
+      "field": "Anthropology",
+      "works": [
+        {"title": "The Interpretation of Cultures", "author": "Clifford Geertz", "year": 1973, "why": "Thick description, symbolic anthropology"},
+        {"title": "Guns, Germs, and Steel", "author": "Jared Diamond", "year": 1997, "why": "Environmental determinism in human history"},
+        {"title": "Sapiens: A Brief History of Humankind", "author": "Yuval Noah Harari", "year": 2011, "why": "Human evolution and civilization"},
+        {"title": "Coming of Age in Samoa", "author": "Margaret Mead", "year": 1928, "why": "Cultural anthropology classic"},
+        {"title": "Tristes Tropiques", "author": "Claude Lévi-Strauss", "year": 1955, "why": "Structural anthropology"},
+        {"title": "The Gift", "author": "Marcel Mauss", "year": 1925, "why": "Exchange theory, reciprocity"}
+      ]
+    },
+    {
+      "field": "History",
+      "works": [
+        {"title": "A People's History of the United States", "author": "Howard Zinn", "year": 1980, "why": "History from below"},
+        {"title": "The Age of Revolution", "author": "Eric Hobsbawm", "year": 1962, "why": "1789-1848 transformations"},
+        {"title": "Imagined Communities", "author": "Benedict Anderson", "year": 1983, "why": "Nationalism theory"},
+        {"title": "The Wretched of the Earth", "author": "Frantz Fanon", "year": 1961, "why": "Decolonization, anti-colonial theory"},
+        {"title": "The History of Sexuality", "author": "Michel Foucault", "year": 1976, "why": "Power/knowledge, biopolitics"},
+        {"title": "Homo Deus", "author": "Yuval Noah Harari", "year": 2015, "why": "Future of humanity, dataism"}
+      ]
+    },
+    {
+      "field": "Linguistics",
+      "works": [
+        {"title": "Syntactic Structures", "author": "Noam Chomsky", "year": 1957, "why": "Generative grammar revolution"},
+        {"title": "Course in General Linguistics", "author": "Ferdinand de Saussure", "year": 1916, "why": "Foundation of modern linguistics"},
+        {"title": "How Languages Are Learned", "author": "Lightbown & Spada", "year": 1993, "why": "Second language acquisition"},
+        {"title": "Women, Fire, and Dangerous Things", "author": "George Lakoff", "year": 1987, "why": "Cognitive linguistics, categorization"},
+        {"title": "The Language Instinct", "author": "Steven Pinker", "year": 1994, "why": "Nativist view of language"},
+        {"title": "Metaphors We Live By", "author": "Lakoff & Johnson", "year": 1980, "why": "Conceptual metaphor theory"}
+      ]
+    },
+    {
+      "field": "Biology / Medicine",
+      "works": [
+        {"title": "On the Origin of Species", "author": "Charles Darwin", "year": 1859, "why": "Evolution by natural selection"},
+        {"title": "The Selfish Gene", "author": "Richard Dawkins", "year": 1976, "why": "Gene-centered view of evolution, memes"},
+        {"title": "The Double Helix", "author": "James Watson", "year": 1968, "why": "DNA structure discovery narrative"},
+        {"title": "The Emperor of All Maladies", "author": "Siddhartha Mukherjee", "year": 2010, "why": "History of cancer research"},
+        {"title": "Silent Spring", "author": "Rachel Carson", "year": 1962, "why": "Environmental science, pesticide impact"},
+        {"title": "The Gene: An Intimate History", "author": "Siddhartha Mukherjee", "year": 2016, "why": "History and future of genetics"}
+      ]
+    },
+    {
+      "field": "Education",
+      "works": [
+        {"title": "Pedagogy of the Oppressed", "author": "Paulo Freire", "year": 1968, "why": "Critical pedagogy foundation"},
+        {"title": "Democracy and Education", "author": "John Dewey", "year": 1916, "why": "Progressive education philosophy"},
+        {"title": "Deschooling Society", "author": "Ivan Illich", "year": 1971, "why": "Radical education critique"},
+        {"title": "How Children Fail", "author": "John Holt", "year": 1964, "why": "Unschooling movement foundation"},
+        {"title": "Visible Learning", "author": "John Hattie", "year": 2008, "why": "Meta-analysis of education research"}
+      ]
+    }
+  ]
+}
