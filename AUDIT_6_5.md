@@ -121,8 +121,37 @@ No migration. Need to (a) add `grants` to the OpenAlex fetch, (b) backfill exist
 
 ---
 
-## Open decisions before Stage A
+## Decisions (2026-04-14)
 
-1. **Scope of first slice**: do we ship Stages A + B + D + E against existing data first (showing what we have, gracefully degrading), and push reanalysis (C) to a second slice? Recommended — it lets us validate the UI before spending Claude tokens on reanalysis.
-2. **Reanalysis budget**: how many papers have `full_text`, and are we willing to reanalyze all of them? Needs a count query and a cost check before Stage C.
-3. **Author bio — in or out of MVP?** Recommendation: out. It's the lowest-value field per token spent, and UI can show author + institution + country without a bio.
+1. **First slice scope**: Stages A + B + D + E on existing data, with graceful UI degradation when fields are empty. Confirmed.
+2. **Reanalysis is dropped.** Replaced by **on-demand provenance extraction**:
+   - UI surfaces a "show original quote / examples" affordance on each `ClaimCard`.
+   - First click invokes Claude with (claim_text + full_text) to extract `verbatim_quote`, `quote_location`, `examples`. Result is persisted to the claim row.
+   - Every subsequent viewer gets the cached result for free.
+   - Papers without `full_text` show a disabled affordance with "full text not available — only abstract-level analysis."
+   - Newly seeded papers still go through the updated `ANALYSIS_PROMPT_FULL_TEXT` at seed time when full text is fetched, so the cache fills naturally for anything new.
+3. **Author bio is IN the MVP.** Understanding the author's background is part of the learning experience. Enrichment path:
+   - Fetch author record from OpenAlex (`/authors/{id}`) — gives works count, concepts, institutions history.
+   - Generate a short background blurb via Claude (1–2 sentences summarizing field, institutions, notable works). Cache per author.
+
+## Revised Stage C — On-Demand Provenance Extraction
+
+Replaces the original "reanalysis" stage.
+
+1. New service `backend/core/provenance_extractor.py`:
+   - Input: `claim_id`
+   - Fetches claim + associated paper's `full_text`
+   - If no full_text → returns `{ status: "unavailable", reason: "no_full_text" }`
+   - Else calls Claude with a focused prompt: "Find the verbatim passage in this paper that supports the following claim. Return the quote (max 300 chars), its approximate location, related examples, and classify the claim as main/supporting/background/limitation."
+   - Writes results back to `claims.verbatim_quote`, `quote_location`, `examples`, `claim_category`
+   - Returns structured result
+2. New endpoint `POST /api/claims/{id}/extract-provenance` — idempotent (returns cached if already extracted).
+3. UI shows a button on `ClaimCard`; click triggers the endpoint, loader during extraction, renders result on completion.
+4. Log cost per call; dashboard tracks: extractions/day, cache hit rate, token spend.
+
+## Revised Stage B — Enrichment (bio included)
+
+- `papers.funding` ← populate from OpenAlex `grants` at seed time + one-time backfill script.
+- `papers.authors[].country` ← ROR API lookup on institution, backfill script.
+- `papers.access_url` + `access_status` ← derive from Unpaywall response (already fetched during full-text pass) + DOI + `open_access` flag. Backfill script.
+- **`papers.authors[].bio`** ← two-step: (1) fetch OpenAlex author record, (2) Claude generates a 1–2 sentence summary. Cached per author (consider a separate `author_profiles` table to avoid duplicating bio per paper; decide during Stage B design).
