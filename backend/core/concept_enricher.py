@@ -47,7 +47,16 @@ async def get_concept_with_context(concept_id: str) -> dict | None:
             batch = paper_ids[ci:ci + 30]
             claims_result = (
                 client.table("claims")
-                .select("claim_text, evidence_type, strength, confidence")
+                .select(
+                    # Feature 6.5: provenance fields surfaced with every claim.
+                    # verbatim_quote / quote_location / examples / claim_category
+                    # are usually NULL until the on-demand extractor runs;
+                    # returning them anyway lets the UI render "pending" vs
+                    # "grounded" states without a second round-trip.
+                    "id, paper_id, claim_text, evidence_type, strength, confidence, "
+                    "verbatim_quote, quote_location, claim_category, examples, "
+                    "provenance_extracted_at"
+                )
                 .in_("paper_id", batch)
                 .order("confidence", desc=True)
                 .limit(5)

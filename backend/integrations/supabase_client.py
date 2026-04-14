@@ -143,7 +143,13 @@ async def get_claims_for_papers(paper_ids: list[str], limit: int = 10) -> list[d
         batch = paper_ids[i:i + 30]
         result = (
             client.table("claims")
-            .select("id, paper_id, claim_text, evidence_type, strength, confidence")
+            .select(
+                # Feature 6.5: include provenance fields (usually NULL until
+                # on-demand extractor runs; UI renders them gracefully).
+                "id, paper_id, claim_text, evidence_type, strength, confidence, "
+                "verbatim_quote, quote_location, claim_category, examples, "
+                "provenance_extracted_at"
+            )
             .in_("paper_id", batch)
             .order("confidence", desc=True)
             .limit(limit)
