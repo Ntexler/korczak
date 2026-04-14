@@ -26,6 +26,7 @@ from backend.api.briefings import router as briefings_router
 from backend.api.obsidian import router as obsidian_router
 from backend.api.active_learning import router as learning_router
 from backend.api.plugins import router as plugins_router
+from backend.api.learner import router as learner_router
 from backend.middleware.rate_limiter import RateLimitMiddleware
 
 
@@ -76,3 +77,4 @@ app.include_router(briefings_router, prefix="/api/briefings", tags=["briefings"]
 app.include_router(obsidian_router, prefix="/api/obsidian", tags=["obsidian"])
 app.include_router(learning_router, prefix="/api/learning", tags=["learning"])
 app.include_router(plugins_router, prefix="/api/plugins", tags=["plugins"])
+app.include_router(learner_router, prefix="/api/learner", tags=["learner"])
