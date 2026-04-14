@@ -8,7 +8,8 @@ import {
   Eye, EyeOff, Sparkles,
 } from "lucide-react";
 import ConceptTooltip from "./ConceptTooltip";
-import { getClaimEvidenceMap, explainAtDepth, generateQuiz } from "@/lib/api";
+import { getClaimEvidenceMap, explainAtDepth, generateQuiz, getClaimDetail, type ClaimDetail } from "@/lib/api";
+import { ProvenancePanel } from "@/components/Claims";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -213,6 +214,11 @@ export default function ContentPanel({
   const [evidenceClaims, setEvidenceClaims] = useState<EvidenceClaim[]>([]);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [expandedContradiction, setExpandedContradiction] = useState<string | null>(null);
+  // Feature 6.5 — per-claim provenance expansion (one claim open at a time)
+  const [expandedProvenance, setExpandedProvenance] = useState<string | null>(null);
+  const [claimDetails, setClaimDetails] = useState<Record<string, ClaimDetail>>({});
+  const [claimDetailLoading, setClaimDetailLoading] = useState<string | null>(null);
+  const [claimDetailError, setClaimDetailError] = useState<string | null>(null);
 
   // New: quiz state
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
@@ -760,16 +766,41 @@ export default function ContentPanel({
                         )}
                       </div>
 
-                      {/* Expand contradictions */}
-                      {hasContradictions && (
+                      {/* Expand affordances: contradictions + Feature 6.5 provenance */}
+                      <div className="flex flex-wrap items-center gap-3 mt-2">
+                        {hasContradictions && (
+                          <button
+                            onClick={() => setExpandedContradiction(isExpanded ? null : claim.id)}
+                            className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 transition-colors"
+                          >
+                            {isExpanded ? <EyeOff size={10} /> : <Eye size={10} />}
+                            {he ? `ראה ${claim.contradictions.length} טענות סותרות` : `See ${claim.contradictions.length} contradicting claims`}
+                          </button>
+                        )}
                         <button
-                          onClick={() => setExpandedContradiction(isExpanded ? null : claim.id)}
-                          className="flex items-center gap-1 mt-2 text-[10px] text-red-400 hover:text-red-300 transition-colors"
+                          onClick={() => {
+                            const next = expandedProvenance === claim.id ? null : claim.id;
+                            setExpandedProvenance(next);
+                            // Lazy-fetch on first open
+                            if (next && !claimDetails[claim.id]) {
+                              setClaimDetailLoading(claim.id);
+                              setClaimDetailError(null);
+                              getClaimDetail(claim.id)
+                                .then((detail) =>
+                                  setClaimDetails((prev) => ({ ...prev, [claim.id]: detail })),
+                                )
+                                .catch((e) => setClaimDetailError(String(e)))
+                                .finally(() => setClaimDetailLoading((prev) => (prev === claim.id ? null : prev)));
+                            }
+                          }}
+                          className="flex items-center gap-1 text-[10px] text-accent-gold/80 hover:text-accent-gold transition-colors"
                         >
-                          {isExpanded ? <EyeOff size={10} /> : <Eye size={10} />}
-                          {he ? `ראה ${claim.contradictions.length} טענות סותרות` : `See ${claim.contradictions.length} contradicting claims`}
+                          <Quote size={10} />
+                          {expandedProvenance === claim.id
+                            ? he ? "סגור מקור" : "Close source"
+                            : he ? "מקור וציטוט" : "Source & quote"}
                         </button>
-                      )}
+                      </div>
                     </div>
 
                     {/* Contradicting claims expanded */}
@@ -783,6 +814,47 @@ export default function ContentPanel({
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Feature 6.5: provenance expanded */}
+                    {expandedProvenance === claim.id && (
+                      <div className="px-4 pb-3 border-t border-border/30">
+                        {claimDetailLoading === claim.id && (
+                          <p className="mt-2 text-xs text-text-tertiary">
+                            {he ? "טוען פרטי מקור…" : "Loading source details…"}
+                          </p>
+                        )}
+                        {claimDetailError && (
+                          <p className="mt-2 text-xs text-red-400">{claimDetailError}</p>
+                        )}
+                        {claimDetails[claim.id] && (
+                          <ProvenancePanel
+                            claim={claimDetails[claim.id]}
+                            isHebrew={he}
+                            onProvenanceUpdated={(result) => {
+                              // Keep the local detail in sync so re-opens show fresh data
+                              setClaimDetails((prev) => {
+                                const existing = prev[claim.id];
+                                if (!existing) return prev;
+                                return {
+                                  ...prev,
+                                  [claim.id]: {
+                                    ...existing,
+                                    verbatim_quote: result.verbatim_quote,
+                                    quote_location: result.quote_location,
+                                    claim_category:
+                                      (result.claim_category as ClaimDetail["claim_category"]) ??
+                                      existing.claim_category,
+                                    examples: result.examples,
+                                    provenance_sources: result.provenance_sources,
+                                    provenance_extracted_at: result.extracted_at,
+                                  },
+                                };
+                              });
+                            }}
+                          />
+                        )}
                       </div>
                     )}
                   </div>
