@@ -583,15 +583,38 @@ frontend/
   user_interactions, discoveries, research_hypotheses, discovery_runs.
 - 6 REST endpoints under /api/learner.
 
-**Open gaps for Phase 12:**
-- Learning-path generator (tables exist, no algorithm yet).
-- Prerequisite computation (unseen_ready TODO).
-- Assessment / Socratic engine.
-- Frontend dashboards (deferred — Next.js version newer than training).
-- User-upload pipeline for copyrighted texts.
-- On-demand translation endpoint.
-- Gutenberg title-matching fix.
+**Later additions to Phase 11 (same day):**
+- ✅ Learning-Path generator — backend/core/learning_paths.py (reverse
+  topo-sort through BUILDS_ON/EXTENDS/APPLIES edges, skips mastered
+  concepts, canonical-anchored steps). Endpoints: POST /paths/generate,
+  GET /paths, GET /paths/{id}.
+- ✅ Prerequisite computation fix — `unseen_ready` in /me/map now
+  actually counts concepts whose declared prerequisites are mastered;
+  each concept carries a prereqs_met flag.
+- ✅ Assessment + Socratic engine — backend/core/assessment.py
+  (generate_question + evaluate_answer, grounded in concept definition
+  + canonical claims). Endpoints: POST /assess + POST /answer with
+  mastery auto-update + user_interactions logging.
+- ✅ Discovery engine now includes orphan_concept kind (30 flagged at
+  \$0.09). Fast CTE-based "wired concepts" lookup avoids the statement
+  timeout the NOT EXISTS version hit.
+- ✅ Gutenberg matching fixed: follow_redirects=True for Gutendex 301s,
+  plus content-word + author-last-name scored matching.
+- ✅ Nature Top 100 methods papers — mark_nature_top100.py +
+  data/nature_top_100_methods.json. 17 DB-matched, 13 new stubs.
+- ✅ Hypothesis elevator — elevate_hypotheses.py turns high-importance
+  `unrealized_potential` / `temporal_gap` discoveries into structured
+  entries in `research_hypotheses`. First run: 30 at \$0.07.
+
+### Still open (Phase 12+)
+- Frontend dashboards for Learner Map, Discovery Review, Research
+  Hypotheses (deferred: Next.js version newer than agent training).
+- User-upload pipeline for copyrighted texts (privacy layer).
+- On-demand translation wired end-to-end (pre-translate canon to
+  HE/AR/AM/RU).
+- Spaced-repetition notifications / cron.
 - User-auth wiring to learner tables.
+- Nature Top 100 ranks 31-100 (only top 30 curated so far).
 
 ---
 
