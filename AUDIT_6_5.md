@@ -73,6 +73,14 @@ ALTER TABLE claims ADD COLUMN IF NOT EXISTS claim_category TEXT
   CHECK (claim_category IN ('main', 'supporting', 'background', 'limitation'));
 ALTER TABLE claims ADD COLUMN IF NOT EXISTS examples JSONB DEFAULT '[]';
 -- examples: [{ text, kind: 'case'|'dataset'|'figure'|'table', location }]
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS provenance_sources JSONB DEFAULT '[]';
+-- provenance_sources: [{ source: 'full_text'|'semantic_scholar'|'core'|'arxiv'|'unpaywall',
+--                         status: 'hit'|'miss'|'error',
+--                         quote: str|null,  -- candidate quote from this source
+--                         location: str|null,
+--                         url: str|null }]
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS provenance_extracted_at TIMESTAMPTZ;
+-- null = never extracted; non-null = extraction has run, cached result valid
 ```
 
 ### Migration 025 — access fields on `papers`
@@ -134,20 +142,43 @@ No migration. Need to (a) add `grants` to the OpenAlex fetch, (b) backfill exist
    - Fetch author record from OpenAlex (`/authors/{id}`) — gives works count, concepts, institutions history.
    - Generate a short background blurb via Claude (1–2 sentences summarizing field, institutions, notable works). Cache per author.
 
-## Revised Stage C — On-Demand Provenance Extraction
+## Revised Stage C — On-Demand Provenance Extraction (multi-source)
 
-Replaces the original "reanalysis" stage.
+Replaces the original "reanalysis" stage. **Runs multiple sources in parallel** — the paper's own full_text (when we have it) plus alternative academic sources — so we get the best available quote even when Unpaywall didn't give us the paper.
 
-1. New service `backend/core/provenance_extractor.py`:
-   - Input: `claim_id`
-   - Fetches claim + associated paper's `full_text`
-   - If no full_text → returns `{ status: "unavailable", reason: "no_full_text" }`
-   - Else calls Claude with a focused prompt: "Find the verbatim passage in this paper that supports the following claim. Return the quote (max 300 chars), its approximate location, related examples, and classify the claim as main/supporting/background/limitation."
-   - Writes results back to `claims.verbatim_quote`, `quote_location`, `examples`, `claim_category`
-   - Returns structured result
-2. New endpoint `POST /api/claims/{id}/extract-provenance` — idempotent (returns cached if already extracted).
-3. UI shows a button on `ClaimCard`; click triggers the endpoint, loader during extraction, renders result on completion.
-4. Log cost per call; dashboard tracks: extractions/day, cache hit rate, token spend.
+### Source strategy
+Primary pass (run concurrently when a user triggers extraction):
+
+1. **`papers.full_text`** — already cached from Unpaywall at seed time (~30–50% coverage)
+2. **Semantic Scholar** — uses `paper/{id}?fields=openAccessPdf,tldr,citations.contexts` — can surface:
+   - OA PDF URL (alternative to Unpaywall)
+   - `tldr` (auto-generated summary, another grounding signal)
+   - `citations.contexts` — passages from *citing* papers that quote or discuss this paper's claims (useful for "what does the literature say this paper argues?")
+3. **CORE API** — large OA aggregator, often has papers Unpaywall misses
+4. **arXiv** — if the paper has a preprint version (check DOI/title)
+5. **Unpaywall re-check** — in case a paper that was paywalled at seed time has since opened
+
+### Aggregation
+- All successful sources return candidate passages
+- A single Claude call receives (claim_text + all candidate passages, each labeled by source) and is asked to:
+  - Pick the strongest verbatim quote (with its source)
+  - Note secondary quotes from other sources (for "cross-reference" display)
+  - Extract examples, classify claim category
+- Results written to `claims.verbatim_quote`, `quote_location`, `examples`, `claim_category`, plus a new `claims.provenance_sources JSONB` listing every source that was checked + what it returned
+
+### Implementation
+1. New directory `backend/core/provenance/`:
+   - `extractor.py` — orchestrator, runs sources in parallel (asyncio.gather)
+   - `sources/full_text.py` — uses `papers.full_text`
+   - `sources/semantic_scholar.py` — new adapter
+   - `sources/core_api.py` — new adapter
+   - `sources/arxiv.py` — new adapter
+   - `sources/unpaywall_recheck.py` — retry
+   - `aggregator.py` — Claude call merging candidates
+2. New endpoint `POST /api/claims/{id}/extract-provenance` — idempotent. Returns cached result when already extracted.
+3. Add column `claims.provenance_sources JSONB DEFAULT '[]'` in migration 024 — records every source checked and what it returned, so the UI can show "extracted from full text, cross-referenced in 3 citing papers."
+4. UI: `ClaimCard` shows a "Show original passage" button; click triggers endpoint, loader while running, renders quote + "source: Unpaywall PDF" + optional "cross-references: 3 citing papers agree" link that expands secondary quotes.
+5. Log cost per source per call; dashboard tracks extractions/day, cache hit rate, per-source success rate, token spend.
 
 ## Revised Stage B — Enrichment (bio included)
 

@@ -7,7 +7,6 @@ Optimized Graph Seeding Pipeline — Haiku-first with syllabus-driven discovery.
   3. --all-fields: Seed all 28 core fields from OpenAlex
 
 Cost: ~$0.009/paper (Haiku) vs ~$0.03/paper (Sonnet)
-       With Batch API: ~$0.005/paper
 
 Usage:
   python -m backend.pipeline.seed_optimized --domain anthropology --limit 500
@@ -17,6 +16,7 @@ Usage:
 """
 
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -43,9 +43,17 @@ HAIKU_OUTPUT_COST = 4.0 / 1_000_000
 SONNET_INPUT_COST = 3.0 / 1_000_000
 SONNET_OUTPUT_COST = 15.0 / 1_000_000
 
+# Concurrency: 10 parallel Claude API calls
+CONCURRENCY = 10
+
+def _set_concurrency(n: int):
+    global CONCURRENCY
+    CONCURRENCY = n
+
 budget_spent = 0.0
 budget_limit = 50.0
 papers_analyzed = 0
+_budget_lock = None  # initialized in async context
 
 # Supabase REST helpers
 HEADERS_SUPABASE = {}
@@ -59,47 +67,77 @@ def init_supabase_headers():
         "Prefer": "return=representation",
     }
 
-# All 28 core fields with OpenAlex topic IDs
-# Extended from the original 6 domains
+# OpenAlex subfield/field IDs (numeric only — broad disciplines)
+# Filter: topics.subfield.id:<num> or topics.field.id:<num>
 DOMAINS = {
-    # Original 6
-    "anthropology": {"topic_id": "https://openalex.org/T10149", "label": "Anthropology"},
+    # Humanities
+    "philosophy": {"subfield_id": "1211", "label": "Philosophy"},
+    "history": {"subfield_id": "1202", "label": "History"},
+    "linguistics": {"subfield_id": "1203", "label": "Language & Linguistics"},
+    "religious_studies": {"subfield_id": "1212", "label": "Religious Studies"},
+    # Social Sciences
+    "anthropology": {"subfield_id": "3314", "label": "Anthropology"},
+    "sociology": {"subfield_id": "3312", "label": "Sociology & Political Science"},
+    "political_science": {"subfield_id": "3320", "label": "Political Science & Intl Relations"},
+    "economics": {"subfield_id": "2002", "label": "Economics & Econometrics"},
+    "education": {"subfield_id": "3304", "label": "Education"},
+    "law": {"subfield_id": "3308", "label": "Law"},
+    "geography": {"subfield_id": "3305", "label": "Geography & Development"},
+    "gender_studies": {"subfield_id": "3318", "label": "Gender Studies"},
+    # Psychology & Cognitive
+    "psychology": {"field_id": "32", "label": "Psychology"},
+    "cognitive_neuroscience": {"subfield_id": "2805", "label": "Cognitive Neuroscience"},
+    # Sciences
+    "neuroscience": {"field_id": "28", "label": "Neuroscience"},
+    "biology": {"subfield_id": "1307", "label": "Cell Biology"},
+    "physics": {"field_id": "31", "label": "Physics & Astronomy"},
+    "mathematics": {"field_id": "26", "label": "Mathematics"},
+    "computer_science": {"field_id": "17", "label": "Computer Science"},
+    "environmental_science": {"field_id": "23", "label": "Environmental Science"},
+    "medicine": {"field_id": "27", "label": "Medicine"},
+    # Business & Media
+    "business": {"subfield_id": "1403", "label": "Business & Management"},
+    "media_studies": {"subfield_id": "3315", "label": "Library & Information Sciences"},
+    # Sleep (keep original topic — it was correct)
     "sleep": {"topic_id": "https://openalex.org/T10985", "label": "Sleep & Cognition"},
-    "cognitive_science": {"topic_id": "https://openalex.org/T10466", "label": "Cognitive Science"},
-    "philosophy": {"topic_id": "https://openalex.org/T11618", "label": "Philosophy"},
-    "linguistics": {"topic_id": "https://openalex.org/T10641", "label": "Linguistics"},
-    "sociology": {"topic_id": "https://openalex.org/T10276", "label": "Sociology"},
-    # Extended fields
-    "psychology": {"topic_id": "https://openalex.org/T10401", "label": "Psychology"},
-    "economics": {"topic_id": "https://openalex.org/T10422", "label": "Economics"},
-    "political_science": {"topic_id": "https://openalex.org/T10394", "label": "Political Science"},
-    "history": {"topic_id": "https://openalex.org/T10555", "label": "History"},
-    "biology": {"topic_id": "https://openalex.org/T10013", "label": "Biology"},
-    "neuroscience": {"topic_id": "https://openalex.org/T10233", "label": "Neuroscience"},
-    "physics": {"topic_id": "https://openalex.org/T10071", "label": "Physics"},
-    "mathematics": {"topic_id": "https://openalex.org/T10053", "label": "Mathematics"},
-    "computer_science": {"topic_id": "https://openalex.org/T10300", "label": "Computer Science"},
-    "medicine": {"topic_id": "https://openalex.org/T10164", "label": "Medicine"},
-    "education": {"topic_id": "https://openalex.org/T10512", "label": "Education"},
-    "law": {"topic_id": "https://openalex.org/T10621", "label": "Law"},
-    "environmental_science": {"topic_id": "https://openalex.org/T10109", "label": "Environmental Science"},
-    "geography": {"topic_id": "https://openalex.org/T10488", "label": "Geography"},
-    "gender_studies": {"topic_id": "https://openalex.org/T12035", "label": "Gender Studies"},
-    "religious_studies": {"topic_id": "https://openalex.org/T11498", "label": "Religious Studies"},
-    "media_studies": {"topic_id": "https://openalex.org/T10834", "label": "Media Studies"},
-    "business": {"topic_id": "https://openalex.org/T10318", "label": "Business"},
-    "climate_science": {"topic_id": "https://openalex.org/T10137", "label": "Climate Science"},
+}
+
+# Top high-impact journals (use --journals mode)
+TOP_JOURNALS = {
+    "nature": {"source_id": "S137773608", "label": "Nature"},
+    "science": {"source_id": "S3880285", "label": "Science"},
+    "cell": {"source_id": "S110447773", "label": "Cell"},
+    "pnas": {"source_id": "S125754415", "label": "PNAS"},
+    "lancet": {"source_id": "S49861241", "label": "The Lancet"},
+    "nejm": {"source_id": "S62468778", "label": "NEJM"},
+    "nature_medicine": {"source_id": "S203256638", "label": "Nature Medicine"},
+    "nature_neuroscience": {"source_id": "S2298632", "label": "Nature Neuroscience"},
+    "nature_physics": {"source_id": "S156274416", "label": "Nature Physics"},
+    "nature_chemistry": {"source_id": "S202193212", "label": "Nature Chemistry"},
+    "nature_genetics": {"source_id": "S137905309", "label": "Nature Genetics"},
+    "nature_communications": {"source_id": "S64187185", "label": "Nature Communications"},
 }
 
 from backend.prompts.paper_analysis import ANALYSIS_PROMPT
+from backend.pipeline.claim_builder import build_claim_row
 
 
 # --- OpenAlex ---
 
-def fetch_openalex_page(topic_id: str, per_page: int = 50, cursor: str = "*") -> dict:
+async def fetch_openalex_page(client: httpx.AsyncClient, domain: dict, per_page: int = 50, cursor: str = "*") -> dict:
+    # Build filter based on whether we have a topic_id, subfield_id, field_id, or source_id
+    if "source_id" in domain:
+        filter_prefix = f"primary_location.source.id:{domain['source_id']}"
+    elif "topic_id" in domain:
+        filter_prefix = f"topics.id:{domain['topic_id']}"
+    elif "subfield_id" in domain:
+        filter_prefix = f"primary_topic.subfield.id:{domain['subfield_id']}"
+    else:
+        filter_prefix = f"primary_topic.field.id:{domain['field_id']}"
+
     params = {
         "filter": (
-            f"topics.id:{topic_id},"
+            f"{filter_prefix},"
             "has_abstract:true,language:en,type:article,"
             "from_publication_date:2010-01-01"
         ),
@@ -114,12 +152,12 @@ def fetch_openalex_page(topic_id: str, per_page: int = 50, cursor: str = "*") ->
     email = os.getenv("OPENALEX_EMAIL")
     if email:
         params["mailto"] = email
-    resp = httpx.get(f"{OPENALEX_BASE}/works", params=params, timeout=30)
+    resp = await client.get(f"{OPENALEX_BASE}/works", params=params, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
 
-def search_openalex_by_title(title: str) -> dict | None:
+async def search_openalex_by_title(client: httpx.AsyncClient, title: str) -> dict | None:
     """Search OpenAlex by paper title. Returns first match or None."""
     params = {
         "search": title,
@@ -133,7 +171,7 @@ def search_openalex_by_title(title: str) -> dict | None:
     if email:
         params["mailto"] = email
     try:
-        resp = httpx.get(f"{OPENALEX_BASE}/works", params=params, timeout=15)
+        resp = await client.get(f"{OPENALEX_BASE}/works", params=params, timeout=15)
         if resp.status_code == 200:
             results = resp.json().get("results", [])
             if results:
@@ -188,18 +226,19 @@ def normalize_paper(raw: dict) -> dict:
     }
 
 
-# --- Claude Analysis (Haiku-first) ---
+# --- Claude Analysis (Haiku-first, async) ---
 
-def analyze_paper_haiku(title: str, authors_str: str, year: int, abstract: str) -> dict | None:
-    """Analyze with Haiku (70% cheaper). Same prompt, lighter model."""
+async def analyze_paper_haiku(client: httpx.AsyncClient, title: str, authors_str: str, year: int, abstract: str) -> dict | None:
+    """Analyze with Haiku (70% cheaper). Same prompt, lighter model. Async."""
     global budget_spent, papers_analyzed
 
     if not abstract or len(abstract) < 50:
         return None
 
-    if budget_spent >= budget_limit:
-        print(f"\n*** BUDGET LIMIT REACHED (${budget_spent:.2f} / ${budget_limit:.2f}) ***")
-        return "STOP"
+    async with _budget_lock:
+        if budget_spent >= budget_limit:
+            print(f"\n*** BUDGET LIMIT REACHED (${budget_spent:.2f} / ${budget_limit:.2f}) ***")
+            return "STOP"
 
     prompt = ANALYSIS_PROMPT.format(
         title=title, authors=authors_str, year=year, abstract=abstract,
@@ -216,52 +255,60 @@ def analyze_paper_haiku(title: str, authors_str: str, year: int, abstract: str) 
         "messages": [{"role": "user", "content": prompt}],
     }
 
-    try:
-        resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=60)
+    for attempt in range(3):
+        try:
+            resp = await client.post(ANTHROPIC_API, json=body, headers=headers, timeout=60)
 
-        if resp.status_code == 429:
-            retry_after = int(resp.headers.get("retry-after", 30))
-            print(f"    Rate limited — waiting {retry_after}s...")
-            time.sleep(retry_after)
-            resp = httpx.post(ANTHROPIC_API, json=body, headers=headers, timeout=60)
-        if resp.status_code in (402, 529):
-            print(f"\n*** CREDITS EXHAUSTED (HTTP {resp.status_code}) ***")
-            return "STOP"
+            if resp.status_code == 429:
+                retry_after = int(resp.headers.get("retry-after", 5))
+                await asyncio.sleep(min(retry_after, 30))
+                continue
+            if resp.status_code in (402, 529):
+                print(f"\n*** CREDITS EXHAUSTED (HTTP {resp.status_code}) ***")
+                return "STOP"
 
-        resp.raise_for_status()
-        data = resp.json()
-        text = data["content"][0]["text"]
+            resp.raise_for_status()
+            data = resp.json()
+            text = data["content"][0]["text"]
 
-        usage = data.get("usage", {})
-        input_tokens = usage.get("input_tokens", 0)
-        output_tokens = usage.get("output_tokens", 0)
-        call_cost = (input_tokens * HAIKU_INPUT_COST) + (output_tokens * HAIKU_OUTPUT_COST)
-        budget_spent += call_cost
-        papers_analyzed += 1
+            usage = data.get("usage", {})
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+            call_cost = (input_tokens * HAIKU_INPUT_COST) + (output_tokens * HAIKU_OUTPUT_COST)
 
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0]
-        elif "```" in text:
-            text = text.split("```")[1].split("```")[0]
-        return json.loads(text.strip())
+            async with _budget_lock:
+                budget_spent += call_cost
+                papers_analyzed += 1
 
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code in (402, 529):
-            return "STOP"
-        print(f"    Analysis error: {e}")
-        return None
-    except httpx.ReadTimeout:
-        print(f"    Timeout — skipping")
-        return None
-    except Exception as e:
-        print(f"    Analysis error: {e}")
-        return None
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0]
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0]
+            return json.loads(text.strip())
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (402, 529):
+                return "STOP"
+            print(f"    Analysis error: {e}")
+            return None
+        except httpx.ReadTimeout:
+            if attempt < 2:
+                continue
+            print(f"    Timeout — skipping")
+            return None
+        except json.JSONDecodeError:
+            print(f"    JSON parse error — skipping")
+            return None
+        except Exception as e:
+            print(f"    Analysis error: {e}")
+            return None
+    return None
 
 
-# --- Supabase ---
+# --- Supabase (async) ---
 
-def supabase_post(table: str, data: dict | list) -> dict | list | None:
-    resp = httpx.post(
+async def supabase_post(client: httpx.AsyncClient, table: str, data: dict | list) -> dict | list | None:
+    resp = await client.post(
         f"{SUPABASE_URL}/rest/v1/{table}",
         json=data, headers=HEADERS_SUPABASE, timeout=15,
     )
@@ -274,8 +321,8 @@ def supabase_post(table: str, data: dict | list) -> dict | list | None:
         return None
 
 
-def supabase_get(table: str, params: dict) -> list:
-    resp = httpx.get(
+async def supabase_get(client: httpx.AsyncClient, table: str, params: dict) -> list:
+    resp = await client.get(
         f"{SUPABASE_URL}/rest/v1/{table}",
         params=params,
         headers={**HEADERS_SUPABASE, "Prefer": ""},
@@ -288,9 +335,9 @@ def normalize_name(name: str) -> str:
     return re.sub(r"[^a-z0-9\s]", "", name.lower()).strip()
 
 
-def get_or_create_concept(concept_data: dict) -> str | None:
+async def get_or_create_concept(client: httpx.AsyncClient, concept_data: dict) -> str | None:
     norm = normalize_name(concept_data["name"])
-    existing = supabase_get("concepts", {"normalized_name": f"eq.{norm}", "select": "id"})
+    existing = await supabase_get(client, "concepts", {"normalized_name": f"eq.{norm}", "select": "id"})
     if existing:
         return existing[0]["id"]
     row = {
@@ -300,11 +347,11 @@ def get_or_create_concept(concept_data: dict) -> str | None:
         "definition": concept_data.get("definition"),
         "confidence": 0.5,
     }
-    result = supabase_post("concepts", row)
+    result = await supabase_post(client, "concepts", row)
     return result[0]["id"] if result else None
 
 
-def insert_paper_and_analysis(paper: dict, analysis: dict, model_name: str = "claude-haiku-4-5-20251001") -> str | None:
+async def insert_paper_and_analysis(client: httpx.AsyncClient, paper: dict, analysis: dict, model_name: str = "claude-haiku-4-5-20251001") -> str | None:
     try:
         paper_type = analysis.get("paper_type") or {}
         paper_row = {
@@ -323,17 +370,17 @@ def insert_paper_and_analysis(paper: dict, analysis: dict, model_name: str = "cl
             "analyzed_at": datetime.now(tz=timezone.utc).isoformat(),
         }
 
-        result = supabase_post("papers", paper_row)
+        result = await supabase_post(client, "papers", paper_row)
         if not result:
             return None
         paper_id = result[0]["id"]
 
         concept_ids = {}
         for c in analysis.get("concepts", []):
-            cid = get_or_create_concept(c)
+            cid = await get_or_create_concept(client, c)
             if cid:
                 concept_ids[c["name"]] = cid
-                supabase_post("paper_concepts", {
+                await supabase_post(client, "paper_concepts", {
                     "paper_id": paper_id,
                     "concept_id": cid,
                     "novelty_in_paper": c.get("novelty_at_time", "low"),
@@ -341,19 +388,13 @@ def insert_paper_and_analysis(paper: dict, analysis: dict, model_name: str = "cl
                 })
 
         for cl in analysis.get("claims", []):
-            supabase_post("claims", {
-                "paper_id": paper_id,
-                "claim_text": cl["claim"],
-                "evidence_type": cl.get("evidence_type"),
-                "strength": cl.get("strength", "moderate"),
-                "testable": cl.get("testable", False),
-            })
+            await supabase_post(client, "claims", build_claim_row(paper_id, cl))
 
         for rel in analysis.get("relationships", []):
-            from_id = concept_ids.get(rel.get("from", "")) or get_or_create_concept({"name": rel["from"], "type": "phenomenon"})
-            to_id = concept_ids.get(rel.get("to", "")) or get_or_create_concept({"name": rel["to"], "type": "phenomenon"})
+            from_id = concept_ids.get(rel.get("from", "")) or await get_or_create_concept(client, {"name": rel["from"], "type": "phenomenon"})
+            to_id = concept_ids.get(rel.get("to", "")) or await get_or_create_concept(client, {"name": rel["to"], "type": "phenomenon"})
             if from_id and to_id:
-                supabase_post("relationships", {
+                await supabase_post(client, "relationships", {
                     "source_type": "concept", "source_id": from_id,
                     "target_type": "concept", "target_id": to_id,
                     "relationship_type": rel.get("type", "BUILDS_ON"),
@@ -368,32 +409,58 @@ def insert_paper_and_analysis(paper: dict, analysis: dict, model_name: str = "cl
         return None
 
 
-def paper_exists(openalex_id: str) -> bool:
-    return bool(supabase_get("papers", {"openalex_id": f"eq.{openalex_id}", "select": "id"}))
+async def paper_exists(client: httpx.AsyncClient, openalex_id: str) -> bool:
+    return bool(await supabase_get(client, "papers", {"openalex_id": f"eq.{openalex_id}", "select": "id"}))
 
 
-# --- Mode 1: Domain Seeding (Haiku) ---
+# --- Mode 1: Domain Seeding (Haiku, async with concurrency) ---
 
-def seed_domain(domain_key: str, limit: int):
-    domain = DOMAINS[domain_key]
+async def _process_one_paper(client: httpx.AsyncClient, sem: asyncio.Semaphore, paper: dict, counters: dict, limit: int):
+    """Process a single paper: analyze with Haiku, insert into DB."""
+    if counters["inserted"] >= limit or budget_spent >= budget_limit:
+        return
+
+    async with sem:
+        if counters["inserted"] >= limit or budget_spent >= budget_limit:
+            return
+
+        authors_str = ", ".join(a["name"] for a in paper["authors"][:5])
+        analysis = await analyze_paper_haiku(client, paper["title"], authors_str, paper["publication_year"], paper["abstract"])
+
+        if analysis == "STOP":
+            counters["stop"] = True
+            return
+        if analysis and not isinstance(analysis, str):
+            pid = await insert_paper_and_analysis(client, paper, analysis)
+            if pid:
+                counters["inserted"] += 1
+                n_c = len(analysis.get("concepts", []))
+                if counters["inserted"] % 10 == 0 or counters["inserted"] <= 5:
+                    print(f"  [{counters['inserted']}/{limit}] {paper['title'][:50]}... ({n_c} concepts) ${budget_spent:.3f}")
+            else:
+                counters["errors"] += 1
+        else:
+            counters["errors"] += 1
+
+
+async def seed_domain(client: httpx.AsyncClient, domain_key: str, limit: int):
+    domain = DOMAINS.get(domain_key) or TOP_JOURNALS.get(domain_key)
     print(f"\n{'='*60}")
-    print(f"SEEDING: {domain['label']} (Haiku)")
+    print(f"SEEDING: {domain['label']} (Haiku x{CONCURRENCY})")
     print(f"Target: {limit} papers | Budget: ${budget_limit:.2f}")
     print(f"{'='*60}")
 
+    sem = asyncio.Semaphore(CONCURRENCY)
     cursor = "*"
-    inserted = 0
-    skipped = 0
-    errors = 0
-    consecutive_skips = 0
+    counters = {"inserted": 0, "skipped": 0, "errors": 0, "consecutive_skips": 0, "stop": False}
 
-    while inserted < limit:
+    while counters["inserted"] < limit and not counters["stop"]:
         if budget_spent >= budget_limit:
             print(f"\n*** BUDGET LIMIT ***")
             break
 
         try:
-            data = fetch_openalex_page(domain["topic_id"], min(50, limit - inserted + 10), cursor)
+            data = await fetch_openalex_page(client, domain, min(50, limit - counters["inserted"] + 10), cursor)
         except Exception as e:
             print(f"  OpenAlex error: {e}")
             break
@@ -404,59 +471,123 @@ def seed_domain(domain_key: str, limit: int):
             print("  No more results")
             break
 
+        # Filter papers that need processing
+        batch = []
         for raw in results:
-            if inserted >= limit or budget_spent >= budget_limit:
+            if counters["inserted"] + len(batch) >= limit or budget_spent >= budget_limit:
                 break
 
             paper = normalize_paper(raw)
-            if paper_exists(paper["openalex_id"]):
-                skipped += 1
-                consecutive_skips += 1
-                if consecutive_skips >= 200:
+            if await paper_exists(client, paper["openalex_id"]):
+                counters["skipped"] += 1
+                counters["consecutive_skips"] += 1
+                if counters["consecutive_skips"] >= 200:
                     print(f"  200 consecutive skips — moving on")
-                    return inserted
+                    print(f"\n  Done: {counters['inserted']} inserted, {counters['skipped']} skipped, {counters['errors']} errors, ${budget_spent:.3f}")
+                    return counters["inserted"]
                 continue
 
             if not paper["abstract"] or len(paper["abstract"]) < 50:
-                skipped += 1
+                counters["skipped"] += 1
                 continue
 
-            consecutive_skips = 0
-            authors_str = ", ".join(a["name"] for a in paper["authors"][:5])
-            analysis = analyze_paper_haiku(paper["title"], authors_str, paper["publication_year"], paper["abstract"])
+            counters["consecutive_skips"] = 0
+            batch.append(paper)
 
-            if analysis == "STOP":
-                return inserted
-            if analysis and not isinstance(analysis, str):
-                pid = insert_paper_and_analysis(paper, analysis)
-                if pid:
-                    inserted += 1
-                    n_c = len(analysis.get("concepts", []))
-                    if inserted % 10 == 0 or inserted <= 5:
-                        print(f"  [{inserted}/{limit}] {paper['title'][:50]}... ({n_c} concepts) ${budget_spent:.3f}")
-                else:
-                    errors += 1
-            else:
-                errors += 1
+        # Process batch concurrently
+        if batch:
+            tasks = [_process_one_paper(client, sem, p, counters, limit) for p in batch]
+            await asyncio.gather(*tasks)
 
-            time.sleep(0.3)  # Haiku is faster, can reduce sleep
-        time.sleep(0.2)
-
-    print(f"\n  Done: {inserted} inserted, {skipped} skipped, {errors} errors, ${budget_spent:.3f}")
-    return inserted
+    print(f"\n  Done: {counters['inserted']} inserted, {counters['skipped']} skipped, {counters['errors']} errors, ${budget_spent:.3f}")
+    return counters["inserted"]
 
 
-# --- Mode 2: Syllabus-Driven Discovery ---
+# --- Mode 2: Syllabus-Driven Discovery (async) ---
 
-def seed_from_syllabi(sources: list[str]):
+async def _process_one_syllabus_reading(client: httpx.AsyncClient, sem: asyncio.Semaphore, reading: dict, counters: dict):
+    """Process a single syllabus reading concurrently."""
+    if budget_spent >= budget_limit or counters.get("stop"):
+        return
+
+    title = reading.get("external_title", "")
+    doi = reading.get("external_doi")
+    if not title and not doi:
+        return
+
+    async with sem:
+        if budget_spent >= budget_limit:
+            return
+
+        # Try to find in OpenAlex
+        raw = None
+        if doi:
+            try:
+                resp = await client.get(f"{OPENALEX_BASE}/works/doi:{doi}", timeout=10)
+                if resp.status_code == 200:
+                    raw = resp.json()
+            except Exception:
+                pass
+
+        if not raw and title:
+            raw = await search_openalex_by_title(client, title)
+
+        if not raw:
+            counters["not_found"] += 1
+            idx = counters["not_found"] + counters["inserted"] + counters["matched"]
+            if idx <= 10 or idx % 50 == 0:
+                print(f"  Not found: {title[:50]}...")
+            return
+
+        paper = normalize_paper(raw)
+
+        if await paper_exists(client, paper["openalex_id"]):
+            existing = await supabase_get(client, "papers", {
+                "openalex_id": f"eq.{paper['openalex_id']}",
+                "select": "id",
+            })
+            if existing:
+                await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/syllabus_readings?id=eq.{reading['id']}",
+                    json={"paper_id": existing[0]["id"], "match_confidence": 0.9},
+                    headers=HEADERS_SUPABASE,
+                    timeout=10,
+                )
+                counters["matched"] += 1
+            return
+
+        if not paper["abstract"] or len(paper["abstract"]) < 50:
+            counters["not_found"] += 1
+            return
+
+        authors_str = ", ".join(a["name"] for a in paper["authors"][:5])
+        analysis = await analyze_paper_haiku(client, paper["title"], authors_str, paper["publication_year"], paper["abstract"])
+
+        if analysis == "STOP":
+            counters["stop"] = True
+            return
+        if analysis and not isinstance(analysis, str):
+            pid = await insert_paper_and_analysis(client, paper, analysis)
+            if pid:
+                counters["inserted"] += 1
+                await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/syllabus_readings?id=eq.{reading['id']}",
+                    json={"paper_id": pid, "match_confidence": 0.95},
+                    headers=HEADERS_SUPABASE,
+                    timeout=10,
+                )
+                if counters["inserted"] % 10 == 0 or counters["inserted"] <= 5:
+                    print(f"  [{counters['inserted']}] {paper['title'][:50]}... ${budget_spent:.3f}")
+
+
+async def seed_from_syllabi(client: httpx.AsyncClient, sources: list[str]):
     """Pull readings from existing syllabi, find them in OpenAlex, analyze with Haiku."""
     print(f"\n{'='*60}")
-    print(f"SYLLABUS-DRIVEN SEEDING")
+    print(f"SYLLABUS-DRIVEN SEEDING (x{CONCURRENCY} concurrency)")
     print(f"Sources: {', '.join(sources)}")
     print(f"{'='*60}")
 
-    # Get unmatched readings from syllabus_readings
-    readings = supabase_get("syllabus_readings", {
+    readings = await supabase_get(client, "syllabus_readings", {
         "paper_id": "is.null",
         "select": "id,external_title,external_authors,external_doi,external_year,syllabus_id",
         "limit": "500",
@@ -470,93 +601,26 @@ def seed_from_syllabi(sources: list[str]):
 
     print(f"  Found {len(readings)} unmatched readings to process")
 
-    inserted = 0
-    matched = 0
-    not_found = 0
+    sem = asyncio.Semaphore(CONCURRENCY)
+    counters = {"inserted": 0, "matched": 0, "not_found": 0, "stop": False}
 
-    for i, reading in enumerate(readings):
-        if budget_spent >= budget_limit:
-            print(f"\n*** BUDGET LIMIT ***")
+    # Process in batches of CONCURRENCY * 2
+    batch_size = CONCURRENCY * 2
+    for i in range(0, len(readings), batch_size):
+        if budget_spent >= budget_limit or counters["stop"]:
             break
+        batch = readings[i:i + batch_size]
+        tasks = [_process_one_syllabus_reading(client, sem, r, counters) for r in batch]
+        await asyncio.gather(*tasks)
 
-        title = reading.get("external_title", "")
-        doi = reading.get("external_doi")
-
-        if not title and not doi:
-            continue
-
-        # Try to find in OpenAlex
-        raw = None
-        if doi:
-            try:
-                resp = httpx.get(f"{OPENALEX_BASE}/works/doi:{doi}", timeout=10)
-                if resp.status_code == 200:
-                    raw = resp.json()
-            except Exception:
-                pass
-
-        if not raw and title:
-            raw = search_openalex_by_title(title)
-
-        if not raw:
-            not_found += 1
-            if i < 10 or i % 50 == 0:
-                print(f"  [{i+1}] Not found: {title[:50]}...")
-            continue
-
-        paper = normalize_paper(raw)
-
-        if paper_exists(paper["openalex_id"]):
-            # Already in DB — just link the reading
-            existing = supabase_get("papers", {
-                "openalex_id": f"eq.{paper['openalex_id']}",
-                "select": "id",
-            })
-            if existing:
-                # Update the reading with the paper_id
-                httpx.patch(
-                    f"{SUPABASE_URL}/rest/v1/syllabus_readings?id=eq.{reading['id']}",
-                    json={"paper_id": existing[0]["id"], "match_confidence": 0.9},
-                    headers=HEADERS_SUPABASE,
-                    timeout=10,
-                )
-                matched += 1
-            continue
-
-        if not paper["abstract"] or len(paper["abstract"]) < 50:
-            not_found += 1
-            continue
-
-        # Analyze with Haiku
-        authors_str = ", ".join(a["name"] for a in paper["authors"][:5])
-        analysis = analyze_paper_haiku(paper["title"], authors_str, paper["publication_year"], paper["abstract"])
-
-        if analysis == "STOP":
-            break
-        if analysis and not isinstance(analysis, str):
-            pid = insert_paper_and_analysis(paper, analysis)
-            if pid:
-                inserted += 1
-                # Link the reading
-                httpx.patch(
-                    f"{SUPABASE_URL}/rest/v1/syllabus_readings?id=eq.{reading['id']}",
-                    json={"paper_id": pid, "match_confidence": 0.95},
-                    headers=HEADERS_SUPABASE,
-                    timeout=10,
-                )
-                if inserted % 10 == 0 or inserted <= 5:
-                    print(f"  [{inserted}] {paper['title'][:50]}... ${budget_spent:.3f}")
-
-        time.sleep(0.3)
-
-    print(f"\n  Done: {inserted} new papers, {matched} linked, {not_found} not found, ${budget_spent:.3f}")
-    return inserted
+    print(f"\n  Done: {counters['inserted']} new papers, {counters['matched']} linked, {counters['not_found']} not found, ${budget_spent:.3f}")
+    return counters["inserted"]
 
 
 # --- Main ---
 
-def main():
-    global budget_limit, budget_spent
+async def async_main():
+    global budget_limit, budget_spent, _budget_lock
 
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -564,12 +628,18 @@ def main():
     parser.add_argument("--domain", choices=list(DOMAINS.keys()), help="Single domain to seed")
     parser.add_argument("--all-fields", action="store_true", help="Seed all 25 fields")
     parser.add_argument("--syllabus", action="store_true", help="Seed from syllabus readings")
+    parser.add_argument("--journals", action="store_true", help="Seed from top high-impact journals")
+    parser.add_argument("--journal", choices=list(TOP_JOURNALS.keys()), help="Single journal to seed")
     parser.add_argument("--sources", default="mit_ocw,open_syllabus", help="Syllabus sources (comma-separated)")
     parser.add_argument("--limit", type=int, default=500, help="Papers per domain")
     parser.add_argument("--budget", type=float, default=50.0, help="Max budget in USD")
+    parser.add_argument("--concurrency", type=int, default=CONCURRENCY, help="Parallel API calls")
     args = parser.parse_args()
 
     budget_limit = args.budget
+    _budget_lock = asyncio.Lock()
+
+    _set_concurrency(args.concurrency)
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         print("ERROR: Set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env")
@@ -582,31 +652,52 @@ def main():
 
     total = 0
 
-    if args.syllabus:
-        sources = [s.strip() for s in args.sources.split(",")]
-        total = seed_from_syllabi(sources)
+    async with httpx.AsyncClient() as client:
+        if args.syllabus:
+            sources = [s.strip() for s in args.sources.split(",")]
+            total = await seed_from_syllabi(client, sources)
 
-    elif args.all_fields:
-        print(f"Seeding ALL {len(DOMAINS)} fields, {args.limit} papers each")
-        print(f"Estimated cost: ~${len(DOMAINS) * args.limit * 0.009:.0f}")
-        print(f"Budget: ${budget_limit:.2f}")
-        for key in DOMAINS:
-            if budget_spent >= budget_limit:
-                print(f"\n*** Budget exhausted — skipping remaining fields ***")
-                break
-            total += seed_domain(key, args.limit)
+        elif args.all_fields:
+            print(f"Seeding ALL {len(DOMAINS)} fields, {args.limit} papers each")
+            print(f"Estimated cost: ~${len(DOMAINS) * args.limit * 0.009:.0f}")
+            print(f"Budget: ${budget_limit:.2f}")
+            print(f"Concurrency: {CONCURRENCY} parallel API calls")
 
-    elif args.domain:
-        total = seed_domain(args.domain, args.limit)
+            for key in DOMAINS:
+                if budget_spent >= budget_limit:
+                    print(f"\n*** Budget exhausted — skipping remaining fields ***")
+                    break
+                total += await seed_domain(client, key, args.limit)
 
-    else:
-        parser.error("Specify --domain, --all-fields, or --syllabus")
+        elif args.domain:
+            total = await seed_domain(client, args.domain, args.limit)
+
+        elif args.journals:
+            print(f"Seeding from {len(TOP_JOURNALS)} top journals, {args.limit} papers each")
+            print(f"Budget: ${budget_limit:.2f}")
+            print(f"Concurrency: {CONCURRENCY} parallel API calls")
+            # Reuse seed_domain — it works with any domain dict that has source_id
+            for key, journal in TOP_JOURNALS.items():
+                if budget_spent >= budget_limit:
+                    print(f"\n*** Budget exhausted ***")
+                    break
+                total += await seed_domain(client, key, args.limit)
+
+        elif args.journal:
+            total = await seed_domain(client, args.journal, args.limit)
+
+        else:
+            parser.error("Specify --domain, --all-fields, --syllabus, --journals, or --journal")
 
     print(f"\n{'='*60}")
     print(f"TOTAL: {total} papers seeded")
     print(f"COST:  ${budget_spent:.3f} / ${budget_limit:.2f}")
     print(f"RATE:  ${budget_spent/max(papers_analyzed,1):.4f}/paper")
     print(f"{'='*60}")
+
+
+def main():
+    asyncio.run(async_main())
 
 
 if __name__ == "__main__":
