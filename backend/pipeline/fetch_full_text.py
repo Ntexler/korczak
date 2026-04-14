@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+from datetime import datetime, timezone
 import os
 import re
 import sys
@@ -17,6 +18,8 @@ import time
 
 import httpx
 from dotenv import load_dotenv
+
+from backend.core.access_resolver import resolve_access
 
 load_dotenv()
 
@@ -123,13 +126,22 @@ def supabase_patch(table: str, match_params: dict, data: dict) -> bool:
 
 # --- Unpaywall ---
 
-def fetch_via_unpaywall(doi: str) -> tuple[str, str] | None:
+def fetch_via_unpaywall(doi: str) -> dict:
     """
     Try to get full text via Unpaywall API.
-    Returns (full_text, "unpaywall") or None.
+
+    Returns a dict with:
+      - `unpaywall`: the full Unpaywall JSON response (or None on error/404)
+      - `full_text`: extracted article text (or None if we couldn't get it)
+      - `source`: "unpaywall" when full_text is populated, else None
+
+    The raw Unpaywall response is always returned when the API call succeeded,
+    even if full-text extraction failed. This lets callers resolve `access_url`
+    and `access_status` (Feature 6.5) independent of whether HTML scraping worked.
     """
+    empty = {"unpaywall": None, "full_text": None, "source": None}
     if not OPENALEX_EMAIL:
-        return None
+        return empty
 
     # Clean DOI — remove https://doi.org/ prefix if present
     clean_doi = re.sub(r"^https?://doi\.org/", "", doi)
@@ -141,19 +153,18 @@ def fetch_via_unpaywall(doi: str) -> tuple[str, str] | None:
             timeout=20,
         )
         if resp.status_code != 200:
-            return None
+            return empty
 
         data = resp.json()
+        result = {"unpaywall": data, "full_text": None, "source": None}
 
         # Find the best open-access URL
         oa_url = None
         best_location = data.get("best_oa_location")
         if best_location:
-            # Prefer PDF URL for direct text, but HTML URL is also fine
             oa_url = best_location.get("url_for_landing_page") or best_location.get("url")
 
         if not oa_url:
-            # Check all OA locations
             for loc in data.get("oa_locations", []):
                 url = loc.get("url_for_landing_page") or loc.get("url")
                 if url:
@@ -161,12 +172,11 @@ def fetch_via_unpaywall(doi: str) -> tuple[str, str] | None:
                     break
 
         if not oa_url:
-            return None
+            return result  # No OA URL to scrape, but Unpaywall metadata is useful.
 
         # Rate limit before fetching the actual page
         time.sleep(1)
 
-        # Fetch the HTML page
         page_resp = httpx.get(
             oa_url,
             timeout=30,
@@ -174,33 +184,31 @@ def fetch_via_unpaywall(doi: str) -> tuple[str, str] | None:
             headers={"User-Agent": "KorczakAI/1.0 (academic research; mailto:{})".format(OPENALEX_EMAIL)},
         )
         if page_resp.status_code != 200:
-            return None
+            return result
 
         content_type = page_resp.headers.get("content-type", "")
 
         # Skip PDFs — we can't parse binary PDF with regex
         if "application/pdf" in content_type:
-            return None
+            return result
 
-        # Only process HTML/text responses
         if "text/" not in content_type and "html" not in content_type:
-            return None
+            return result
 
         text = extract_article_text(page_resp.text)
-
-        # Minimum viable full text: at least 1000 chars
         if len(text) < 1000:
-            return None
+            return result
 
-        # Cap at ~100k chars to avoid storing huge documents
         if len(text) > 100_000:
             text = text[:100_000] + "\n\n[Truncated at 100,000 characters]"
 
-        return (text, "unpaywall")
+        result["full_text"] = text
+        result["source"] = "unpaywall"
+        return result
 
     except Exception as e:
         print(f"    Unpaywall error: {e}")
-        return None
+        return empty
 
 
 # --- Semantic Scholar ---
@@ -293,7 +301,7 @@ def run_pipeline(limit: int, dry_run: bool = False):
         print("Nothing to do.")
         return
 
-    stats = {"unpaywall": 0, "semantic_scholar": 0, "failed": 0, "skipped": 0}
+    stats = {"unpaywall": 0, "semantic_scholar": 0, "failed": 0, "skipped": 0, "access_resolved": 0}
 
     for i, paper in enumerate(papers):
         doi = paper.get("doi")
@@ -305,17 +313,29 @@ def run_pipeline(limit: int, dry_run: bool = False):
             stats["skipped"] += 1
             continue
 
-        # Try Unpaywall first
-        result = fetch_via_unpaywall(doi)
-        if result:
-            full_text, source = result
-            print(f"    -> Unpaywall: {len(full_text)} chars")
+        # Try Unpaywall first — even if full-text scrape fails, the Unpaywall
+        # metadata is used to populate access_url / access_status (Feature 6.5).
+        up_result = fetch_via_unpaywall(doi)
+        unpaywall_data = up_result["unpaywall"]
+        full_text = up_result["full_text"]
+
+        patch: dict = {}
+
+        # Resolve access fields from Unpaywall metadata if we got it
+        if unpaywall_data is not None:
+            access_url, access_status = resolve_access(unpaywall=unpaywall_data, doi=doi)
+            if access_url:
+                patch["access_url"] = access_url
+            patch["access_status"] = access_status
+            patch["access_resolved_at"] = datetime.now(timezone.utc).isoformat()
+            stats["access_resolved"] += 1
+
+        if full_text:
+            print(f"    -> Unpaywall: {len(full_text)} chars (access: {patch.get('access_status', '?')})")
+            patch["full_text"] = full_text
+            patch["full_text_source"] = up_result["source"]
             if not dry_run:
-                supabase_patch(
-                    "papers",
-                    {"id": f"eq.{paper['id']}"},
-                    {"full_text": full_text, "full_text_source": source},
-                )
+                supabase_patch("papers", {"id": f"eq.{paper['id']}"}, patch)
             stats["unpaywall"] += 1
             # Rate limit for Unpaywall: 1 req/sec (already waited 1s inside)
             continue
@@ -323,20 +343,24 @@ def run_pipeline(limit: int, dry_run: bool = False):
         # Rate limit between Unpaywall attempt and S2
         time.sleep(1)
 
-        # Fallback: Semantic Scholar
-        result = fetch_via_semantic_scholar(doi)
-        if result:
-            full_text, source = result
-            print(f"    -> Semantic Scholar: {len(full_text)} chars")
+        # Fallback: Semantic Scholar for full_text
+        s2_result = fetch_via_semantic_scholar(doi)
+        if s2_result:
+            full_text, source = s2_result
+            print(f"    -> Semantic Scholar: {len(full_text)} chars (access: {patch.get('access_status', '?')})")
+            patch["full_text"] = full_text
+            patch["full_text_source"] = source
             if not dry_run:
-                supabase_patch(
-                    "papers",
-                    {"id": f"eq.{paper['id']}"},
-                    {"full_text": full_text, "full_text_source": source},
-                )
+                supabase_patch("papers", {"id": f"eq.{paper['id']}"}, patch)
             stats["semantic_scholar"] += 1
         else:
-            print(f"    -> No full text found")
+            if patch:
+                # No full-text anywhere, but we still have access metadata worth saving.
+                print(f"    -> No full text found (access: {patch.get('access_status', '?')})")
+                if not dry_run:
+                    supabase_patch("papers", {"id": f"eq.{paper['id']}"}, patch)
+            else:
+                print(f"    -> No full text found")
             stats["failed"] += 1
 
         # Rate limit between papers (S2 allows ~100 req/5min = ~1 req/3sec)
@@ -346,9 +370,10 @@ def run_pipeline(limit: int, dry_run: bool = False):
     print(f"RESULTS:")
     print(f"  Unpaywall:         {stats['unpaywall']}")
     print(f"  Semantic Scholar:  {stats['semantic_scholar']}")
+    print(f"  Access resolved:   {stats['access_resolved']}")
     print(f"  Failed:            {stats['failed']}")
     print(f"  Skipped:           {stats['skipped']}")
-    print(f"  Total processed:   {sum(stats.values())}")
+    print(f"  Total processed:   {sum(v for k, v in stats.items() if k != 'access_resolved')}")
     print(f"{'='*60}")
 
 

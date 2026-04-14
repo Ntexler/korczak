@@ -369,6 +369,11 @@ async def insert_paper_and_analysis(client: httpx.AsyncClient, paper: dict, anal
             "analysis_model": model_name,
             "analyzed_at": datetime.now(tz=timezone.utc).isoformat(),
         }
+        # Feature 6.5 enrichments (present when openalex_client returns them)
+        if paper.get("funding"):
+            paper_row["funding"] = json.dumps(paper["funding"])
+        if paper.get("open_access") is not None:
+            paper_row["open_access"] = paper["open_access"]
 
         result = await supabase_post(client, "papers", paper_row)
         if not result:
