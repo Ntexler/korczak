@@ -129,6 +129,25 @@ No migration. Need to (a) add `grants` to the OpenAlex fetch, (b) backfill exist
 
 ---
 
+## Build status (2026-04-14)
+
+All stages A–E complete on branch `feature/article-grounded-claims`.
+Deployment guide: `FEATURE_6_5_DEPLOY.md`. See PROGRESS.md ("Phase 6.5")
+for the committed summary.
+
+| Stage | Status |
+|---|---|
+| A — migrations + prompts + claim_builder helper | done (commits 9ca2b5d, 7c4b069) |
+| B-1 — access resolver + OpenAlex enrichments + backfill scripts | done (commit 83bb33a) |
+| B-2 — author_profiles enricher + bio generator + backfill | done (commit d9ecdcb) |
+| C — multi-source provenance extractor | done (commit f6ef1b3) |
+| D — /api/claims + /api/authors endpoints | done (commit 520755b) |
+| E — ClaimCard / ProvenancePanel / AuthorProfileDrawer / AccessBadge | done (commit 12baa9b) |
+
+**Deferred (intentional):** integration of ClaimCard into ContentPanel /
+ChatMessage — requires UX judgment calls better made with the component
+in hand. Stage F quality-gate dashboard — polish, not a blocker.
+
 ## Decisions (2026-04-14)
 
 1. **First slice scope**: Stages A + B + D + E on existing data, with graceful UI degradation when fields are empty. Confirmed.

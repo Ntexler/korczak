@@ -99,29 +99,71 @@ async def get_or_create_concept(client, c):
 # --- Gutendex search ---
 
 async def search_gutenberg(client, title, author):
-    """Search Gutendex (Project Gutenberg API) for a book."""
-    query = f"{title} {author}".strip()
-    try:
-        r = await client.get(
-            "https://gutendex.com/books",
-            params={"search": query},
-            timeout=20,
-        )
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        results = data.get("results", [])
-        if not results:
-            return None
-        # Pick best match by title similarity
-        title_lower = title.lower()
-        for book in results[:5]:
-            btitle = (book.get("title") or "").lower()
-            if any(word in btitle for word in title_lower.split()[:3]):
-                return book
-        return results[0]
-    except Exception:
+    """Search Gutendex (Project Gutenberg API) for a book.
+
+    The previous version passed title+author as one long query, which
+    Gutendex tokenizes and often returns zero results for book-length
+    canonical works. Here we try progressively broader searches and
+    score candidates by content-word overlap (not just "any word of
+    first three").
+    """
+    # Build search queries from broad to narrow
+    author_last = (author or "").split(",")[0].strip().split()[-1] if author else ""
+    candidates_queries = []
+    if author_last:
+        candidates_queries.append(author_last)
+    if title:
+        # First 3 content words of title (drop articles/punctuation)
+        stop = {"the", "a", "an", "of", "on", "in", "to", "and", "or", "for"}
+        words = [w.strip(".,;:\"'()[]") for w in title.split()]
+        content = [w for w in words if w.lower() not in stop and len(w) > 2]
+        if content:
+            candidates_queries.append(" ".join(content[:3]))
+    if not candidates_queries:
         return None
+
+    title_lower = (title or "").lower()
+    title_words = set(w.lower().strip(".,;:\"'()[]") for w in title_lower.split() if len(w) > 3)
+
+    for q in candidates_queries:
+        try:
+            r = await client.get(
+                "https://gutendex.com/books",
+                params={"search": q},
+                timeout=20,
+            )
+            if r.status_code != 200:
+                continue
+            try:
+                data = r.json()
+            except Exception:
+                continue
+            results = data.get("results", [])
+            if not results:
+                continue
+            # Score candidates by shared content-words with title AND author match
+            best = None
+            best_score = 0
+            for book in results[:10]:
+                btitle = (book.get("title") or "").lower()
+                btitle_words = set(w.strip(".,;:\"'()[]") for w in btitle.split() if len(w) > 3)
+                overlap = len(title_words & btitle_words)
+                authors_match = False
+                for a in book.get("authors", []):
+                    aname = (a.get("name") or "").lower()
+                    if author_last and author_last.lower() in aname:
+                        authors_match = True
+                        break
+                score = overlap + (3 if authors_match else 0)
+                if score > best_score:
+                    best_score = score
+                    best = book
+            # Require minimum score — 2 shared content words or an author match.
+            if best is not None and best_score >= 2:
+                return best
+        except Exception:
+            continue
+    return None
 
 
 async def download_gutenberg_text(client, book):
