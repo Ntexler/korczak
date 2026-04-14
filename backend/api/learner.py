@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from backend.integrations import supabase_client as db
 from backend.core import learning_paths as path_engine
+from backend.core import assessment
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -66,6 +67,18 @@ class MasteryUpdate(BaseModel):
     concept_id: str
     interaction: str  # viewed | explained_correctly | explained_incorrectly | self_marked_mastered
     metadata: dict = {}
+
+
+class AssessRequest(BaseModel):
+    user_id: str
+    concept_id: str
+
+
+class AnswerRequest(BaseModel):
+    user_id: str
+    concept_id: str
+    question: dict  # the question object from /assess
+    answer: str
 
 
 class PathGenerateRequest(BaseModel):
@@ -378,6 +391,144 @@ async def update_mastery(user_id: str, payload: MasteryUpdate):
 # =====================================================================
 # Discovery endpoints
 # =====================================================================
+
+# =====================================================================
+# Assessment / Socratic
+# =====================================================================
+
+def _fetch_concept_and_claims(client, concept_id: str):
+    concept_rows = (
+        client.table("concepts").select("id,name,definition,type").eq("id", concept_id).limit(1).execute()
+    ).data
+    if not concept_rows:
+        return None, []
+    concept = concept_rows[0]
+    # Claims from canonical papers that use this concept
+    claims_rows = (
+        client.table("paper_concepts").select("paper_id").eq("concept_id", concept_id).limit(10).execute()
+    ).data
+    paper_ids = [r["paper_id"] for r in claims_rows]
+    claims = []
+    if paper_ids:
+        # Prefer claims from canonical papers
+        claims = (
+            client.table("claims")
+            .select("claim_text,strength,evidence_type,paper_id")
+            .in_("paper_id", paper_ids)
+            .limit(8)
+            .execute()
+        ).data
+    return concept, claims
+
+
+@router.post("/assess")
+async def assess_concept(req: AssessRequest):
+    """Generate a question that tests real understanding of a concept."""
+    try:
+        client = db.get_client()
+        concept, claims = _fetch_concept_and_claims(client, req.concept_id)
+        if not concept:
+            raise HTTPException(404, detail="Concept not found")
+        q = await assessment.generate_question(concept, claims)
+        if not q:
+            raise HTTPException(502, detail="Failed to generate question")
+        client.table("user_interactions").insert({
+            "user_id": req.user_id,
+            "interaction_type": "ask_question",
+            "concept_id": req.concept_id,
+            "metadata": {"question": q},
+        }).execute()
+        return {"concept": concept, "question": q}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("assess failed")
+        raise HTTPException(500, detail=str(e))
+
+
+@router.post("/answer")
+async def submit_answer(req: AnswerRequest):
+    """Evaluate a learner's answer and update mastery."""
+    try:
+        client = db.get_client()
+        concept, claims = _fetch_concept_and_claims(client, req.concept_id)
+        if not concept:
+            raise HTTPException(404, detail="Concept not found")
+
+        result = await assessment.evaluate_answer(concept, req.question, claims, req.answer)
+        if not result:
+            raise HTTPException(502, detail="Failed to evaluate answer")
+
+        delta = assessment.clamp_delta(result.get("mastery_delta", 0))
+        # Update mastery using existing row
+        rows = (
+            client.table("user_concept_mastery")
+            .select("*")
+            .eq("user_id", req.user_id)
+            .eq("concept_id", req.concept_id)
+            .execute()
+        ).data
+        now = datetime.now(tz=timezone.utc).isoformat()
+        if rows:
+            r = rows[0]
+            old_score = r.get("mastery_score", 0.0)
+            new_score = max(0.0, min(1.0, old_score + delta))
+            new_level = _mastery_from_score(new_score)
+            next_review = _compute_next_review(new_score).isoformat()
+            client.table("user_concept_mastery").update({
+                "mastery_score": new_score,
+                "mastery_level": new_level,
+                "times_seen": r.get("times_seen", 0) + 1,
+                "times_assessed": r.get("times_assessed", 0) + 1,
+                "times_correct": r.get("times_correct", 0) + (1 if result.get("verdict") == "correct" else 0),
+                "last_seen": now,
+                "last_assessed": now,
+                "next_review_due": next_review,
+                "updated_at": now,
+            }).eq("id", r["id"]).execute()
+        else:
+            new_score = max(0.0, min(1.0, delta))
+            new_level = _mastery_from_score(new_score)
+            next_review = _compute_next_review(new_score).isoformat()
+            client.table("user_concept_mastery").insert({
+                "user_id": req.user_id,
+                "concept_id": req.concept_id,
+                "mastery_score": new_score,
+                "mastery_level": new_level,
+                "times_seen": 1,
+                "times_assessed": 1,
+                "times_correct": 1 if result.get("verdict") == "correct" else 0,
+                "last_seen": now,
+                "last_assessed": now,
+                "next_review_due": next_review,
+            }).execute()
+
+        # Log interaction
+        verdict = result.get("verdict", "partial")
+        interaction_type = {
+            "correct": "answer_correct",
+            "partial": "answer_incorrect",  # partial counts as incorrect for streak purposes
+            "incorrect": "answer_incorrect",
+        }.get(verdict, "answer_incorrect")
+        client.table("user_interactions").insert({
+            "user_id": req.user_id,
+            "interaction_type": interaction_type,
+            "concept_id": req.concept_id,
+            "metadata": {"answer": req.answer, "evaluation": result},
+        }).execute()
+
+        return {
+            "evaluation": result,
+            "mastery_score": new_score,
+            "mastery_level": new_level,
+            "next_review_due": next_review,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("answer evaluation failed")
+        raise HTTPException(500, detail=str(e))
+
 
 # =====================================================================
 # Learning Path generator
