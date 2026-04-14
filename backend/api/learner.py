@@ -22,6 +22,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.integrations import supabase_client as db
+from backend.core import learning_paths as path_engine
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -65,6 +66,16 @@ class MasteryUpdate(BaseModel):
     concept_id: str
     interaction: str  # viewed | explained_correctly | explained_incorrectly | self_marked_mastered
     metadata: dict = {}
+
+
+class PathGenerateRequest(BaseModel):
+    user_id: str
+    goal_concept_id: Optional[str] = None
+    goal_concept_name: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    max_steps: int = 20
+    save: bool = True
 
 
 class DiscoveryOut(BaseModel):
@@ -133,18 +144,45 @@ async def get_learner_map(
         ).data
         mastery_map = {r["concept_id"]: r for r in mastery_rows}
 
+        # Prereqs: for each unseen concept, check if its BUILDS_ON / EXTENDS
+        # prerequisites are all mastered (in mastery_map with score >= 0.7).
+        mastered_ids = {cid for cid, m in mastery_map.items() if (m.get("mastery_score") or 0) >= 0.7}
+        rels = (
+            client.table("relationships")
+            .select("source_id,target_id,relationship_type")
+            .eq("source_type", "concept")
+            .eq("target_type", "concept")
+            .in_("relationship_type", ["BUILDS_ON", "EXTENDS", "APPLIES"])
+            .execute()
+        ).data
+        prereqs_by_concept: dict = {}
+        for r in rels:
+            # source depends on target → target is a prereq of source
+            prereqs_by_concept.setdefault(r["source_id"], set()).add(r["target_id"])
+
         enriched = []
-        counts = {"mastered": 0, "practicing": 0, "exposed": 0, "unseen": 0}
+        counts = {"mastered": 0, "practicing": 0, "exposed": 0, "unseen": 0, "unseen_ready": 0}
         for c in concepts:
             m = mastery_map.get(c["id"], {})
             level = m.get("mastery_level", "unseen")
             counts[level] = counts.get(level, 0) + 1
+            prereqs_met = False
+            if level == "unseen":
+                reqs = prereqs_by_concept.get(c["id"], set())
+                if reqs and reqs.issubset(mastered_ids):
+                    counts["unseen_ready"] += 1
+                    prereqs_met = True
+                elif not reqs:
+                    # No declared prereqs → counts as ready to enter
+                    counts["unseen_ready"] += 1
+                    prereqs_met = True
             enriched.append({
                 **c,
                 "mastery_level": level,
                 "mastery_score": m.get("mastery_score", 0.0),
                 "times_seen": m.get("times_seen", 0),
                 "last_seen": m.get("last_seen"),
+                "prereqs_met": prereqs_met,
             })
 
         return LearnerMap(
@@ -153,7 +191,7 @@ async def get_learner_map(
             mastered=counts["mastered"],
             practicing=counts["practicing"],
             exposed=counts["exposed"],
-            unseen_ready=0,  # TODO: compute prerequisites met
+            unseen_ready=counts["unseen_ready"],
             concepts=enriched,
         )
     except Exception as e:
@@ -334,6 +372,81 @@ async def update_mastery(user_id: str, payload: MasteryUpdate):
         return {"ok": True, "new_score": new_score, "level": level, "next_review": next_review}
     except Exception as e:
         logger.exception("Failed to update mastery")
+        raise HTTPException(500, detail=str(e))
+
+
+# =====================================================================
+# Discovery endpoints
+# =====================================================================
+
+# =====================================================================
+# Learning Path generator
+# =====================================================================
+
+@router.post("/paths/generate")
+async def generate_path(req: PathGenerateRequest):
+    """Generate a concrete learning path for the user toward a goal concept."""
+    try:
+        goal_id = req.goal_concept_id
+        if not goal_id and req.goal_concept_name:
+            goal_id = path_engine.find_concept_by_name(req.goal_concept_name)
+            if not goal_id:
+                raise HTTPException(404, detail=f"Concept '{req.goal_concept_name}' not found")
+        if not goal_id:
+            raise HTTPException(400, detail="Provide goal_concept_id or goal_concept_name")
+
+        path = path_engine.generate_learning_path(
+            user_id=req.user_id,
+            goal_concept_id=goal_id,
+            name=req.name,
+            description=req.description,
+            max_steps=req.max_steps,
+            save=req.save,
+        )
+        return path
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to generate path")
+        raise HTTPException(500, detail=str(e))
+
+
+@router.get("/paths")
+async def list_paths(user_id: str = Query(...)):
+    """List a user's learning paths."""
+    try:
+        client = db.get_client()
+        rows = (
+            client.table("learning_paths")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        ).data
+        return rows
+    except Exception as e:
+        logger.exception("Failed to list paths")
+        raise HTTPException(500, detail=str(e))
+
+
+@router.get("/paths/{path_id}")
+async def get_path(path_id: str):
+    """Return a path with its ordered steps."""
+    try:
+        client = db.get_client()
+        path = (
+            client.table("learning_paths").select("*").eq("id", path_id).single().execute()
+        ).data
+        steps = (
+            client.table("learning_path_steps")
+            .select("*,concepts(name,definition),papers(title)")
+            .eq("path_id", path_id)
+            .order("position")
+            .execute()
+        ).data
+        return {"path": path, "steps": steps}
+    except Exception as e:
+        logger.exception("Failed to fetch path")
         raise HTTPException(500, detail=str(e))
 
 
