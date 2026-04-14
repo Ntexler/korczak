@@ -1,7 +1,7 @@
 # Korczak AI — Future Plans
 
 > This document captures planned features so work can resume after any interruption.
-> Last updated: 2026-04-05
+> Last updated: 2026-04-14
 
 ---
 
@@ -149,23 +149,397 @@
 
 ---
 
+### Feature 6.4: Learning Flow — Syllabus-Driven Lessons
+**Status:** Not started (syllabus content exists in `syllabus/`; learning UX does not)
+**Priority:** Highest — this is the actual user experience the product promises
+**Philosophy:** Users currently get lost in a "sea of knowledge." Real learning requires structure: pick a field, follow a syllabus grounded in recognized university curricula, go through material as lessons with progress, and verify understanding. The knowledge map is a *support* tool for this flow — not the entry point.
+
+#### What It Does
+- **Field-first entry**: On login (or "Start learning") the user picks a field/subfield before anything else
+- **Syllabus view**: Displays the syllabus for that field (sourced from `syllabus/*.md`) as a structured curriculum — units, lessons, prerequisites
+- **Lesson UX**: Each lesson is a guided experience where Korczak *lectures* through the material (explanation, examples, source papers), not a dashboard of cards
+- **Mid-lesson questions**: User can interrupt at any point to ask clarifying questions or request a deep dive into a sub-concept
+- **Comprehension checks at section boundaries**: Short open-ended or multiple-choice checks before advancing
+- **Progress tracking per field**: Where the user is in each syllabus, what they've completed, what needs review
+
+#### Backend Changes
+- **New file:** `backend/core/syllabus_loader.py` — parse `syllabus/*.md` into structured units/lessons
+- **New file:** `backend/core/lesson_builder.py` — assemble lesson content from concepts + claims + papers scoped to a syllabus node
+- **New file:** `backend/api/learning.py` — API router
+  - `GET /api/learning/fields` — list available fields (from syllabus dir)
+  - `GET /api/learning/syllabus/{field}` — structured syllabus tree
+  - `GET /api/learning/lesson/{field}/{lesson_id}` — lesson content (sections, claims, source papers)
+  - `POST /api/learning/progress` — update user progress in a syllabus
+  - `POST /api/learning/check/{lesson_id}` — submit comprehension check answer, Claude evaluates
+- **DB Migration 014:** `user_field_progress` + `lesson_completion` + `comprehension_checks`
+- **Integration:** Lessons pull source claims via `relationships` + `claims` + `papers` joins, so the content is *grounded* (see 6.5)
+
+#### Frontend Changes
+- **New route/page:** `/learn` — field selection as entry point
+- **New component:** `Learning/FieldSelector.tsx` — grid of available fields with progress indicators
+- **New component:** `Learning/SyllabusView.tsx` — tree/outline of units + lessons, shows progress
+- **New component:** `Learning/LessonView.tsx` — lecture-style reading pane + inline question affordance
+- **New component:** `Learning/ComprehensionCheck.tsx` — end-of-section check
+- **Update:** Home page — learning mode is the default landing experience; map is accessible but secondary
+
+---
+
+### Feature 6.5: Article-Grounded Claims
+**Status:** Partial (DB has paper FK; not surfaced in UI)
+**Priority:** Highest — without this, Korczak is indistinguishable from any AI chat
+**Philosophy:** Every assertion Korczak makes must be traceable to a source. The user should always be able to ask "who said this, where, and when?" and get a concrete answer they can verify.
+
+#### What Every Claim Surface Must Show
+- **Author**: name + short background blurb (institution, field, notable work)
+- **Year of writing**
+- **Country/institution**
+- **Main claims of the paper** (not just the one cited)
+- **Examples** used by the author
+- **Direct quote(s)** from the original text supporting the claim
+- **Link to the article** — DOI, open-access URL, or indication it's paywalled (+ where to access)
+
+#### Backend Changes
+- **Update:** `claims` table — ensure every claim has populated `source_paper_id`, `page_ref`, `quote_passage`, `context`
+- **Update:** `papers` table — ensure author bio, country, institution, open-access link are populated (enrichment pass via OpenAlex + Claude)
+- **New file:** `backend/core/author_enricher.py` — fetch/generate author background blurbs
+- **Update:** Lesson-builder includes full provenance metadata with every surfaced claim
+- **New endpoint:** `GET /api/claims/{id}/provenance` — full source record for a claim
+
+#### Frontend Changes
+- **New component:** `Claims/ClaimCard.tsx` — compact display of claim with expandable provenance
+- **New component:** `Claims/ProvenancePanel.tsx` — author block, year, country, quote, link
+- **Update:** `LessonView`, `ContentPanel`, `ConceptDetail`, `ChatMessage` — every claim rendered with a `ClaimCard`
+- **Design rule:** A claim without provenance must not be rendered — either show full provenance or don't surface the claim
+
+---
+
+### Feature 6.6: Reading Mode with Annotation & Research Box
+**Status:** `ReadingMode.tsx` referenced in 6.1 but lacks annotation capability
+**Priority:** High — articles are the *endpoint* of the learning flow
+**Philosophy:** The full article must be readable in-context, with the tools a student/researcher actually uses: highlighting, margin notes, and saving meaningful passages to come back to.
+
+#### What It Does
+- Clean, focused reading pane for the full article (PDF extract or HTML)
+- **Highlight / marker** — select text, pick a color, save the highlight
+- **Margin notes** on passages
+- **Research Box** — personal collection of saved quotes/passages, linked back to the source article and to the concept/lesson they came from
+- Highlights and notes are per-workspace (see 6.7) and optionally shareable to a learning group (see 6.8)
+
+#### Backend Changes
+- **DB Migration 015:** `annotations` (id, user_id, workspace_id, paper_id, passage_text, char_range, note, color, created_at)
+- **DB Migration 016:** `research_box_items` (id, user_id, workspace_id, annotation_id OR claim_id, tags, user_note, created_at)
+- **New file:** `backend/api/annotations.py` — CRUD for annotations
+- **New file:** `backend/api/research_box.py` — save/list/organize research box items
+- **Update:** Papers serving endpoint — return full text (with consistent char offsets for annotation anchoring)
+
+#### Frontend Changes
+- **Refactor:** `Reading/ReadingMode.tsx` — add selection-driven highlighting toolbar, note affordance
+- **New component:** `Reading/AnnotationLayer.tsx` — overlay on the text showing existing highlights + notes
+- **New component:** `Research/ResearchBox.tsx` — sidebar/panel showing saved items, filterable by tag, workspace, source, concept
+- **New component:** `Reading/AnnotationToolbar.tsx` — color picker, note input, "save to research box"
+
+---
+
+### Feature 6.7: Workspaces & Learning Intent
+**Status:** Not started
+**Priority:** High — without workspaces, personalization can't work
+**Philosophy:** A user is not one learner. They might be casually exploring anthropology of sleep for enrichment while doing serious research in urban geography. Treating these the same produces mediocrity in both. Workspaces are *contextual containers* that carry intent, skill level, and materials.
+
+#### Concepts
+- **Workspace** = a named container (e.g., "Sleep Research — PhD", "Urban Geo — hobby reading")
+- Each workspace has:
+  - **Intent**: `enrichment` | `research` — drives depth, assessment style, tone
+  - **Scoped field(s)** — what syllabus/graph area it centers on
+  - **Skill level** — per-field self-declared (or inferred), from novice → expert
+  - Its own annotations, research box items, lesson progress, chat history
+- User can have many workspaces, switch freely; Korczak's persona adapts to the active workspace
+
+#### Per-Topic Skill Profiling
+- Skill level is stored **per field**, not globally
+  - User can be expert in one subfield and novice in an adjacent one
+- Self-declared at workspace creation, refined by observation (question patterns, comprehension-check performance)
+- Drives:
+  - Lesson scaffolding density (more for novices)
+  - Default persona (tutor for novices, research-assistant for experts — see 6.8)
+  - Whether Korczak proactively surfaces basics vs. advanced connections
+
+#### Backend Changes
+- **DB Migration 017:** `workspaces` (id, user_id, name, intent, primary_field, created_at, archived_at)
+- **DB Migration 018:** `workspace_skill_profile` (workspace_id, field, self_declared_level, observed_level, confidence)
+- **Update:** All user-scoped tables (annotations, research_box, progress, chat) gain `workspace_id`
+- **New file:** `backend/api/workspaces.py` — CRUD + active-workspace switching
+- **New file:** `backend/core/skill_profiler.py` — infer/update skill level from user interactions
+
+#### Frontend Changes
+- **New component:** `Workspaces/WorkspaceSwitcher.tsx` — top-nav dropdown
+- **New component:** `Workspaces/WorkspaceCreate.tsx` — guided creation (name, intent, field, skill self-declare)
+- **New component:** `Workspaces/WorkspaceSettings.tsx`
+- **Global state:** Active workspace in Zustand; all queries scoped to it
+
+---
+
+### Feature 6.8: Adaptive Multi-Mode Persona
+**Status:** Not started
+**Priority:** High — ties the previous features into a coherent experience
+**Philosophy:** Korczak isn't one thing. It's a private tutor, a practice partner, a research assistant, and an industry trend researcher — *and it should feel different in each role*. The user shouldn't have to pick the mode; Korczak should infer it from workspace, topic, skill level, and the way the user is engaging.
+
+#### Modes (open-ended set)
+1. **Tutor (מורה פרטי)** — explains, lectures, gives examples, breaks down complexity
+2. **Practice partner (מתרגל)** — drills, poses problems, corrects misunderstandings
+3. **Research assistant (עוזר מחקר)** — peer dialogue, fetches sources on demand, debates, surfaces non-obvious connections
+4. **Industry researcher (חוקר תעשייתי)** — scans academic work for commercial/economic relevance, trends, applications
+5. (Extensible — new modes can be added without code changes if the prompt architecture supports it)
+
+#### Mode Selection Signals
+- Active workspace intent (`enrichment` → lean tutor; `research` → lean research-assistant)
+- Skill level in the current field (novice → tutor/practice; expert → peer/research-assistant)
+- Explicit user framing ("help me understand" vs. "find me papers that argue X")
+- Recent interaction patterns (asking definitions vs. asking for critique)
+
+#### Proactive Behavior
+- In research-assistant / industry-researcher modes: Korczak **proactively** surfaces connections across the corpus the user might have missed
+- "Did you notice that X's 1987 argument is structurally similar to Y's 2019 paper?"
+- "Three recent papers in your field cite this concept in a context you haven't covered."
+
+#### Backend Changes
+- **New file:** `backend/core/persona_router.py` — selects mode based on signals, produces mode-specific system prompt fragments
+- **Update:** Chat endpoint — assembles prompt from (base Korczak prompt) + (active-workspace context) + (selected persona fragment) + (skill-appropriate scaffolding instructions)
+- **New file:** `backend/core/proactive_connections.py` — scheduled/on-demand surfacing of cross-paper links for advanced modes
+
+#### Frontend Changes
+- **Update:** Chat UI shows a subtle indicator of the current persona (e.g., "Korczak is acting as your research assistant") with an affordance to override
+- **New component:** `Chat/PersonaIndicator.tsx`
+- **New component:** `Proactive/ConnectionSuggestions.tsx` — surfaces suggested links in advanced workspaces
+
+---
+
+### Feature 6.9: Credibility & Influence Layer
+**Status:** Not started
+**Priority:** High — directly serves the "See what you don't see" tagline; without this, Korczak is a polite summarizer
+**Philosophy:** Academic knowledge is produced by humans with funders, affiliations, and incentives. A trustworthy knowledge tool doesn't hide those factors — it surfaces them and lets the user weigh evidence with eyes open. Korczak must be willing to *critique* the material it teaches, not just relay it.
+
+#### What It Does
+
+**(a) Argument-strength assessment**
+- For each claim surfaced, Korczak can tag and explain weakness: small sample, no replication, methodological issue, contradicted by later work, heavy reliance on disputed assumption
+- Weakness tags are visible in the lesson UI and expandable to a short explanation
+- Korczak will *proactively* flag weak arguments in lessons, not wait to be asked
+
+**(b) Funding & conflict-of-interest surfacing**
+- Every paper shows its **funders** (where metadata is available: OpenAlex `grants`, Crossref funder data, paper acknowledgments via NLP)
+- Every author shows known **affiliations, industry ties, consulting roles, editorial positions** (where publicly documented)
+- Explicit COI flag when funder has a plausible stake in the paper's conclusion
+
+**(c) Funder & person drill-down**
+- **Click on a funder** → profile page showing: what the funder is, who runs it, their stated focus, **every paper in our corpus they've funded**, fields/topics they cluster in, any flagged patterns
+- **Click on a person** (author, funder principal, editorial board member) → their research/funding footprint across the corpus
+- This creates a second graph *alongside* the concept graph: the graph of who funds/writes/influences what
+
+**(d) Hidden connections**
+- Korczak surfaces non-obvious influence links: "three of the five papers teaching position X share a funder," "this author sits on the editorial board of the journal that published the paper critiquing their rival," "this foundation funded 80% of the papers in this subfield in the last decade"
+- These are presented as *observations*, not accusations — the user decides significance
+
+#### Backend Changes
+- **DB Migration 020:** `funders` (id, name, type [gov/industry/foundation/private], country, metadata JSONB)
+- **DB Migration 021:** `paper_funders` (paper_id, funder_id, grant_number, amount_if_known)
+- **DB Migration 022:** `author_affiliations` (author_id, org_id, role, years, source)
+- **DB Migration 023:** `argument_weaknesses` (claim_id, weakness_type, explanation, source)
+- **DB Migration 024:** `influence_observations` (subject_type, subject_id, observation_text, evidence_refs JSONB)
+- **Update:** Seeding pipeline — pull OpenAlex `grants`, Crossref funder data, extract acknowledgments section from papers via Claude
+- **New file:** `backend/core/weakness_tagger.py` — Claude-based analysis of each claim for common weakness patterns
+- **New file:** `backend/core/influence_detector.py` — finds patterns (shared funders, affiliations, editorial overlaps) across the corpus
+- **New file:** `backend/api/funders.py` — funder profile, papers funded, patterns
+- **New file:** `backend/api/persons.py` — unified person profile (author / funder principal / board member)
+- **Update:** Every claim/paper API response includes `weaknesses[]`, `funders[]`, `author_cois[]`
+
+#### Frontend Changes
+- **Update:** `Claims/ProvenancePanel.tsx` — show weakness tags + funder chips + COI flags
+- **New component:** `Credibility/WeaknessBadge.tsx` — compact weakness indicator, expandable
+- **New component:** `Credibility/FunderChip.tsx` — clickable, opens funder profile
+- **New page/component:** `Credibility/FunderProfile.tsx` — all papers, fields, patterns for a funder
+- **New page/component:** `Credibility/PersonProfile.tsx` — cross-role profile for any person
+- **New component:** `Credibility/InfluenceObservations.tsx` — non-obvious link surfacing in the lesson / graph
+- **Update:** Knowledge graph — optional "influence lens" that overlays funder clusters on the concept graph
+
+#### Design Rules
+- Never hide or soften a documented funding source or affiliation
+- Never present an influence observation without the concrete evidence that produced it
+- Distinguish clearly: *documented fact* (funder listed on paper) vs. *pattern observation* (this funder funds 80% of papers in this area) vs. *potential concern* (author has industry role in a company whose product the paper evaluates)
+
+---
+
+### Feature 6.10: Instructor Workflow — Classrooms & Engagement Insights
+**Status:** Not started
+**Priority:** Medium-High (after 6.10, shares much of its infrastructure)
+**Philosophy:** Korczak isn't only for self-directed learners. Teachers and lecturers should be able to run a class on it — assign readings, shape a syllabus for their students, and see where the class actually stands. The goal isn't surveillance — it's catching students who are struggling silently and recognizing ones who are running ahead and need more.
+
+**Supported instructional contexts (explicit use cases):**
+- **University / secondary classrooms** — lecturer + enrolled students
+- **Smart remote learning** — fully distributed cohorts with no shared physical space; engagement signals replace the in-room read
+- **Homeschooling** — a parent/tutor acts as instructor for a small group (family, co-op); same roster / assignment / insight tools, at smaller scale
+- **Independent study groups with a designated guide** — e.g., reading circles with a rotating lead
+
+These share the same primitives (classroom, roster, assignments, engagement) — the UI should not hardcode assumptions about class size, age, or institutional context.
+
+#### Roles
+- **Instructor** — can create a classroom, upload syllabi and readings, assign work, see engagement data
+- **Student** — joins a classroom (by invite/code), accesses the instructor's materials within their own workspace, receives assignments
+
+#### What It Does
+
+**(a) Instructor content upload**
+- Upload custom syllabi (markdown/doc) — either alongside or instead of the built-in ones
+- Upload reading passages and full articles with highlighted required sections
+- Attach lessons to units, set expected order, mark optional vs. required
+- Instructor-written introductions and framing per unit/reading
+
+**(b) Classroom management**
+- Create a classroom, set roster (invite students by email or join code)
+- Scope: a classroom is a shared context; students see instructor content in a dedicated classroom workspace
+- Multiple instructors per classroom supported (TAs, co-teachers)
+
+**(c) Engagement & comprehension insights (per student, per reading, per lesson)**
+- Which students **opened** each text, and when
+- How long they **spent reading** (active time, not just tab-open)
+- Whether they completed comprehension checks, and their performance
+- Questions they asked Korczak while reading (aggregated themes; instructor doesn't see raw private chats by default — see Privacy Rules below)
+- Annotation activity (quantity, whether they saved anything to their research box)
+
+**(d) Attention signals**
+- System flags students who likely **need help**: haven't opened assigned readings, low time-on-page relative to class, repeated failed comprehension checks, asking confused clarifying questions
+- System flags students **running ahead**: completing readings early, engaging beyond the assigned scope, asking advanced questions — instructor can send enrichment
+- Signals are *suggestions*, not verdicts — the instructor decides what to do
+
+**(e) Class-wide insight**
+- Distribution of progress across the class
+- Which readings are stumbling blocks (class-wide comprehension dips)
+- Which concepts generate the most clarifying questions
+- Recommended teaching adjustments (e.g., "70% of class is stuck on X — consider revisiting in the next session")
+
+#### Privacy Rules
+- Students opt in to data sharing when joining a classroom; the opt-in scope is explicit (reading opens, time-on-page, check scores, question *themes*)
+- Raw chat transcripts with Korczak are **private by default**; instructor only sees aggregated/thematic insight unless the student chooses to share a specific conversation
+- All classroom data exports are student-identified only to instructors in that classroom; anonymized class-level patterns are fine for platform-wide benchmarking
+
+#### Backend Changes
+- **DB Migration 025:** `classrooms` (id, instructor_ids[], name, field, join_code, created_at, archived_at)
+- **DB Migration 026:** `classroom_members` (classroom_id, user_id, role [instructor | ta | student], joined_at, data_sharing_consent JSONB)
+- **DB Migration 027:** `assignments` (id, classroom_id, type [reading | lesson | check], target_ref, due_at, required)
+- **DB Migration 028:** `instructor_materials` (id, classroom_id, kind [syllabus | reading | framing_text], content, ordering)
+- **DB Migration 029:** `engagement_events` (id, user_id, classroom_id, target_type, target_id, event [open | close | heartbeat | complete], payload, ts)
+- **New file:** `backend/core/engagement_analyzer.py` — derives time-on-page, active-read time, attention signals
+- **New file:** `backend/core/class_insights.py` — class-wide aggregations, stumbling-block detection
+- **New file:** `backend/api/classrooms.py` — CRUD, roster management, invites
+- **New file:** `backend/api/assignments.py` — assign, submit, grade (where applicable)
+- **New file:** `backend/api/instructor_insights.py` — per-student and class-wide dashboards
+- **Update:** Reading/lesson endpoints emit engagement events when the active workspace is in a classroom context
+
+#### Frontend Changes
+- **New role-scoped UI:** Instructor dashboard — classroom list, classroom detail, per-student detail
+- **New component:** `Classroom/InstructorDashboard.tsx`
+- **New component:** `Classroom/StudentRoster.tsx` — with engagement signals and flags
+- **New component:** `Classroom/AssignmentBuilder.tsx`
+- **New component:** `Classroom/SyllabusUploader.tsx` — parse uploaded syllabus into structured units
+- **New component:** `Classroom/ReadingUploader.tsx` — upload articles, mark required sections
+- **New component:** `Classroom/ClassInsights.tsx` — progress distribution, stumbling-block heatmap
+- **New component:** `Classroom/StudentDetail.tsx` — per-student engagement timeline, attention signals, suggested actions
+- **Update:** Student-side workspace shows a "Classroom" label + assignment list when they're in a classroom context
+
+---
+
+### Feature 6.11: Concrete Examples — Media & Case Studies
+**Status:** Not started
+**Priority:** Medium (adds learning depth; not required for core flow)
+**Philosophy:** Theory without example stays abstract. Great lecturers use real news stories and documented cases to show what a claim *looks like in the world*. Korczak does the same — strictly from real-world sources. **No generated content** (no synthetic scenarios, no AI-generated visualizations, no AI-generated video) — the quality bar isn't there yet and we won't risk teaching learners from fabricated illustrations.
+
+#### Example Types (both retrieved from real sources)
+
+**(a) Media / journalism examples**
+- For a given theoretical claim, retrieve real news articles or opinion pieces that — after analysis — exemplify the claim
+- Sources: news APIs (GDELT, NewsAPI, Common Crawl news archives), with caching and source diversity
+- Claude analyzes each candidate article and writes the why-it-fits explanation; the article itself is shown verbatim (title, publication, date, link)
+- Shown in the lesson as an optional "examples from journalism" panel
+
+**(b) Case archive**
+- A curated library of historical/contemporary cases — real events, court decisions, policy episodes, documented ethnographic vignettes — tagged to concepts and claims
+- Entries are human-added (by instructors or platform team) or AI-proposed from real source material and **human-reviewed before publication**
+- Each case has: short description, source(s), date, why-it-illustrates explanation, relevant concepts/claims
+
+#### Trust & Labeling Rules
+- Every example tagged `retrieved-media` or `curated-case` — both real-world types
+- Every example shows its source(s) and the reasoning for why it fits the claim
+- Users can mark "this isn't a good example" — feedback improves future retrieval and flags weak matches for review
+- **Hard rule:** no generated illustrative content in this feature. If we later revisit generation, it's a separate feature with its own design review.
+
+#### Backend Changes
+- **DB Migration 030:** `example_archive` (id, type ['retrieved-media' | 'curated-case'], content, source, date, claim_ids[], concept_ids[], curated_by, review_status)
+- **DB Migration 031:** `example_feedback` (example_id, user_id, rating, comment)
+- **New file:** `backend/core/media_retriever.py` — news API adapters (GDELT first, NewsAPI second) + candidate article scoring
+- **New file:** `backend/core/example_matcher.py` — Claude-based "does this example fit this claim?" analyzer, returns structured fit reasoning + confidence
+- **New file:** `backend/api/examples.py` — serve examples for a claim/concept, accept feedback, admin endpoints for curating the case archive
+
+#### Frontend Changes
+- **New component:** `Examples/ExamplesPanel.tsx` — shows examples for a given claim, tabs for media vs. case
+- **New component:** `Examples/MediaExampleCard.tsx` — article title + publication + date + link + fit explanation
+- **New component:** `Examples/CaseCard.tsx` — case summary + source refs + fit explanation
+- **New component:** `Examples/ExampleFeedback.tsx` — rating + "not a good example" flag
+- **Update:** Claim cards / lesson sections — "Show examples" affordance opens the panel for that claim
+
+#### Build Phasing (within this feature)
+1. **(b) Case archive (MVP)** — manual curation path only: instructor/admin uploads cases, claim tagging, front-end display. Simpler and immediately useful.
+2. **(a) Media examples** — adds GDELT integration + Claude matcher. Starts read-only (no user feedback loop), then adds feedback.
+3. Expand matcher quality + consider auto-proposing cases for human review as a pipeline improvement.
+
+---
+
+### Feature 6.12: Group Learning
+**Status:** Partially overlapping with Phase 7 social features; needs learning-specific scope
+**Priority:** Medium (after solo learning flow is solid)
+**Philosophy:** Learning is better with others. Study groups, shared annotations, and collaboratively written summaries are where understanding deepens. Korczak should participate as an auditor and co-thinker, not replace the human discussion.
+
+#### What It Does
+- Create a **learning group** scoped to a field or a specific syllabus/lesson
+- Invite members; group has shared workspace
+- **Discussion threads anchored to specific text passages or articles** (not only concept nodes)
+- **Collaborative summaries** — members co-write a summary of a lesson / article / concept
+- **"Ask Korczak to audit the summary"** — Korczak reviews against source material, reports: what's captured correctly, what's missing, what's misrepresented, suggested additions
+- Shared research box at group level (optional — members can save group-visible items)
+
+#### Backend Changes
+- **DB Migration 019:** `learning_groups`, `group_members`, `group_discussions` (anchored to paper/passage/claim), `group_summaries` (versioned)
+- **New file:** `backend/api/groups.py`
+- **New file:** `backend/core/summary_auditor.py` — Claude prompt that compares a summary to its source material and returns structured gaps/misreads
+- **Update:** Annotations table — allow `visibility: private | group`
+
+#### Frontend Changes
+- **New section:** `Groups/` — group list, group detail, member management
+- **New component:** `Groups/PassageDiscussion.tsx` — threaded discussion on a specific passage
+- **New component:** `Groups/CollaborativeSummary.tsx` — shared editor with version history
+- **New component:** `Groups/SummaryAuditPanel.tsx` — Korczak's report on a summary
+
+---
+
 ## Implementation Order
 
-1. **Feature 6.2 (Rich Map Nodes)** — Start here. Enriching the existing data is foundational.
-   - Update backend to return definitions + explanations
-   - Enrich frontend info panel with paragraphs + connection details
-   - Add concept description generator for sparse nodes
+> **Strategy update (2026-04-14):** Features 6.4–6.10 describe the actual learning product. The earlier 6.1–6.3 features enrich the *knowledge graph* — they are valuable but secondary support for the learning flow. The build order below reflects this re-prioritization.
 
-2. **Feature 6.3 (Connection Transparency)** — Build on 6.2.
-   - Expose explanation field that's already in DB
-   - Add connection feedback system
-   - Update graph visualization to show reasoning
+### Tier 1 — Learning Product Core (start here)
+1. **Feature 6.5 (Article-Grounded Claims)** — Prerequisite for everything else. Until every claim has full provenance (author / year / country / quote / link), no lesson can be trustworthy.
+2. **Feature 6.4 (Learning Flow)** — Field-first entry, syllabus view, lesson UX, comprehension checks. Relies on 6.5 for lesson content.
+3. **Feature 6.6 (Reading Mode with Annotation & Research Box)** — The article is the endpoint; users need to mark it up and save what matters.
+4. **Feature 6.7 (Workspaces & Learning Intent)** — Without workspaces, skill profiling and persona adaptation have nowhere to live.
+5. **Feature 6.8 (Adaptive Multi-Mode Persona)** — Ties 6.4/6.5/6.7 into an experience that feels different for novice vs. expert, enrichment vs. research.
 
-3. **Feature 6.1 (Paper Translation)** — Independent, can be built in parallel.
-   - DB migration for translations table
-   - Translation service using Claude
-   - Frontend translate button + side-by-side view
-   - Update seeding to include non-English papers
+### Tier 2 — Trustworthiness & Depth
+6. **Feature 6.9 (Credibility & Influence Layer)** — Weakness tagging, funders, COIs, funder/person drill-downs, hidden-connection surfacing. Core to the "See what you don't see" promise.
+7. **Feature 6.2 (Rich Map Nodes)** — Once the learning flow exists, the map becomes a valuable *navigational support*.
+8. **Feature 6.3 (Connection Transparency)** — Builds on 6.2 with explanations and user feedback on edges.
+
+### Tier 3 — Reach & Collaboration
+9. **Feature 6.10 (Instructor Workflow — Classrooms)** — Teachers/lecturers/homeschool-parents manage rosters, upload syllabi and readings, see engagement signals and attention flags. Supports remote learning and homeschooling as first-class use cases.
+10. **Feature 6.11 (Concrete Examples)** — Media articles, curated cases, generated scenarios, and visualizations that make theory tangible. Phase internally: generated scenarios first, media next, case archive/visualizations/videos later.
+11. **Feature 6.12 (Group Learning)** — Shared workspaces, passage discussions, collaborative summaries, Korczak as summary auditor. Shares infrastructure with 6.10.
+12. **Feature 6.1 (Paper Translation)** — Independent; can be built in parallel with any of the above when resources allow.
 
 ---
 
