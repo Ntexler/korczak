@@ -15,7 +15,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 interface Paper {
   id: string;
   title: string;
-  authors?: string;
+  // Backend returns authors as either a display string (legacy shape) or
+  // an array of {name, institution, ...} records. Both rendered below.
+  authors?: string | Array<string | { name?: string }>;
   year?: number;
   cited_by_count?: number;
   abstract?: string;
@@ -482,7 +484,7 @@ export default function ContentPanel({
                 {he ? "כל המושגים בתחום" : "All concepts in this field"}
               </h3>
               <div className="space-y-1.5">
-                {overview.top_concepts.map((c, i) => (
+                {(overview.top_concepts ?? []).map((c, i) => (
                   <button
                     key={c.id}
                     onClick={() => handleSelectConcept(c.id)}
