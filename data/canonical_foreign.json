@@ -1,0 +1,134 @@
+{
+  "description": "Canonical works in non-English languages — foundational texts that shape each language's intellectual tradition",
+  "strategy": "Search OpenAlex for these specific works, mark as canonical, enrich graph with original-language thought",
+  "languages": {
+    "de": {
+      "label": "German",
+      "works": [
+        {"title": "Kritik der reinen Vernunft", "author": "Immanuel Kant", "year": 1781, "why": "Foundational modern philosophy, transcendental idealism"},
+        {"title": "Sein und Zeit", "author": "Martin Heidegger", "year": 1927, "why": "Phenomenology of being, existentialism origin"},
+        {"title": "Phänomenologie des Geistes", "author": "Georg Wilhelm Friedrich Hegel", "year": 1807, "why": "Phenomenology of Spirit, dialectical philosophy"},
+        {"title": "Die protestantische Ethik und der Geist des Kapitalismus", "author": "Max Weber", "year": 1905, "why": "Sociology of religion and capitalism"},
+        {"title": "Also sprach Zarathustra", "author": "Friedrich Nietzsche", "year": 1883, "why": "Übermensch, eternal recurrence, will to power"},
+        {"title": "Die Traumdeutung", "author": "Sigmund Freud", "year": 1900, "why": "Foundational psychoanalysis"},
+        {"title": "Dialektik der Aufklärung", "author": "Max Horkheimer, Theodor Adorno", "year": 1944, "why": "Frankfurt School critical theory foundation"},
+        {"title": "Wirtschaft und Gesellschaft", "author": "Max Weber", "year": 1922, "why": "Economy and Society — foundational sociology"},
+        {"title": "Das Kapital", "author": "Karl Marx", "year": 1867, "why": "Critique of political economy, labor theory of value"},
+        {"title": "Logische Untersuchungen", "author": "Edmund Husserl", "year": 1900, "why": "Logical Investigations — phenomenology foundation"},
+        {"title": "Tractatus Logico-Philosophicus", "author": "Ludwig Wittgenstein", "year": 1921, "why": "Early analytic philosophy classic (German original)"},
+        {"title": "Theorie des kommunikativen Handelns", "author": "Jürgen Habermas", "year": 1981, "why": "Theory of Communicative Action, discourse ethics"}
+      ]
+    },
+    "fr": {
+      "label": "French",
+      "works": [
+        {"title": "Surveiller et punir", "author": "Michel Foucault", "year": 1975, "why": "Discipline and Punish — power, surveillance, biopolitics"},
+        {"title": "La Distinction: Critique sociale du jugement", "author": "Pierre Bourdieu", "year": 1979, "why": "Cultural capital, habitus, field theory"},
+        {"title": "De la grammatologie", "author": "Jacques Derrida", "year": 1967, "why": "Deconstruction, logocentrism critique"},
+        {"title": "Le Deuxième Sexe", "author": "Simone de Beauvoir", "year": 1949, "why": "Foundational feminist philosophy"},
+        {"title": "Les Mots et les Choses", "author": "Michel Foucault", "year": 1966, "why": "The Order of Things — archaeology of knowledge"},
+        {"title": "Écrits", "author": "Jacques Lacan", "year": 1966, "why": "Psychoanalytic theory, the mirror stage, the Other"},
+        {"title": "L'Être et le Néant", "author": "Jean-Paul Sartre", "year": 1943, "why": "Being and Nothingness — existentialism classic"},
+        {"title": "Les Règles de la méthode sociologique", "author": "Émile Durkheim", "year": 1895, "why": "Rules of Sociological Method — foundational sociology"},
+        {"title": "Le suicide", "author": "Émile Durkheim", "year": 1897, "why": "First major empirical sociology"},
+        {"title": "Essai sur le don", "author": "Marcel Mauss", "year": 1925, "why": "The Gift — anthropology of exchange"},
+        {"title": "Mille plateaux", "author": "Gilles Deleuze, Félix Guattari", "year": 1980, "why": "A Thousand Plateaus — rhizome, assemblage theory"},
+        {"title": "Tristes Tropiques", "author": "Claude Lévi-Strauss", "year": 1955, "why": "Structural anthropology classic"}
+      ]
+    },
+    "ru": {
+      "label": "Russian",
+      "works": [
+        {"title": "Мышление и речь", "author": "Лев Выготский", "year": 1934, "why": "Vygotsky — Thought and Language, developmental psychology"},
+        {"title": "Проблемы поэтики Достоевского", "author": "Михаил Бахтин", "year": 1929, "why": "Bakhtin — Problems of Dostoevsky's Poetics, dialogism, polyphony"},
+        {"title": "Вопросы литературы и эстетики", "author": "Михаил Бахтин", "year": 1975, "why": "Bakhtin — literary theory, heteroglossia, chronotope"},
+        {"title": "Исторические корни волшебной сказки", "author": "Владимир Пропп", "year": 1946, "why": "Propp — narrative morphology, folktale structure"},
+        {"title": "Архипелаг ГУЛАГ", "author": "Александр Солженицын", "year": 1973, "why": "Gulag Archipelago — Soviet history, political philosophy"},
+        {"title": "Основания геометрии", "author": "Николай Лобачевский", "year": 1829, "why": "Non-Euclidean geometry foundations"},
+        {"title": "Основные понятия теории вероятностей", "author": "Андрей Колмогоров", "year": 1933, "why": "Kolmogorov — axiomatic probability foundation"},
+        {"title": "Иван Грозный", "author": "Василий Ключевский", "year": 1904, "why": "Foundational Russian historiography"}
+      ]
+    },
+    "ja": {
+      "label": "Japanese",
+      "works": [
+        {"title": "善の研究", "author": "西田幾多郎", "year": 1911, "why": "Nishida Kitaro — An Inquiry into the Good, Kyoto School philosophy"},
+        {"title": "日本イデオロギー", "author": "戸坂潤", "year": 1935, "why": "Tosaka Jun — Japanese Ideology, Marxist philosophy"},
+        {"title": "菊と刀", "author": "ルース・ベネディクト", "year": 1946, "why": "The Chrysanthemum and the Sword (Japanese translation) — Japanese culture anthropology"},
+        {"title": "甘えの構造", "author": "土居健郎", "year": 1971, "why": "Doi Takeo — Anatomy of Dependence, Japanese psychology"},
+        {"title": "タテ社会の人間関係", "author": "中根千枝", "year": 1967, "why": "Nakane Chie — Japanese Society, vertical social structures"},
+        {"title": "正法眼蔵", "author": "道元", "year": 1253, "why": "Dogen — Shōbōgenzō, Zen Buddhist philosophy"},
+        {"title": "武士道", "author": "新渡戸稲造", "year": 1900, "why": "Nitobe Inazo — Bushido, Japanese ethics"},
+        {"title": "風土", "author": "和辻哲郎", "year": 1935, "why": "Watsuji Tetsuro — Climate and Culture, philosophical anthropology"}
+      ]
+    },
+    "zh": {
+      "label": "Chinese",
+      "works": [
+        {"title": "论语", "author": "孔子", "year": -479, "why": "The Analects — foundational Confucian text"},
+        {"title": "道德经", "author": "老子", "year": -400, "why": "Tao Te Ching — Taoist philosophy foundation"},
+        {"title": "孙子兵法", "author": "孙武", "year": -500, "why": "The Art of War — strategy classic"},
+        {"title": "史记", "author": "司马迁", "year": -94, "why": "Records of the Grand Historian — foundational Chinese historiography"},
+        {"title": "红楼梦", "author": "曹雪芹", "year": 1791, "why": "Dream of the Red Chamber — literary classic"},
+        {"title": "中国哲学史", "author": "冯友兰", "year": 1934, "why": "Feng Youlan — A History of Chinese Philosophy"},
+        {"title": "乡土中国", "author": "费孝通", "year": 1947, "why": "Fei Xiaotong — From the Soil, Chinese sociology classic"},
+        {"title": "黄帝内经", "author": "黄帝", "year": -100, "why": "Huangdi Neijing — foundational Traditional Chinese Medicine"},
+        {"title": "本草纲目", "author": "李时珍", "year": 1578, "why": "Compendium of Materia Medica — herbal medicine classic"},
+        {"title": "中国近三百年学术史", "author": "梁启超", "year": 1924, "why": "Liang Qichao — intellectual history of China"}
+      ]
+    },
+    "es": {
+      "label": "Spanish",
+      "works": [
+        {"title": "La rebelión de las masas", "author": "José Ortega y Gasset", "year": 1930, "why": "Revolt of the Masses — mass society, elite theory"},
+        {"title": "Meditaciones del Quijote", "author": "José Ortega y Gasset", "year": 1914, "why": "Philosophy of life, ratiovitalism"},
+        {"title": "Filosofía de la liberación", "author": "Enrique Dussel", "year": 1977, "why": "Philosophy of Liberation — decolonial thought"},
+        {"title": "La colonialidad del poder", "author": "Aníbal Quijano", "year": 2000, "why": "Coloniality of Power — decolonial theory foundation"},
+        {"title": "Pedagogía del oprimido", "author": "Paulo Freire", "year": 1970, "why": "Pedagogy of the Oppressed — critical pedagogy (Spanish original)"},
+        {"title": "Cien años de soledad", "author": "Gabriel García Márquez", "year": 1967, "why": "One Hundred Years of Solitude — magical realism classic"},
+        {"title": "Calibán", "author": "Roberto Fernández Retamar", "year": 1971, "why": "Latin American cultural identity, postcolonial theory"},
+        {"title": "Las venas abiertas de América Latina", "author": "Eduardo Galeano", "year": 1971, "why": "Open Veins of Latin America — dependency theory"},
+        {"title": "Ser y tiempo", "author": "Martin Heidegger", "year": 1951, "why": "Spanish translation of Being and Time — influential in Latin American philosophy"},
+        {"title": "Crítica de la razón latinoamericana", "author": "Santiago Castro-Gómez", "year": 1996, "why": "Latin American decolonial philosophy"}
+      ]
+    },
+    "it": {
+      "label": "Italian",
+      "works": [
+        {"title": "La Divina Commedia", "author": "Dante Alighieri", "year": 1320, "why": "Divine Comedy — Italian literary foundation"},
+        {"title": "Il Principe", "author": "Niccolò Machiavelli", "year": 1513, "why": "The Prince — political realism (Italian original)"},
+        {"title": "Scienza nuova", "author": "Giambattista Vico", "year": 1725, "why": "New Science — philosophy of history"},
+        {"title": "Quaderni del carcere", "author": "Antonio Gramsci", "year": 1948, "why": "Prison Notebooks — cultural hegemony, subaltern studies"},
+        {"title": "Homo sacer", "author": "Giorgio Agamben", "year": 1995, "why": "Biopolitics, state of exception"},
+        {"title": "Il nome della rosa", "author": "Umberto Eco", "year": 1980, "why": "The Name of the Rose — semiotics in fiction"},
+        {"title": "Opera aperta", "author": "Umberto Eco", "year": 1962, "why": "The Open Work — semiotics of reception"},
+        {"title": "Storia d'Italia", "author": "Benedetto Croce", "year": 1928, "why": "History of Italy — historicist philosophy"},
+        {"title": "Il Saggiatore", "author": "Galileo Galilei", "year": 1623, "why": "The Assayer — foundational scientific method"},
+        {"title": "Elementi di economia politica", "author": "Vilfredo Pareto", "year": 1906, "why": "Manual of Political Economy — Pareto optimality, sociology"}
+      ]
+    },
+    "ar": {
+      "label": "Arabic",
+      "works": [
+        {"title": "مقدمة ابن خلدون", "author": "ابن خلدون", "year": 1377, "why": "Ibn Khaldun — Muqaddimah, foundational historiography and sociology"},
+        {"title": "إحياء علوم الدين", "author": "أبو حامد الغزالي", "year": 1106, "why": "Al-Ghazali — Revival of the Religious Sciences"},
+        {"title": "تهافت الفلاسفة", "author": "أبو حامد الغزالي", "year": 1095, "why": "Al-Ghazali — Incoherence of the Philosophers"},
+        {"title": "تهافت التهافت", "author": "ابن رشد", "year": 1180, "why": "Ibn Rushd (Averroes) — Incoherence of the Incoherence"},
+        {"title": "القانون في الطب", "author": "ابن سينا", "year": 1025, "why": "Ibn Sina (Avicenna) — Canon of Medicine"},
+        {"title": "الأعمال الكاملة", "author": "محمد عابد الجابري", "year": 1984, "why": "Mohammed Abed al-Jabri — Critique of Arab Reason"},
+        {"title": "الاستشراق", "author": "إدوارد سعيد", "year": 1978, "why": "Edward Said — Orientalism (Arabic translation)"},
+        {"title": "حي بن يقظان", "author": "ابن طفيل", "year": 1169, "why": "Ibn Tufail — philosophical novel on autodidacticism"}
+      ]
+    },
+    "am": {
+      "label": "Amharic",
+      "works": [
+        {"title": "ፍቅር እስከ መቃብር", "author": "ሀዲስ ዓለማየሁ", "year": 1968, "why": "Haddis Alemayehu — Love unto the Grave, Ethiopian literary classic"},
+        {"title": "ኦሮማይ", "author": "በዓሉ ግርማ", "year": 1983, "why": "Baalu Girma — Oromay, Ethiopian political novel"},
+        {"title": "የመጽሐፍ ቅዱስ ትርጓሜ", "author": "ግዕዝ ትውፊት", "year": 1700, "why": "Ge'ez exegetical tradition — Ethiopian Christian scholarship"},
+        {"title": "ክብረ ነገሥት", "author": "Ethiopian tradition", "year": 1321, "why": "Kebra Nagast — Glory of the Kings, Ethiopian national epic"},
+        {"title": "ፍትሐ ነገሥት", "author": "Ethiopian tradition", "year": 1240, "why": "Fetha Nagast — traditional Ethiopian legal code"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,207 @@
+# Audit — Feature 6.5: Article-Grounded Claims
+
+Branch: `feature/article-grounded-claims`
+Date: 2026-04-14
+
+Pre-build audit of the current data model, pipeline, and UI layers against what Feature 6.5 requires every surfaced claim to show.
+
+---
+
+## Required by 6.5 vs. what exists today
+
+| Field 6.5 requires | Exists? | Where / gap |
+|---|---|---|
+| Author name | ✅ | `papers.authors[].name` |
+| Author institution | ✅ | `papers.authors[].institution` (first institution only, display name, no ROR ID) |
+| Author bio / background | ❌ | No column, no JSONB field, no enrichment pipeline |
+| Year of publication | ✅ | `papers.publication_year` |
+| Country (author / institution) | ❌ | Not captured. `entities.ror_id` column exists but never populated |
+| Main claims of paper | ⚠️ partial | `claims.claim_text` exists; no distinction between main / supporting / background / limitation |
+| Examples from paper | ❌ | Not extracted, not stored |
+| Verbatim quote from source | ❌ | No column on `claims`; Claude prompt does not ask for it |
+| Quote location (page / section) | ❌ | No column |
+| DOI / article link | ✅ | `papers.doi` present for most |
+| Open-access URL | ⚠️ partial | `papers.open_access` bool exists; no actual URL field. Full text exists for ~30–50% via Unpaywall |
+| Paywall / access-status indicator | ❌ | No structured field |
+| Funding data | ⚠️ defined, empty | `papers.funding JSONB` defined in migration 001 but never populated; OpenAlex `grants` is not requested during seeding |
+
+Legend: ✅ done · ⚠️ partial · ❌ missing
+
+---
+
+## Pipeline findings
+
+### Claude analysis prompts (`backend/prompts/paper_analysis.py`)
+- **`ANALYSIS_PROMPT`** (abstract-only, used by `seed_optimized.py`): extracts `paper_type`, `concepts`, `relationships`, `claims`, `historical_significance`. Does **not** request verbatim quotes, examples, author background, or funding.
+- **`ANALYSIS_PROMPT_FULL_TEXT`** (used by `seed_deep.py`): says "Ground every claim in specific textual evidence" but the output schema has **no `quote` / `passage` / `example` field**. The instruction is effectively lost at extraction time.
+
+### Seeding pipelines
+- `seed_optimized.py` — primary path. Fetches abstract + metadata from OpenAlex. Does **not** request `grants`. Stores author institution but nothing richer.
+- `seed_deep.py` — secondary path. Fetches full text via Unpaywall (~30–50% success rate), stores in `papers.full_text`, but prompt isn't updated to extract quotes.
+- `seed_foreign.py`, `seed_citations.py` — not relevant to this feature.
+
+### What actually lands in the DB for a claim
+```json
+{
+  "claim": "Decolonization challenges the hegemony of Western knowledge...",
+  "evidence_type": "theoretical",
+  "strength": "moderate",
+  "testable": false
+}
+```
+No quote. No example. No category. No location.
+
+---
+
+## API / frontend findings
+
+- `GET /api/graph/concepts/{id}` returns claims with `claim_text`, `evidence_type`, `strength`, `confidence` only.
+- `GET /api/library/papers` selects `id, title, authors, publication_year, cited_by_count, abstract, doi` — no full text, no funding, no claim-level data.
+- `ContentPanel.tsx` renders claim text + badges (evidence type, strength) — no provenance block.
+- `ChatMessage.tsx` renders markdown + concept badges — no source-grounding module.
+- No existing `ClaimCard` / `ProvenancePanel` component.
+
+---
+
+## Recommended migrations for 6.5 (minimal set)
+
+### Migration 024 — extend `claims` with provenance
+```sql
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS verbatim_quote TEXT;
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS quote_location TEXT;   -- "section 3.2", "Results, para 2", etc.
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS claim_category TEXT
+  CHECK (claim_category IN ('main', 'supporting', 'background', 'limitation'));
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS examples JSONB DEFAULT '[]';
+-- examples: [{ text, kind: 'case'|'dataset'|'figure'|'table', location }]
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS provenance_sources JSONB DEFAULT '[]';
+-- provenance_sources: [{ source: 'full_text'|'semantic_scholar'|'core'|'arxiv'|'unpaywall',
+--                         status: 'hit'|'miss'|'error',
+--                         quote: str|null,  -- candidate quote from this source
+--                         location: str|null,
+--                         url: str|null }]
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS provenance_extracted_at TIMESTAMPTZ;
+-- null = never extracted; non-null = extraction has run, cached result valid
+```
+
+### Migration 025 — access fields on `papers`
+```sql
+ALTER TABLE papers ADD COLUMN IF NOT EXISTS access_url TEXT;
+ALTER TABLE papers ADD COLUMN IF NOT EXISTS access_status TEXT
+  CHECK (access_status IN ('open', 'paywalled', 'hybrid', 'preprint', 'author_copy', 'unknown'));
+```
+
+### No migration needed (JSONB extension)
+`papers.authors` JSONB — extend schema in code to: `{name, openalex_id, orcid, institution, institution_ror_id, country, bio}`. Populate via an enrichment step, not a migration.
+
+### `papers.funding` already exists
+No migration. Need to (a) add `grants` to the OpenAlex fetch, (b) backfill existing rows.
+
+---
+
+## Build plan for 6.5 (proposed order)
+
+### Stage A — Data model + prompt (foundation)
+1. Write migration 024 (`claims` provenance columns) and migration 025 (`papers` access fields). Apply to local DB.
+2. Update `ANALYSIS_PROMPT_FULL_TEXT` output schema to include `verbatim_quote`, `quote_location`, `claim_category`, `examples`.
+3. Update the abstract-only `ANALYSIS_PROMPT` with `claim_category` (quote/examples will be sparse from abstract, that's OK).
+4. Update insertion logic in `seed_optimized.py` and `seed_deep.py` to persist the new fields.
+
+### Stage B — Enrichment
+5. Add OpenAlex `grants` to the fetch projection; populate `papers.funding` during seeding. Write a one-time backfill script for existing rows.
+6. Add ROR lookup for institutions → populate `country` into `papers.authors[]`. Backfill script.
+7. Populate `access_url` + `access_status` from Unpaywall response (already fetched; just plumb it through). Backfill script.
+8. Author bio: defer to a later sub-stage — it requires a separate OpenAlex authors fetch + Claude-generated summary. Start without it; UI degrades gracefully when missing.
+
+### Stage C — Reanalysis (the cost-heavy step)
+9. Run an update pass over papers where `full_text IS NOT NULL`: re-invoke Claude with the new prompt, capture quotes + categories + examples, update `claims` rows. Non-full-text papers get `claim_category` only.
+
+### Stage D — API
+10. Extend claim-returning endpoints (concept enricher, library, chat context builder) to include the new fields.
+11. New endpoint `GET /api/claims/{id}/provenance` returning the full provenance record.
+
+### Stage E — UI
+12. New components: `Claims/ClaimCard.tsx`, `Claims/ProvenancePanel.tsx`.
+13. Replace existing claim rendering in `ContentPanel.tsx`, `ChatMessage.tsx`, and lesson views (when 6.4 arrives) with the new components.
+14. Design rule: a claim without provenance is not rendered — either full card or not shown.
+
+### Stage F — Quality gate
+15. Dashboard query: % of claims that have `verbatim_quote`, % of papers that have `access_url`, % of authors with `country`. Target thresholds before we call 6.5 "done."
+
+---
+
+## Build status (2026-04-14)
+
+All stages A–E complete on branch `feature/article-grounded-claims`.
+Deployment guide: `FEATURE_6_5_DEPLOY.md`. See PROGRESS.md ("Phase 6.5")
+for the committed summary.
+
+| Stage | Status |
+|---|---|
+| A — migrations + prompts + claim_builder helper | done (commits 9ca2b5d, 7c4b069) |
+| B-1 — access resolver + OpenAlex enrichments + backfill scripts | done (commit 83bb33a) |
+| B-2 — author_profiles enricher + bio generator + backfill | done (commit d9ecdcb) |
+| C — multi-source provenance extractor | done (commit f6ef1b3) |
+| D — /api/claims + /api/authors endpoints | done (commit 520755b) |
+| E — ClaimCard / ProvenancePanel / AuthorProfileDrawer / AccessBadge | done (commit 12baa9b) |
+
+**Deferred (intentional):** integration of ClaimCard into ContentPanel /
+ChatMessage — requires UX judgment calls better made with the component
+in hand. Stage F quality-gate dashboard — polish, not a blocker.
+
+## Decisions (2026-04-14)
+
+1. **First slice scope**: Stages A + B + D + E on existing data, with graceful UI degradation when fields are empty. Confirmed.
+2. **Reanalysis is dropped.** Replaced by **on-demand provenance extraction**:
+   - UI surfaces a "show original quote / examples" affordance on each `ClaimCard`.
+   - First click invokes Claude with (claim_text + full_text) to extract `verbatim_quote`, `quote_location`, `examples`. Result is persisted to the claim row.
+   - Every subsequent viewer gets the cached result for free.
+   - Papers without `full_text` show a disabled affordance with "full text not available — only abstract-level analysis."
+   - Newly seeded papers still go through the updated `ANALYSIS_PROMPT_FULL_TEXT` at seed time when full text is fetched, so the cache fills naturally for anything new.
+3. **Author bio is IN the MVP.** Understanding the author's background is part of the learning experience. Enrichment path:
+   - Fetch author record from OpenAlex (`/authors/{id}`) — gives works count, concepts, institutions history.
+   - Generate a short background blurb via Claude (1–2 sentences summarizing field, institutions, notable works). Cache per author.
+
+## Revised Stage C — On-Demand Provenance Extraction (multi-source)
+
+Replaces the original "reanalysis" stage. **Runs multiple sources in parallel** — the paper's own full_text (when we have it) plus alternative academic sources — so we get the best available quote even when Unpaywall didn't give us the paper.
+
+### Source strategy
+Primary pass (run concurrently when a user triggers extraction):
+
+1. **`papers.full_text`** — already cached from Unpaywall at seed time (~30–50% coverage)
+2. **Semantic Scholar** — uses `paper/{id}?fields=openAccessPdf,tldr,citations.contexts` — can surface:
+   - OA PDF URL (alternative to Unpaywall)
+   - `tldr` (auto-generated summary, another grounding signal)
+   - `citations.contexts` — passages from *citing* papers that quote or discuss this paper's claims (useful for "what does the literature say this paper argues?")
+3. **CORE API** — large OA aggregator, often has papers Unpaywall misses
+4. **arXiv** — if the paper has a preprint version (check DOI/title)
+5. **Unpaywall re-check** — in case a paper that was paywalled at seed time has since opened
+
+### Aggregation
+- All successful sources return candidate passages
+- A single Claude call receives (claim_text + all candidate passages, each labeled by source) and is asked to:
+  - Pick the strongest verbatim quote (with its source)
+  - Note secondary quotes from other sources (for "cross-reference" display)
+  - Extract examples, classify claim category
+- Results written to `claims.verbatim_quote`, `quote_location`, `examples`, `claim_category`, plus a new `claims.provenance_sources JSONB` listing every source that was checked + what it returned
+
+### Implementation
+1. New directory `backend/core/provenance/`:
+   - `extractor.py` — orchestrator, runs sources in parallel (asyncio.gather)
+   - `sources/full_text.py` — uses `papers.full_text`
+   - `sources/semantic_scholar.py` — new adapter
+   - `sources/core_api.py` — new adapter
+   - `sources/arxiv.py` — new adapter
+   - `sources/unpaywall_recheck.py` — retry
+   - `aggregator.py` — Claude call merging candidates
+2. New endpoint `POST /api/claims/{id}/extract-provenance` — idempotent. Returns cached result when already extracted.
+3. Add column `claims.provenance_sources JSONB DEFAULT '[]'` in migration 024 — records every source checked and what it returned, so the UI can show "extracted from full text, cross-referenced in 3 citing papers."
+4. UI: `ClaimCard` shows a "Show original passage" button; click triggers endpoint, loader while running, renders quote + "source: Unpaywall PDF" + optional "cross-references: 3 citing papers agree" link that expands secondary quotes.
+5. Log cost per source per call; dashboard tracks extractions/day, cache hit rate, per-source success rate, token spend.
+
+## Revised Stage B — Enrichment (bio included)
+
+- `papers.funding` ← populate from OpenAlex `grants` at seed time + one-time backfill script.
+- `papers.authors[].country` ← ROR API lookup on institution, backfill script.
+- `papers.access_url` + `access_status` ← derive from Unpaywall response (already fetched during full-text pass) + DOI + `open_access` flag. Backfill script.
+- **`papers.authors[].bio`** ← two-step: (1) fetch OpenAlex author record, (2) Claude generates a 1–2 sentence summary. Cached per author (consider a separate `author_profiles` table to avoid duplicating bio per paper; decide during Stage B design).

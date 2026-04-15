@@ -11,10 +11,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Compass,
+  Download,
+  Check,
 } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
-import { getConceptDetail, getConceptNeighbors } from "@/lib/api";
+import { getConceptDetail, getConceptNeighbors, exportConceptToObsidian } from "@/lib/api";
 import ConceptSummaries from "@/components/Social/ConceptSummaries";
 import DiscussionThread from "@/components/Social/DiscussionThread";
 
@@ -72,6 +74,8 @@ export default function ConceptDetail({ researcherId }: { researcherId?: string 
   const [concept, setConcept] = useState<ConceptData | null>(null);
   const [neighbors, setNeighbors] = useState<NeighborData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState(false);
 
   useEffect(() => {
     if (!selectedConceptId) {
@@ -91,6 +95,27 @@ export default function ConceptDetail({ researcherId }: { researcherId?: string 
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [selectedConceptId]);
+
+  const handleExportObsidian = async () => {
+    if (!selectedConceptId || exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportConceptToObsidian(selectedConceptId);
+      const blob = new Blob([result.content], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExported(true);
+      setTimeout(() => setExported(false), 2000);
+    } catch (e) {
+      console.error("Export failed:", e);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (!conceptPanelOpen) return null;
 
@@ -147,12 +172,24 @@ export default function ConceptDetail({ researcherId }: { researcherId?: string 
         <span className="text-sm font-semibold text-foreground" style={{ fontFamily: f.display }}>
           {t.conceptDetail}
         </span>
-        <button
-          onClick={() => setSelectedConceptId(null)}
-          className="p-1 rounded hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          {concept && (
+            <button
+              onClick={handleExportObsidian}
+              disabled={exporting}
+              className="p-1 rounded hover:bg-surface-hover text-text-secondary hover:text-accent-gold transition-colors"
+              title={locale === "he" ? "ייצוא ל-Obsidian" : "Export to Obsidian"}
+            >
+              {exported ? <Check size={16} className="text-accent-green" /> : <Download size={16} />}
+            </button>
+          )}
+          <button
+            onClick={() => setSelectedConceptId(null)}
+            className="p-1 rounded hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">

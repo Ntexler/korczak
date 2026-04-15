@@ -134,19 +134,30 @@ async def get_papers_for_concept(concept_id: str, limit: int = 5) -> list[dict]:
 
 
 async def get_claims_for_papers(paper_ids: list[str], limit: int = 10) -> list[dict]:
-    """Get claims by paper IDs."""
+    """Get claims by paper IDs (batched to avoid Supabase URL limits)."""
     if not paper_ids:
         return []
     client = get_client()
-    result = (
-        client.table("claims")
-        .select("id, paper_id, claim_text, evidence_type, strength, confidence")
-        .in_("paper_id", paper_ids)
-        .order("confidence", desc=True)
-        .limit(limit)
-        .execute()
-    )
-    return result.data
+    all_claims = []
+    for i in range(0, len(paper_ids), 30):
+        batch = paper_ids[i:i + 30]
+        result = (
+            client.table("claims")
+            .select(
+                # Feature 6.5: include provenance fields (usually NULL until
+                # on-demand extractor runs; UI renders them gracefully).
+                "id, paper_id, claim_text, evidence_type, strength, confidence, "
+                "verbatim_quote, quote_location, claim_category, examples, "
+                "provenance_extracted_at"
+            )
+            .in_("paper_id", batch)
+            .order("confidence", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        all_claims.extend(result.data or [])
+    all_claims.sort(key=lambda c: c.get("confidence", 0), reverse=True)
+    return all_claims[:limit]
 
 
 async def search_controversies(keyword: str, limit: int = 3) -> list[dict]:

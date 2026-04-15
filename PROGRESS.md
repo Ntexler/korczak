@@ -545,4 +545,190 @@ frontend/
 - [x] Phase 7: Academic Social Network (profiles, summaries, collaborative editing)
 - [x] Phase 8: Timeline of Knowledge (evolution tracking, animated history)
 - [x] Phase 9: Advanced Visualization (5 views, 5 lenses, graph settings)
-- [x] **Phase 10: Search Pipeline (5-stage: analysis → retrieval → coverage → synthesis → skeptic)** ← JUST COMPLETED
+- [x] Phase 10: Search Pipeline (5-stage: analysis → retrieval → coverage → synthesis → skeptic)
+- [x] Phase 11: Canonical Corpus + Multilingual + Discovery Engine
+- [x] **Phase 6.5: Article-Grounded Claims** (learning-first pivot; built on branch `feature/article-grounded-claims`) ← JUST COMPLETED
+
+---
+
+## Phase 11 — Canonical Corpus + Discovery Engine (2026-04-14)
+
+**Canonical corpus (260+ foundational works tagged in graph):**
+- 85 English canonical works across 12 fields.
+- 83 foreign canonical works across 9 languages (German, French, Russian,
+  Japanese, Chinese, Spanish, Italian, Arabic, Amharic).
+- 94 of the Google Scholar Top 100 most-cited papers tagged canonical.
+
+**Claude Knowledge Reconstruction (breakthrough):**
+- 99 canonical stubs (books without accessible abstracts) enriched with
+  deep Haiku-generated analyses from training: ~15 concepts, ~8 claims,
+  ~10 relationships each. Total cost $1.48.
+- Solves the problem that OpenAlex indexes *reviews of* canonical books,
+  not the books themselves. Kant, Heidegger, Dogen, Ibn Khaldun now
+  present with real knowledge graph representation.
+
+**Seeding pipelines added:**
+- seed_foreign, seed_optimized --journals, seed_citations, seed_gutenberg,
+  seed_from_training.
+- mark_canonical + mark_canonical_foreign + mark_scholar_top100.
+
+**Discovery Engine (discover_connections.py):**
+- 6 discovery kinds implemented. First run: 78 findings at $0.17.
+- Top findings: Foucault↔criminology (imp 0.95), de Beauvoir↔English
+  feminism (0.89), Mauss↔Anglo economics (0.89), Ibn Khaldun↔political
+  theory (0.88).
+
+**Learner State + Discovery API (migration 027):**
+- user_concept_mastery, learning_paths, learning_path_steps,
+  user_interactions, discoveries, research_hypotheses, discovery_runs.
+- 6 REST endpoints under /api/learner.
+
+**Later additions to Phase 11 (same day):**
+- ✅ Learning-Path generator — backend/core/learning_paths.py (reverse
+  topo-sort through BUILDS_ON/EXTENDS/APPLIES edges, skips mastered
+  concepts, canonical-anchored steps). Endpoints: POST /paths/generate,
+  GET /paths, GET /paths/{id}.
+- ✅ Prerequisite computation fix — `unseen_ready` in /me/map now
+  actually counts concepts whose declared prerequisites are mastered;
+  each concept carries a prereqs_met flag.
+- ✅ Assessment + Socratic engine — backend/core/assessment.py
+  (generate_question + evaluate_answer, grounded in concept definition
+  + canonical claims). Endpoints: POST /assess + POST /answer with
+  mastery auto-update + user_interactions logging.
+- ✅ Discovery engine now includes orphan_concept kind (30 flagged at
+  \$0.09). Fast CTE-based "wired concepts" lookup avoids the statement
+  timeout the NOT EXISTS version hit.
+- ✅ Gutenberg matching fixed: follow_redirects=True for Gutendex 301s,
+  plus content-word + author-last-name scored matching.
+- ✅ Nature Top 100 methods papers — mark_nature_top100.py +
+  data/nature_top_100_methods.json. 17 DB-matched, 13 new stubs.
+- ✅ Hypothesis elevator — elevate_hypotheses.py turns high-importance
+  `unrealized_potential` / `temporal_gap` discoveries into structured
+  entries in `research_hypotheses`. First run: 30 at \$0.07.
+
+### Still open (Phase 12+)
+- Frontend dashboards for Learner Map, Discovery Review, Research
+  Hypotheses (deferred: Next.js version newer than agent training).
+- User-upload pipeline for copyrighted texts (privacy layer).
+- On-demand translation wired end-to-end (pre-translate canon to
+  HE/AR/AM/RU).
+- Spaced-repetition notifications / cron.
+- User-auth wiring to learner tables.
+- Nature Top 100 ranks 31-100 (only top 30 curated so far).
+
+---
+
+## Phase 6.5 — Article-Grounded Claims (2026-04-14)
+
+Branch: `feature/article-grounded-claims`. Replaces the "short, partial
+fragments" UX with article-grounded claims: every claim surfaces its
+paper, authors (bio + country + institution), year, funding, access
+status, and — on user request — a verbatim source quote drawn from
+multiple sources in parallel.
+
+Pre-build audit: `AUDIT_6_5.md` documents gaps (no quotes, no country,
+empty funding, no access_url, no author bios) and the staged build plan.
+
+### Stage A — Data model + prompts
+- Migration 024: claims gains `verbatim_quote`, `quote_location`,
+  `claim_category`, `examples`, `provenance_sources`,
+  `provenance_extracted_at` + partial indexes.
+- Migration 025: papers gains `access_url`, `access_status`,
+  `access_resolved_at`.
+- Migration 026: new `author_profiles` table keyed on openalex_id/orcid
+  (bio, country, institution_history, h-index, concepts, enrichment
+  tracking). Separate table (not JSONB) so one author's bio lives once.
+- Paper analysis prompt v3 asks Claude for verbatim quotes, category,
+  and examples on every claim — both for abstract-only and full-text
+  passes. Prompt differentiates "abstract-derived" vs true "verbatim"
+  grounding honestly.
+- `backend/pipeline/claim_builder.build_claim_row()` — one helper used
+  by all 7 seeders so future schema additions are one-line changes.
+
+### Stage B — Enrichment
+- OpenAlex client now requests `grants`, institution country + ROR, and
+  `open_access` in every fetch. `_extract_authors` stores country + ROR
+  + institutions[] per authorship; `_extract_funding` normalizes grants.
+- New `fetch_work_by_id` + `fetch_author_by_id` for backfill scripts.
+- `backend/core/access_resolver.py` — pure function that maps Unpaywall
+  metadata + OpenAlex OA + DOI into (access_url, access_status) across
+  6 statuses: open / hybrid / preprint / author_copy / paywalled /
+  unknown. Plus `summarize_for_ui(status)` for frontend badges.
+- `fetch_full_text.py` upgraded: Unpaywall response flows through access
+  resolver alongside text extraction, so access fields populate even if
+  HTML scraping fails.
+- New pipelines:
+  - `backfill_paper_access.py` — Unpaywall-only pass (no scrape) for the
+    existing corpus.
+  - `backfill_paper_funding.py` — OpenAlex re-fetch, writes funding +
+    merges country/ROR into existing authors[].
+  - `backfill_author_profiles.py` — 3 steps: stub missing profiles from
+    papers.authors[], enrich via OpenAlex, generate bios via Claude
+    Haiku. Each step individually skippable.
+- `backend/core/author_enricher.py` — idempotent lookup/stub/enrich/bio
+  service used by both the backfill script and the API's lazy
+  by-openalex endpoint.
+
+### Stage C — On-demand multi-source provenance extractor
+- `backend/core/provenance/` package: orchestrator + 5 sources run in
+  parallel via asyncio.gather:
+    full_text  — uses the paper's cached full_text (no I/O)
+    unpaywall  — re-checks OA status, returns reader URL
+    semantic_scholar — TLDR + citation contexts from citing papers +
+                        openAccessPdf URL
+    core       — CORE OA aggregator (needs CORE_API_KEY)
+    arxiv      — preprint lookup by DOI or title
+- Single Claude aggregator call picks the best verbatim quote, assigns
+  category, extracts examples, and records which sources contributed.
+- Idempotent: cache hit via `provenance_extracted_at`. Subsequent viewers
+  of the same claim pay zero tokens.
+- `provenance_sources` JSONB records every attempt (status + error + url)
+  so the UI can show "we checked 5 sources, best quote from Semantic
+  Scholar citation context".
+
+### Stage D — API
+- New `/api/claims/{id}` — full claim + paper + authors + access badge.
+- New `/api/claims/{id}/provenance` — cached lookup, no side effects.
+- New `POST /api/claims/{id}/extract-provenance` — runs extractor.
+  Body `{"force": true}` forces re-extraction.
+- New `/api/authors/profile/{id}` + `/profile/by-openalex/{openalex_id}`
+  + `/profile/{id}/papers` + `POST /profile/{id}/enrich`. The
+  by-openalex endpoint lazily enriches on first view.
+- `supabase_client.get_claims_for_papers` + `concept_enricher` now
+  select the new provenance columns, so existing flows gain grounding
+  without further work.
+
+### Stage E — UI components (new `frontend/src/components/Claims/`)
+- `ClaimCard.tsx` — compact claim display with "Source & quote" toggle.
+- `ProvenancePanel.tsx` — category chip, verbatim quote block (or
+  "Extract from source + alt sources" button for on-demand extraction),
+  examples, paper metadata, funding chips, clickable authors, and an
+  expandable "sources checked" breakdown.
+- `AuthorProfileDrawer.tsx` — slide-in drawer keyed on OpenAlex ID,
+  shows bio + institution history + papers by this author in our corpus.
+- `AccessBadge.tsx` — status pill rendering `paper.access_ui` from the API.
+- `lib/api.ts` additions: ClaimDetail / ProvenanceResponse / AuthorProfile
+  types and corresponding fetchers (45s timeout on extraction, 30s on
+  by-openalex to accommodate inline enrichment).
+
+### Deployment steps for Phase 6.5
+Documented in `FEATURE_6_5_DEPLOY.md`. Summary:
+1. Apply migrations 024, 025, 026 to Supabase.
+2. Optionally run `backfill_paper_access.py` to populate access fields on
+   existing papers (Unpaywall-only, fast).
+3. Optionally run `backfill_paper_funding.py` for grants + country.
+4. Optionally run `backfill_author_profiles.py` for bios (Claude $$).
+5. Set `CORE_API_KEY` env var (optional) to enable the CORE source in the
+   provenance extractor.
+6. Deploy backend — new endpoints activate automatically.
+7. Integrate `ClaimCard` into `ContentPanel.tsx` / `ChatMessage.tsx` where
+   claims should be grounded (intentionally left to the user — the
+   components are ready but integration points are a UX judgment call).
+
+### Open items
+- Integration of ClaimCard into existing claim-rendering surfaces
+  (ContentPanel, ChatMessage) — components ready, not yet wired.
+- Stage F quality-gate dashboard (tracking % claims grounded, % authors
+  with bios, % papers with resolved access) — deferred.
+- The two pre-existing TS errors in ContentPanel.tsx predate this branch
+  and are unrelated.

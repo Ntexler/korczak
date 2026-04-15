@@ -1,0 +1,199 @@
+"""Active Learning API — contradiction detection, depth slider, quiz mode, teaching preferences."""
+
+import logging
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+@router.get("/evidence/{concept_id}")
+async def claim_evidence_map(concept_id: str):
+    """Get claims for a concept with inline support/contradiction indicators.
+
+    Each claim includes:
+    - support_count / contradict_count
+    - status: well_supported, debated, challenged, single_source
+    - contradicting claim texts
+    """
+    try:
+        from backend.core.active_learning import get_claim_evidence_map
+        claims = await get_claim_evidence_map(concept_id)
+        return {"concept_id": concept_id, "claims": claims, "total": len(claims)}
+    except Exception as e:
+        logger.error(f"Evidence map error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/explain/{concept_id}")
+async def explain_at_depth(
+    concept_id: str,
+    depth: int = Query(default=2, ge=1, le=5),
+    locale: str = "en",
+    user_context: str | None = None,
+):
+    """Generate an explanation at a specific depth level.
+
+    depth: 1=high school, 2=undergrad, 3=advanced, 4=graduate, 5=expert
+    """
+    try:
+        from backend.core.active_learning import explain_at_depth as _explain
+        result = await _explain(
+            concept_id=concept_id,
+            depth=depth,
+            locale=locale,
+            user_context=user_context,
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="Concept not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Depth explain error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/depth-levels")
+async def get_depth_levels():
+    """Get available depth levels with labels."""
+    from backend.core.active_learning import DEPTH_LEVELS
+    return {
+        "levels": [
+            {"depth": k, "label": v["label"], "label_he": v["label_he"]}
+            for k, v in DEPTH_LEVELS.items()
+        ]
+    }
+
+
+@router.get("/quiz")
+async def generate_quiz(
+    field_name: str | None = None,
+    concept_ids: str | None = Query(default=None, description="Comma-separated concept IDs"),
+    count: int = Query(default=5, ge=1, le=20),
+    locale: str = "en",
+):
+    """Generate quiz questions from the knowledge graph.
+
+    Either field_name or concept_ids must be provided.
+    """
+    try:
+        from backend.core.active_learning import generate_quiz as _quiz
+
+        ids = None
+        if concept_ids:
+            ids = [c.strip() for c in concept_ids.split(",") if c.strip()]
+
+        if not ids and not field_name:
+            raise HTTPException(status_code=400, detail="Provide field_name or concept_ids")
+
+        questions = await _quiz(
+            concept_ids=ids,
+            field_name=field_name,
+            question_count=count,
+            locale=locale,
+        )
+        return {"questions": questions, "total": len(questions)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Quiz generation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Teaching Preferences (Settings UI) ─────────────────────────────────────
+
+class TeachingPreferencesUpdate(BaseModel):
+    formality: int | None = None       # -2 to 2
+    questioning: int | None = None     # -2 to 2
+    depth: int | None = None           # -2 to 2
+    examples: int | None = None        # -1 to 2
+    encouragement: int | None = None   # -2 to 1
+    tangents: int | None = None        # -1 to 2
+
+
+@router.get("/preferences")
+async def get_teaching_preferences(user_id: str = Query(default="mock-user")):
+    """Get current teaching preference settings for a user.
+
+    Returns all 6 dimensions with current values and metadata.
+    """
+    try:
+        from backend.core.teaching_preferences import (
+            get_user_preferences,
+            PREFERENCE_DIMENSIONS,
+        )
+        prefs = await get_user_preferences(user_id)
+        dimensions = []
+        for dim, config in PREFERENCE_DIMENSIONS.items():
+            dimensions.append({
+                "key": dim,
+                "value": prefs.get(dim, config["default"]),
+                "min": config["range"][0],
+                "max": config["range"][1],
+                "default": config["default"],
+                "description": config["description"],
+            })
+        return {"preferences": dimensions, "user_id": user_id}
+    except Exception as e:
+        logger.error(f"Get preferences error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/preferences")
+async def update_teaching_preferences(
+    update: TeachingPreferencesUpdate,
+    user_id: str = Query(default="mock-user"),
+):
+    """Update teaching preferences from Settings UI.
+
+    Each dimension is optional — only provided values are updated.
+    These are always PERMANENT changes (user explicitly setting via UI).
+    """
+    try:
+        from backend.core.teaching_preferences import (
+            get_user_preferences,
+            PREFERENCE_DIMENSIONS,
+        )
+        from backend.integrations.supabase_client import get_client
+
+        current = await get_user_preferences(user_id)
+
+        # Apply only provided values, clamp to valid range
+        updates = update.model_dump(exclude_none=True)
+        for dim, val in updates.items():
+            if dim in PREFERENCE_DIMENSIONS:
+                config = PREFERENCE_DIMENSIONS[dim]
+                current[dim] = max(config["range"][0], min(config["range"][1], val))
+
+        # Save
+        client = get_client()
+        client.table("user_profiles").update({
+            "teaching_preferences": current,
+        }).eq("user_id", user_id).execute()
+
+        return {"status": "updated", "preferences": current}
+    except Exception as e:
+        logger.error(f"Update preferences error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/preferences/reset")
+async def reset_teaching_preferences(user_id: str = Query(default="mock-user")):
+    """Reset all teaching preferences to defaults."""
+    try:
+        from backend.core.teaching_preferences import PREFERENCE_DIMENSIONS
+        from backend.integrations.supabase_client import get_client
+
+        defaults = {dim: config["default"] for dim, config in PREFERENCE_DIMENSIONS.items()}
+        client = get_client()
+        client.table("user_profiles").update({
+            "teaching_preferences": defaults,
+        }).eq("user_id", user_id).execute()
+
+        return {"status": "reset", "preferences": defaults}
+    except Exception as e:
+        logger.error(f"Reset preferences error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

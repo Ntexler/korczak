@@ -42,15 +42,29 @@ async def get_concept_with_context(concept_id: str) -> dict | None:
     # Get claims related to this concept's papers
     if papers:
         paper_ids = [str(p["id"]) for p in papers]
-        claims_result = (
-            client.table("claims")
-            .select("claim_text, evidence_type, strength, confidence")
-            .in_("paper_id", paper_ids)
-            .order("confidence", desc=True)
-            .limit(5)
-            .execute()
-        )
-        concept["key_claims"] = claims_result.data or []
+        all_claims = []
+        for ci in range(0, len(paper_ids), 30):
+            batch = paper_ids[ci:ci + 30]
+            claims_result = (
+                client.table("claims")
+                .select(
+                    # Feature 6.5: provenance fields surfaced with every claim.
+                    # verbatim_quote / quote_location / examples / claim_category
+                    # are usually NULL until the on-demand extractor runs;
+                    # returning them anyway lets the UI render "pending" vs
+                    # "grounded" states without a second round-trip.
+                    "id, paper_id, claim_text, evidence_type, strength, confidence, "
+                    "verbatim_quote, quote_location, claim_category, examples, "
+                    "provenance_extracted_at"
+                )
+                .in_("paper_id", batch)
+                .order("confidence", desc=True)
+                .limit(5)
+                .execute()
+            )
+            all_claims.extend(claims_result.data or [])
+        all_claims.sort(key=lambda c: c.get("confidence", 0), reverse=True)
+        concept["key_claims"] = all_claims[:5]
     else:
         concept["key_claims"] = []
 
@@ -144,13 +158,18 @@ async def get_enriched_graph_data(limit: int = 100, include_lens_data: bool = Fa
     if include_lens_data:
         # Max publication year per concept via paper_concepts → papers
         try:
-            pc_result = (
-                client.table("paper_concepts")
-                .select("concept_id, papers(publication_year)")
-                .in_("concept_id", concept_id_list)
-                .execute()
-            )
-            for row in (pc_result.data or []):
+            pc_data = []
+            for ci in range(0, len(concept_id_list), 50):
+                batch = concept_id_list[ci:ci + 50]
+                pc_batch = (
+                    client.table("paper_concepts")
+                    .select("concept_id, papers(publication_year)")
+                    .in_("concept_id", batch)
+                    .execute()
+                )
+                pc_data.extend(pc_batch.data or [])
+            pc_result_data = pc_data
+            for row in pc_result_data:
                 cid = row["concept_id"]
                 year = row.get("papers", {}).get("publication_year")
                 if year and (cid not in max_pub_year or year > max_pub_year[cid]):
@@ -160,27 +179,28 @@ async def get_enriched_graph_data(limit: int = 100, include_lens_data: bool = Fa
 
         # Community activity: discussions + concept_summaries
         try:
-            discussions_result = (
-                client.table("discussions")
-                .select("target_id")
-                .eq("target_type", "concept")
-                .in_("target_id", concept_id_list)
-                .execute()
-            )
-            for row in (discussions_result.data or []):
+            disc_data = []
+            for ci in range(0, len(concept_id_list), 50):
+                batch = concept_id_list[ci:ci + 50]
+                disc_batch = client.table("discussions").select("target_id").eq(
+                    "target_type", "concept"
+                ).in_("target_id", batch).execute()
+                disc_data.extend(disc_batch.data or [])
+            for row in disc_data:
                 tid = row["target_id"]
                 community_activity[tid] = community_activity.get(tid, 0) + 1
         except Exception as e:
             logger.warning(f"Failed to fetch discussions for lenses: {e}")
 
         try:
-            summaries_result = (
-                client.table("concept_summaries")
-                .select("concept_id")
-                .in_("concept_id", concept_id_list)
-                .execute()
-            )
-            for row in (summaries_result.data or []):
+            summ_data = []
+            for ci in range(0, len(concept_id_list), 50):
+                batch = concept_id_list[ci:ci + 50]
+                summ_batch = client.table("concept_summaries").select(
+                    "concept_id"
+                ).in_("concept_id", batch).execute()
+                summ_data.extend(summ_batch.data or [])
+            for row in summ_data:
                 cid = row["concept_id"]
                 community_activity[cid] = community_activity.get(cid, 0) + 1
         except Exception as e:
@@ -316,12 +336,22 @@ async def get_sankey_flow_data() -> dict:
     return {"flows": flow_list, "types": unique_types}
 
 
-async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | None:
-    """Generate a simple, TA-level explanation of a concept.
+# In-memory explanation cache {concept_id:locale -> explanation_dict}
+_explanation_cache: dict[str, dict] = {}
 
-    Returns a 2-3 sentence explanation suitable for a college student,
-    plus "explain simpler" and "go deeper" prompts.
+
+async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | None:
+    """Generate a simple explanation — cached in memory + DB for instant loading.
+
+    First call: generates via Claude (~3s), saves to concepts.definition if empty.
+    Subsequent calls: instant from cache (<1ms).
     """
+    cache_key = f"{concept_id}:{locale}"
+
+    # Layer 1: Memory cache
+    if cache_key in _explanation_cache:
+        return _explanation_cache[cache_key]
+
     client = get_client()
 
     concept = client.table("concepts").select(
@@ -334,7 +364,22 @@ async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | 
     c = concept.data[0]
     definition = c.get("definition") or ""
 
-    # Get top 2 papers for context
+    # Layer 2: If definition is rich enough (>100 chars), use it directly — no Claude needed
+    if definition and len(definition) > 100:
+        result = {
+            "concept_id": c["id"],
+            "name": c["name"],
+            "type": c.get("type"),
+            "simple_explanation": definition,
+            "definition": definition,
+            "paper_count": c.get("paper_count", 0),
+            "explain_simpler_prompt": f"Explain {c['name']} like I'm in high school",
+            "go_deeper_prompt": f"Give me the full academic analysis of {c['name']}",
+        }
+        _explanation_cache[cache_key] = result
+        return result
+
+    # Layer 3: Generate via Claude (only if definition is short/empty)
     papers = await get_papers_for_concept(concept_id, limit=2)
     paper_context = ""
     if papers:
@@ -343,7 +388,6 @@ async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | 
             for p in papers[:2]
         )
 
-    # Generate simple explanation using Claude
     try:
         from backend.config import settings
         from backend.integrations.claude_client import _call_claude
@@ -351,28 +395,43 @@ async def get_simple_explanation(concept_id: str, locale: str = "en") -> dict | 
         lang = "Hebrew" if locale == "he" else "English"
         prompt = (
             f"Explain the academic concept \"{c['name']}\" ({c.get('type', 'concept')}) "
-            f"in 2-3 simple sentences, like a friendly college TA would explain it to a student. "
+            f"in 3-5 clear sentences. Be direct and informative — like a knowledgeable colleague "
+            f"explaining to someone new to the topic. "
             f"Context: {definition[:200]}.{paper_context}\n"
-            f"Respond in {lang}. Be warm and clear. No jargon without explanation."
+            f"Respond in {lang}. No hollow praise. No jargon without explanation."
         )
 
         response = await _call_claude(
             prompt,
             model=settings.haiku_model,
-            max_tokens=300,
+            max_tokens=400,
             temperature=0.4,
         )
 
-        return {
+        explanation = response.text
+
+        # Save back to DB so we never need to regenerate
+        try:
+            if not definition or len(definition) < 50:
+                client.table("concepts").update(
+                    {"definition": explanation}
+                ).eq("id", concept_id).execute()
+        except Exception:
+            pass  # non-critical
+
+        result = {
             "concept_id": c["id"],
             "name": c["name"],
             "type": c.get("type"),
-            "simple_explanation": response.text,
-            "definition": definition,
+            "simple_explanation": explanation,
+            "definition": definition or explanation,
             "paper_count": c.get("paper_count", 0),
             "explain_simpler_prompt": f"Explain {c['name']} like I'm in high school",
             "go_deeper_prompt": f"Give me the full academic analysis of {c['name']}",
         }
+        _explanation_cache[cache_key] = result
+        return result
+
     except Exception as e:
         logger.warning(f"Simple explanation failed: {e}")
         return {
@@ -410,13 +469,18 @@ async def get_personal_overlay(user_id: str, limit: int = 100) -> dict:
         return {"overlay": [], "stats": {}}
 
     # Get user's knowledge state for these concepts
-    knowledge = (
-        client.table("user_knowledge")
-        .select("concept_id, understanding_level, misconceptions, blind_spots, interaction_count, last_interaction")
-        .eq("user_id", user_id)
-        .in_("concept_id", concept_ids)
-        .execute()
-    )
+    knowledge_data = []
+    for ci in range(0, len(concept_ids), 50):
+        batch = concept_ids[ci:ci + 50]
+        kn_batch = (
+            client.table("user_knowledge")
+            .select("concept_id, understanding_level, misconceptions, blind_spots, interaction_count, last_interaction")
+            .eq("user_id", user_id)
+            .in_("concept_id", batch)
+            .execute()
+        )
+        knowledge_data.extend(kn_batch.data or [])
+    knowledge = type("R", (), {"data": knowledge_data})()
     knowledge_map = {k["concept_id"]: k for k in (knowledge.data or [])}
 
     # Build overlay

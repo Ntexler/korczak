@@ -156,10 +156,56 @@ async def run_search_pipeline(
     if not should_check_coverage:
         stages_completed.append("coverage_skip_rich")
 
+    # ── Stage 3.5: Build pedagogical context + user preferences ──
+    teaching_context = None
+    if user_id:
+        try:
+            # User's explicit teaching preferences (always inject if set)
+            from backend.core.teaching_preferences import get_user_preferences, preferences_to_prompt
+            prefs = await get_user_preferences(user_id)
+            prefs_block = preferences_to_prompt(prefs)
+
+            # Pedagogical strategy (only if concepts detected)
+            pedagogy_block = ""
+            if analysis.concepts:
+                from backend.core.pedagogy import (
+                    build_teaching_context,
+                    detect_student_profile,
+                    get_student_knowledge,
+                )
+                student_profile = await detect_student_profile(user_id)
+                student_knows = await get_student_knowledge(user_id, limit=15)
+                primary_concept_type = None
+                for r in bundle.results:
+                    for item in r.items:
+                        if item.type == "concept" and hasattr(item, "metadata"):
+                            primary_concept_type = (item.metadata or {}).get("concept_type")
+                            break
+                    if primary_concept_type:
+                        break
+
+                pedagogy_block = build_teaching_context(
+                    concept_type=primary_concept_type or "theory",
+                    student_profile=student_profile,
+                    concept_name=analysis.concepts[0] if analysis.concepts else "",
+                    mode=mode,
+                    related_concepts=analysis.concepts[1:5] if len(analysis.concepts) > 1 else None,
+                    student_knows=student_knows if student_knows else None,
+                )
+
+            # Combine: preferences override pedagogy defaults
+            parts = [p for p in [prefs_block, pedagogy_block] if p]
+            if parts:
+                teaching_context = "\n\n".join(parts)
+                stages_completed.append("pedagogy")
+        except Exception as e:
+            logger.debug(f"Pedagogy context skipped: {e}")
+
     # ── Stage 4: Synthesis (smart model routing) ──
     try:
         synthesis_output, tokens = await synthesize(
             user_message, bundle, locale, intent=analysis.intent,
+            teaching_context=teaching_context,
         )
         token_usage.synthesis = tokens
         stages_completed.append(f"synthesis_{analysis.intent.value}")

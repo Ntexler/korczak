@@ -77,6 +77,7 @@ HEADERS_SUPABASE = {
 }
 
 from backend.prompts.paper_analysis import ANALYSIS_PROMPT
+from backend.pipeline.claim_builder import build_claim_row
 
 
 # --- OpenAlex ---
@@ -352,13 +353,7 @@ def _insert_paper_and_analysis(paper: dict, analysis: dict) -> str | None:
 
     # 3. Insert claims
     for cl in analysis.get("claims", []):
-        supabase_post("claims", {
-            "paper_id": paper_id,
-            "claim_text": cl["claim"],
-            "evidence_type": cl.get("evidence_type"),
-            "strength": cl.get("strength", "moderate"),
-            "testable": cl.get("testable", False),
-        })
+        supabase_post("claims", build_claim_row(paper_id, cl))
 
     # 4. Insert relationships (concept-to-concept)
     for rel in analysis.get("relationships", []):
