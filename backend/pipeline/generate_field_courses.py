@@ -81,13 +81,26 @@ async def get_field_concepts(field: str) -> list[dict]:
     if not concept_ids:
         return []
 
-    # Get full concept data
-    concepts = client.table("concepts").select(
-        "id, name, type, definition, paper_count, confidence, trend, controversy_score"
-    ).in_("id", list(concept_ids)).order("paper_count", desc=True).execute()
+    # Get full concept data — batch to avoid Supabase .in_() URL overflow
+    # (the list can easily exceed 1000 IDs on large fields; PostgREST then
+    # returns "JSON could not be generated / Bad Request")
+    concept_id_list = list(concept_ids)
+    all_concepts: list[dict] = []
+    for i in range(0, len(concept_id_list), 100):
+        batch = concept_id_list[i:i+100]
+        res = client.table("concepts").select(
+            "id, name, type, definition, paper_count, confidence, trend, controversy_score"
+        ).in_("id", batch).execute()
+        all_concepts.extend(res.data or [])
 
-    logger.info(f"{field}: {len(concepts.data)} concepts found")
-    return concepts.data or []
+    # Sort by paper_count desc (so Foundation weeks pick most established concepts)
+    all_concepts.sort(key=lambda c: c.get("paper_count", 0) or 0, reverse=True)
+
+    # Cap at top 200 — Claude doesn't need all 40k, just the most established ones
+    all_concepts = all_concepts[:200]
+
+    logger.info(f"{field}: {len(all_concepts)} concepts found (top 200)")
+    return all_concepts
 
 
 async def generate_course_with_claude(
@@ -172,13 +185,37 @@ Return ONLY valid JSON."""
         response = await _call_claude(
             prompt,
             model=settings.haiku_model,  # Cheap for course generation
-            max_tokens=2500,
+            max_tokens=8000,  # Full 14-week course needs room; 2500 was truncating
             temperature=0.3,
         )
 
         parsed = _parse_json_response(response.text)
         if parsed.get("parse_error"):
-            logger.error(f"Failed to parse course for {field}/{level}")
+            # Truncated or malformed JSON. Try to recover by extracting the
+            # largest valid JSON object from the raw text (handles cases where
+            # Claude added a preamble or the response hit max_tokens mid-week).
+            import re
+            raw = parsed.get("raw_text", "")
+            logger.warning(
+                f"Course for {field}/{level}: parse failed, attempting recovery. "
+                f"Raw length: {len(raw)}, preview: {raw[:200]!r}"
+            )
+            # Strip code fences if present
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+                cleaned = re.sub(r"\s*```\s*$", "", cleaned)
+            # Find the first `{` and try to parse from there, trimming any
+            # trailing garbage / truncation character by character
+            start = cleaned.find("{")
+            if start >= 0:
+                candidate = cleaned[start:]
+                for end in range(len(candidate), start, -1):
+                    try:
+                        return json.loads(candidate[:end])
+                    except json.JSONDecodeError:
+                        continue
+            logger.error(f"Course for {field}/{level}: could not recover valid JSON")
             return None
 
         return parsed
