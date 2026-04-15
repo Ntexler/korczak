@@ -9,6 +9,7 @@ Routes (mounted at /api/claims by main.py):
 
 from __future__ import annotations
 
+import json
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -87,22 +88,68 @@ class ProvenanceResponse(BaseModel):
 # -------------------- helpers --------------------
 
 
+def _coerce_authors(authors) -> list[dict]:
+    """Return a list of author dicts regardless of how the column was stored.
+
+    The papers.authors JSONB column has been written with different shapes over
+    the project's history:
+      - Native JSON array of objects (ideal shape)
+      - JSON-encoded STRING (when seed code did json.dumps(list) before POST —
+        Supabase then stored it as a JSON string primitive inside the JSONB)
+      - List of strings where each string is a JSON-encoded dict
+      - List of bare strings with just author names
+    Normalize all of them to `list[dict]` so downstream code can rely on
+    `a.get(...)` without crashing.
+    """
+    if authors is None:
+        return []
+    # Case: whole column came back as a JSON-encoded string primitive
+    if isinstance(authors, str):
+        try:
+            parsed = json.loads(authors)
+            return _coerce_authors(parsed)
+        except (json.JSONDecodeError, ValueError):
+            return []
+    if not isinstance(authors, list):
+        return []
+    out: list[dict] = []
+    for a in authors:
+        if isinstance(a, dict):
+            out.append(a)
+            continue
+        if isinstance(a, str):
+            # Try to parse a stringified dict; otherwise treat as bare name
+            try:
+                parsed = json.loads(a)
+                if isinstance(parsed, dict):
+                    out.append(parsed)
+                    continue
+            except (json.JSONDecodeError, ValueError):
+                pass
+            out.append({"name": a})
+    return out
+
+
 def _augment_paper(paper: dict | None) -> dict | None:
     if not paper:
         return None
     access_status = paper.get("access_status")
     if access_status:
         paper["access_ui"] = summarize_for_ui(access_status)
+    # Normalize the authors column shape up-front so every downstream
+    # consumer (UI, _augment_authors, templates) sees list[dict].
+    paper["authors"] = _coerce_authors(paper.get("authors"))
     return paper
 
 
-def _augment_authors(authors: list[dict]) -> list[dict]:
+def _augment_authors(authors) -> list[dict]:
     """Attach author_profiles.id + bio (if available) to each author record.
 
     Does NOT trigger enrichment — just a lookup. Triggering expensive OpenAlex
     + Claude work on every claim fetch would be too slow; the backfill job and
     the dedicated authors endpoint handle enrichment.
     """
+    authors = _coerce_authors(authors)
     if not authors:
         return []
 
