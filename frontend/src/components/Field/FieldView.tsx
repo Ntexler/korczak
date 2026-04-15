@@ -18,6 +18,10 @@ import {
   GitFork,
   ChevronDown,
   Send,
+  Maximize2,
+  Minimize2,
+  X,
+  MessageSquare,
 } from "lucide-react";
 import { useLocaleStore } from "@/stores/localeStore";
 import { useFieldStore } from "@/stores/fieldStore";
@@ -67,6 +71,8 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
   // Live chat state (merged in from main)
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // Chat sizing: "panel" (320px, default) | "expanded" (fills most of the screen) | "hidden"
+  const [chatSize, setChatSize] = useState<"panel" | "expanded" | "hidden">("panel");
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -446,8 +452,17 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           />
         </main>
 
-        {/* Right panel — dynamic: insights / vault / live chat */}
-        <aside className="w-[320px] shrink-0 border-l border-border bg-surface overflow-hidden hidden lg:flex flex-col">
+        {/* Right panel — dynamic: insights / vault / live chat.
+            Chat supports 3 sizes: panel (320px, default), expanded (~50% of
+            screen, makes chat the primary focus), hidden (shows a floating
+            "open chat" FAB in the corner so you can bring it back). */}
+        <aside
+          className={`
+            ${chatSize === "hidden" ? "hidden" : "hidden lg:flex"}
+            ${chatSize === "expanded" ? "w-[min(720px,50vw)]" : "w-[320px]"}
+            shrink-0 border-l border-border bg-surface overflow-hidden flex-col
+            transition-[width] duration-200
+          `}>
           {rightPanel === "insights" && vaultAnalysis ? (
             <InsightsPanel
               analysis={vaultAnalysis}
@@ -474,9 +489,40 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
           ) : (
             /* Default: Live chat (merged in from main) */
             <>
-              {/* Chat header */}
-              <div className="px-3 py-2 border-b border-border text-xs font-semibold text-text-tertiary uppercase tracking-wider shrink-0">
-                {he ? "צ'אט — " : "Chat — "}{field}
+              {/* Chat header with size controls */}
+              <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
+                <div className="text-xs font-semibold text-text-tertiary uppercase tracking-wider truncate">
+                  {he ? "צ'אט — " : "Chat — "}{field}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {chatSize === "expanded" ? (
+                    <button
+                      onClick={() => setChatSize("panel")}
+                      title={he ? "צמצם" : "Collapse"}
+                      aria-label={he ? "צמצם צ'אט" : "Collapse chat"}
+                      className="p-1 rounded hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+                    >
+                      <Minimize2 size={14} />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setChatSize("expanded")}
+                      title={he ? "הרחב" : "Expand"}
+                      aria-label={he ? "הרחב צ'אט" : "Expand chat"}
+                      className="p-1 rounded hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+                    >
+                      <Maximize2 size={14} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setChatSize("hidden")}
+                    title={he ? "סגור צ'אט" : "Close chat"}
+                    aria-label={he ? "סגור צ'אט" : "Close chat"}
+                    className="p-1 rounded hover:bg-surface-hover text-text-secondary hover:text-foreground transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
 
               {/* Messages */}
@@ -551,6 +597,21 @@ export default function FieldView({ field, onBack, onSend }: FieldViewProps) {
             </>
           )}
         </aside>
+
+        {/* Floating "open chat" FAB — only when chat is hidden */}
+        {chatSize === "hidden" && rightPanel === "chat" && (
+          <button
+            onClick={() => setChatSize("panel")}
+            title={he ? "פתח צ'אט" : "Open chat"}
+            aria-label={he ? "פתח צ'אט" : "Open chat"}
+            className="hidden lg:flex fixed bottom-16 right-6 z-30 items-center gap-2 px-3 py-2 rounded-full bg-accent-gold text-background shadow-lg hover:brightness-110 transition"
+          >
+            <MessageSquare size={16} />
+            <span className="text-xs font-medium">
+              {he ? "צ'אט" : "Chat"}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* ---- Bottom: Progress Bar ---- */}
