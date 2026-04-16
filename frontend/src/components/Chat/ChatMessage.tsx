@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Compass, Sparkles, User } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import { useLocaleStore } from "@/stores/localeStore";
+import { ClaimCard } from "@/components/Claims";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -22,7 +24,18 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   const isUser = role === "user";
   const setSelectedConceptId = useChatStore((s) => s.setSelectedConceptId);
-  const { t } = useLocaleStore();
+  const { t, locale } = useLocaleStore();
+  const [expandedClaim, setExpandedClaim] = useState<string | null>(null);
+
+  // Listen for claim expansion events from inline citations
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const claimId = (e as CustomEvent).detail;
+      setExpandedClaim((prev) => (prev === claimId ? null : claimId));
+    };
+    window.addEventListener("korczak:expand-claim", handler);
+    return () => window.removeEventListener("korczak:expand-claim", handler);
+  }, []);
 
   const followUps = [t.tellMeMore, t.whatsControversial, t.showRelated];
 
@@ -98,6 +111,27 @@ export default function ChatMessage({
               <p className="text-sm text-text-secondary leading-relaxed">
                 {insight.content}
               </p>
+            </motion.div>
+          )}
+
+          {/* Expanded claim card (when user clicks a source citation) */}
+          {!isUser && expandedClaim && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="px-1"
+            >
+              <ClaimCard
+                claim={{ id: expandedClaim, claim_text: "" }}
+                isHebrew={locale === "he"}
+                defaultExpanded={true}
+              />
+              <button
+                onClick={() => setExpandedClaim(null)}
+                className="text-[10px] text-text-tertiary hover:text-text-secondary mt-1"
+              >
+                {locale === "he" ? "סגור" : "Close"}
+              </button>
             </motion.div>
           )}
 
@@ -205,9 +239,24 @@ function renderInline(text: string): React.ReactNode {
     if (part.startsWith("`") && part.endsWith("`")) {
       return <code key={j} className="px-1 py-0.5 rounded bg-surface-sunken text-accent-gold text-[11px] font-mono">{part.slice(1, -1)}</code>;
     }
-    // Source citations [source_id]
+    // Source citations [source_id] — now clickable
     if (part.startsWith("[") && part.endsWith("]") && part.length < 40) {
-      return <span key={j} className="text-[10px] text-accent-blue align-super">{part}</span>;
+      const sourceId = part.slice(1, -1);
+      return (
+        <button
+          key={j}
+          className="text-[10px] text-accent-blue align-super hover:underline cursor-pointer"
+          onClick={() => {
+            // If it looks like a UUID, try to expand as a claim
+            if (sourceId.length > 8 && sourceId.includes("-")) {
+              window.dispatchEvent(new CustomEvent("korczak:expand-claim", { detail: sourceId }));
+            }
+          }}
+          title={`Source: ${sourceId}`}
+        >
+          {part}
+        </button>
+      );
     }
     return part;
   });

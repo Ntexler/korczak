@@ -26,18 +26,22 @@ async def generate_and_store_briefing(
     """Generate a briefing and store it in the database."""
     client = get_client()
 
-    # Check if user has briefings enabled
-    prefs = client.table("briefing_preferences").select("*").eq(
-        "user_id", user_id
-    ).execute()
-
-    if prefs.data and not prefs.data[0].get("enabled", True):
-        logger.info(f"Briefings disabled for {user_id}")
-        return None
-
+    # Check if user has briefings enabled (skip for non-UUID mock users)
     locale = "en"
-    if prefs.data:
-        locale = prefs.data[0].get("locale", "en")
+    import re
+    is_uuid = bool(re.match(r'^[0-9a-f]{8}-', user_id))
+    if is_uuid:
+        try:
+            prefs = client.table("briefing_preferences").select("*").eq(
+                "user_id", user_id
+            ).execute()
+            if prefs.data and not prefs.data[0].get("enabled", True):
+                logger.info(f"Briefings disabled for {user_id}")
+                return None
+            if prefs.data:
+                locale = prefs.data[0].get("locale", "en")
+        except Exception:
+            pass
 
     # Generate briefing
     logger.info(f"Generating {briefing_type} briefing for {user_id}...")
