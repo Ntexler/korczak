@@ -1,4 +1,37 @@
-# Korczak AI — Progress Log
+# Korczak AI — Progress Archive
+
+> **⚠️ Write-only archive. Not auto-loaded.**
+> **Write:** at end of every session (short for routine, longer for significant).
+> **Read:** only on explicit user request ("what did we do on X", "why decision Y", direct path reference). Never load for "context".
+> See `~/.claude/CLAUDE.md` for the full rule (PROGRESS asymmetry).
+
+---
+
+## Session 2026-04-17 (latest) — Branch merge + courses + ClaimCard + briefings
+
+**Branch merge:** `feature/article-grounded-claims` (56 commits) merged to `main`. Includes Phase 11 (Canonical Corpus + Discovery), Feature 6.5 (provenance), UX overhaul (teacher-led learning), pretranslation (190 papers → HE/AR), production infrastructure.
+
+**Course generation:** Fixed `generate_field_courses.py` (.in_() overflow → batch 100, max_tokens 2500→8000, JSON recovery). Generated **39 courses** across 13 fields × 3 levels (intro/intermediate/advanced). 1,579 course_readings stored. Example: Economics Intermediate Week 1 = Adam Smith → North → Sen.
+
+**ClaimCard in ChatMessage:** Source citations `[uuid]` now clickable — expand inline to show ClaimCard + ProvenancePanel via CustomEvent bridge.
+
+**Briefing system:** Migration 020 applied (briefings + briefing_preferences tables). Generation tested — 1,572 char daily briefing produced. Fixed UUID validation for mock user.
+
+**Entity Resolution:** Pipeline ready but OpenAI embeddings returning 429 (rate limit). 0/138K concepts have embeddings. Deferred.
+
+**Authors fix:** `_coerce_authors()` in claims.py handles 4 JSONB shapes (native array, JSON string, stringified dicts, bare names). Prevents React crash.
+
+**Chat sizing:** FieldView chat panel now supports panel (320px) / expanded (50vw) / hidden + floating FAB.
+
+**DB state:** 17,660 papers, 138,789 concepts, 40,833 relationships, 39 courses, 1,579 readings.
+
+---
+
+## Session 2026-04-17 (earlier) — 4-tier migration
+
+נוצרו `CLAUDE.md` (34 שורות), `STATE.md` (45 שורות), `docs/spec/{overview,roadmap,pipeline}.md`. הקבצים הישנים (KORCZAK_OVERVIEW, FUTURE_PLANS, AUDIT_6_5, FEATURE_6_5_DEPLOY, korczak_search_pipeline_prompt_1) קיבלו banner "superseded" ונשמרו להיסטוריה. סתירה ב-pipeline (6 שלבים בפרומפט המקורי vs 5 בפועל) — אומת מול הקוד והקבצים, ה-5 הוא הנכון; שלב 6 בפרומפט היה בעצם post-processing.
+
+---
 
 ## Project Overview
 AI Knowledge Navigator that understands academic knowledge structure deeply and navigates users through it.
