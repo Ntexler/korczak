@@ -201,11 +201,26 @@ async def run_search_pipeline(
         except Exception as e:
             logger.debug(f"Pedagogy context skipped: {e}")
 
+    # ── Stage 3.7: Build persona ──
+    persona_context = None
+    if user_id:
+        try:
+            from backend.agents.persona import build_persona
+            persona_context = await build_persona(
+                user_id=user_id,
+                field=None,  # could detect from analysis.concepts
+                locale=locale,
+            )
+            stages_completed.append("persona")
+        except Exception as e:
+            logger.debug(f"Persona build skipped: {e}")
+
     # ── Stage 4: Synthesis (smart model routing) ──
     try:
         synthesis_output, tokens = await synthesize(
             user_message, bundle, locale, intent=analysis.intent,
             teaching_context=teaching_context,
+            persona_context=persona_context,
         )
         token_usage.synthesis = tokens
         stages_completed.append(f"synthesis_{analysis.intent.value}")
