@@ -247,3 +247,72 @@ async def submit_expert_response(conv_id: str, response: str = Query(...)):
     from backend.agents.expert_connector import process_expert_response
     result = await process_expert_response(conv_id, response)
     return result
+
+
+# ─── Korczak Consciousness ──────────────────────────────────────────────────
+
+@router.get("/consciousness/log")
+async def get_learning_log(
+    field: str | None = None,
+    hours: int | None = None,
+    limit: int = Query(default=20, le=100),
+):
+    """Get Korczak's learning diary."""
+    from backend.agents.consciousness import get_recent_learnings
+    entries = await get_recent_learnings(field=field, limit=limit, hours=hours)
+    return {"entries": entries, "total": len(entries)}
+
+
+@router.post("/consciousness/reflect")
+async def trigger_reflection(
+    reflection_type: str = "daily",
+    field: str | None = None,
+):
+    """Trigger Korczak to reflect on what he's learned."""
+    from backend.agents.consciousness import generate_reflection
+    result = await generate_reflection(reflection_type=reflection_type, field=field)
+    return result
+
+
+@router.get("/consciousness/reflections")
+async def list_reflections(field: str | None = None, limit: int = 10):
+    """Get past reflections."""
+    from backend.agents.consciousness import get_reflections
+    return {"reflections": await get_reflections(field=field, limit=limit)}
+
+
+@router.get("/consciousness/curiosities")
+async def list_curiosities(field: str | None = None, limit: int = 10):
+    """What is Korczak curious about?"""
+    from backend.agents.consciousness import get_curiosities
+    return {"curiosities": await get_curiosities(field=field, limit=limit)}
+
+
+@router.post("/consciousness/curiosity/generate")
+async def auto_curiosity(field: str = "Anthropology", limit: int = 5):
+    """Let Korczak generate his own questions about a field."""
+    from backend.agents.consciousness import auto_generate_curiosities
+    questions = await auto_generate_curiosities(field=field, limit=limit)
+    return {"generated": questions, "count": len(questions)}
+
+
+@router.get("/consciousness/voice")
+async def proactive_message(user_id: str = "mock-user", field: str | None = None):
+    """Does Korczak have something to tell the user proactively?"""
+    from backend.agents.consciousness import generate_proactive_message
+    msg = await generate_proactive_message(user_id=user_id, field=field)
+    return msg or {"message": None}
+
+
+@router.get("/consciousness/memory/export")
+async def export_memory(field: str | None = None):
+    """Export Korczak's memory as an Obsidian vault ZIP."""
+    from backend.agents.consciousness import export_memory_to_obsidian
+    from fastapi.responses import Response
+
+    result = await export_memory_to_obsidian(field=field)
+    return Response(
+        content=result["zip_bytes"],
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="Korczak_Memory.zip"'},
+    )
