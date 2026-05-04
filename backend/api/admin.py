@@ -1,9 +1,10 @@
-"""Admin API — review and approve/reject enrichments from the Learning Agent."""
+"""Admin API — enrichment review, source management, expert connections."""
 
 import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -151,3 +152,98 @@ async def enrichment_stats():
         "approved": approved.count if hasattr(approved, "count") else len(approved.data or []),
         "rejected": rejected.count if hasattr(rejected, "count") else len(rejected.data or []),
     }
+
+
+# ─── Manual Sources ─────────────────────────────────────────────────────────
+
+class SourceSubmission(BaseModel):
+    url: str
+    field: str = "Anthropology"
+    source_type: str = "url"
+    notes: str | None = None
+
+
+@router.post("/sources/url")
+async def add_manual_source(source: SourceSubmission):
+    """Add a URL for the learning agent to process."""
+    from backend.integrations.supabase_client import get_client
+    client = get_client()
+
+    result = client.table("manual_sources").insert({
+        "url": source.url,
+        "field": source.field,
+        "source_type": source.source_type,
+        "notes": source.notes,
+        "status": "pending",
+    }).execute()
+
+    return {"status": "added", "id": result.data[0]["id"] if result.data else None}
+
+
+@router.get("/sources")
+async def list_manual_sources(status: str = "pending", limit: int = 20):
+    """List manually submitted sources."""
+    from backend.integrations.supabase_client import get_client
+    client = get_client()
+    result = client.table("manual_sources").select("*").eq(
+        "status", status
+    ).order("created_at", desc=True).limit(limit).execute()
+    return {"sources": result.data or []}
+
+
+# ─── Expert Management ───────────────────────────────────────────────────────
+
+class ExpertCreate(BaseModel):
+    name: str
+    field: str
+    contact_type: str = "whatsapp"
+    contact_id: str
+    institution: str | None = None
+    specialization: str | None = None
+
+
+@router.post("/experts")
+async def create_expert(expert: ExpertCreate):
+    """Register a new domain expert."""
+    from backend.agents.expert_connector import add_expert
+    expert_id = await add_expert(
+        name=expert.name,
+        field=expert.field,
+        contact_type=expert.contact_type,
+        contact_id=expert.contact_id,
+        institution=expert.institution,
+        specialization=expert.specialization,
+    )
+    return {"status": "created", "expert_id": expert_id}
+
+
+@router.get("/experts")
+async def list_experts(field: str | None = None):
+    """List registered experts."""
+    from backend.agents.expert_connector import get_experts
+    experts = await get_experts(field=field)
+    return {"experts": experts}
+
+
+@router.post("/experts/{expert_id}/ask")
+async def ask_expert(
+    expert_id: str,
+    concept_id: str | None = None,
+    question: str | None = None,
+):
+    """Generate and send a question to an expert."""
+    from backend.agents.expert_connector import generate_expert_question
+    result = await generate_expert_question(
+        expert_id=expert_id,
+        concept_id=concept_id,
+        custom_question=question,
+    )
+    return result
+
+
+@router.post("/experts/conversations/{conv_id}/response")
+async def submit_expert_response(conv_id: str, response: str = Query(...)):
+    """Submit an expert's response (manual paste or webhook)."""
+    from backend.agents.expert_connector import process_expert_response
+    result = await process_expert_response(conv_id, response)
+    return result
