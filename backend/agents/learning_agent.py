@@ -243,14 +243,17 @@ async def parse_and_store_findings(
     field_name: str,
     auto_apply_definitions: bool = False,
 ) -> dict:
-    """Parse findings and store in pending_enrichments for admin review.
+    """Parse findings, evaluate critically, and store for admin review.
 
-    NOTHING enters the graph without admin approval (except empty definitions
-    when auto_apply_definitions=True and admin has pre-approved this).
+    Every finding goes through Critical Thinking before storage.
+    NOTHING enters the graph without evaluation + admin approval.
     """
     client = get_client()
     stored = 0
     skipped = 0
+    rejected = 0
+
+    from backend.agents.critical_thinking import evaluate_and_log
 
     for finding in findings:
         concept_id = finding.get("concept_id")
@@ -261,6 +264,21 @@ async def parse_and_store_findings(
             skipped += 1
             continue
 
+        # Critical evaluation
+        assessment = await evaluate_and_log(
+            claim_text=answer[:500],
+            source=finding.get("source", "unknown"),
+            concept_name=finding.get("concept_name"),
+            field_name=field_name,
+            references=finding.get("references"),
+        )
+
+        # Skip rejected findings
+        if assessment.verdict == "reject":
+            rejected += 1
+            logger.info(f"Rejected finding for {finding['concept_name']}: {', '.join(assessment.reasons)}")
+            continue
+
         # Map purpose to enrichment type
         enrichment_type = {
             "enrich_definition": "definition",
@@ -269,10 +287,12 @@ async def parse_and_store_findings(
             "find_connections": "connection",
         }.get(purpose, "definition")
 
-        # Calculate priority based on concept importance
+        # Priority based on concept importance + critical assessment
         priority = min(finding.get("paper_count", 0), 100)
+        if assessment.contradicts:
+            priority += 20  # contradictions are interesting
 
-        # Store for admin review
+        # Store for admin review with critical assessment
         client.table("pending_enrichments").insert({
             "concept_id": concept_id,
             "concept_name": finding.get("concept_name", ""),
@@ -280,15 +300,28 @@ async def parse_and_store_findings(
             "enrichment_type": enrichment_type,
             "source": finding.get("source", "unknown"),
             "content": answer[:2000],
-            "references": finding.get("references", [])[:10],
+            "references": [
+                *finding.get("references", [])[:10],
+                {"_critical_assessment": {
+                    "verdict": assessment.verdict,
+                    "confidence": assessment.confidence,
+                    "credibility": assessment.credibility_score,
+                    "evidence_quality": assessment.evidence_quality,
+                    "reasons": assessment.reasons,
+                    "contradicts": assessment.contradicts,
+                }},
+            ],
             "question_asked": finding.get("question", ""),
             "status": "pending",
             "priority": priority,
         }).execute()
         stored += 1
-        logger.info(f"Stored pending enrichment for {finding['concept_name']} ({enrichment_type})")
+        logger.info(
+            f"Stored enrichment for {finding['concept_name']} "
+            f"({assessment.verdict}, confidence={assessment.confidence:.2f})"
+        )
 
-    return {"stored_for_review": stored, "skipped": skipped, "total": len(findings)}
+    return {"stored_for_review": stored, "skipped": skipped, "rejected": rejected, "total": len(findings)}
 
 
 async def run_enrichment_cycle(
