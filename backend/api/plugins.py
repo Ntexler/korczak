@@ -273,3 +273,92 @@ async def extension_create_signal(
     except Exception as e:
         logger.error(f"Extension signal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Multi-Source Search ─────────────────────────────────────────────────────
+
+@router.get("/search/multi")
+async def multi_source_paper_search(
+    query: str = Query(..., min_length=2),
+    limit: int = Query(default=5, le=20),
+    sources: str | None = Query(default=None, description="Comma-separated: semantic_scholar,crossref,europe_pmc,core"),
+    year_from: int | None = None,
+):
+    """Search 4+ academic databases in parallel. Returns deduplicated results."""
+    try:
+        from backend.integrations.multi_source_search import multi_source_search
+
+        source_list = [s.strip() for s in sources.split(",")] if sources else None
+        result = await multi_source_search(
+            query=query,
+            limit_per_source=limit,
+            sources=source_list,
+            year_from=year_from,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Multi-source search error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── SciCrunch RRID ──────────────────────────────────────────────────────────
+
+@router.get("/scicrunch/lookup/{rrid}")
+async def lookup_rrid(rrid: str):
+    """Look up a Research Resource Identifier (RRID)."""
+    try:
+        from backend.integrations.scicrunch_client import lookup_rrid as _lookup
+        result = await _lookup(rrid)
+        if not result:
+            raise HTTPException(status_code=404, detail="RRID not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"RRID lookup error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/scicrunch/search")
+async def search_research_resources(
+    query: str = Query(..., min_length=2),
+    category: str | None = None,
+    limit: int = Query(default=10, le=20),
+):
+    """Search for research resources (antibodies, software, cell lines, etc.)."""
+    try:
+        from backend.integrations.scicrunch_client import search_resources
+        results = await search_resources(query=query, category=category, limit=limit)
+        return {"resources": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"SciCrunch search error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Sci-Bot Bridge ─────────────────────────────────────────────────────────
+
+@router.get("/scibot/query")
+async def query_scibot_endpoint(
+    question: str = Query(..., min_length=5),
+):
+    """Query Sci-Bot for full-text-grounded answers.
+
+    Currently returns a redirect URL (Sci-Bot has no API yet).
+    When API becomes available, will return direct answers with references.
+    """
+    try:
+        from backend.integrations.scibot_bridge import query_scibot
+        result = await query_scibot(question)
+        return result
+    except Exception as e:
+        logger.error(f"Sci-Bot query error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/scibot/url")
+async def get_scibot_redirect_url(
+    question: str = Query(..., min_length=5),
+):
+    """Get a direct URL to Sci-Bot with a pre-filled question."""
+    from backend.integrations.scibot_bridge import get_scibot_url
+    return {"url": get_scibot_url(question), "source": "scibot"}
