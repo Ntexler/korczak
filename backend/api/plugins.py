@@ -362,3 +362,25 @@ async def get_scibot_redirect_url(
     """Get a direct URL to Sci-Bot with a pre-filled question."""
     from backend.integrations.scibot_bridge import get_scibot_url
     return {"url": get_scibot_url(question), "source": "scibot"}
+
+
+# ─── Author Investigation ───────────────────────────────────────────────────
+
+@router.get("/author/investigate")
+async def investigate_author(
+    name: str | None = None,
+    openalex_id: str | None = None,
+):
+    """Full investigation of an author: profile, credibility, retractions."""
+    if not name and not openalex_id:
+        raise HTTPException(status_code=400, detail="Provide name or openalex_id")
+    try:
+        from backend.agents.author_investigator import full_investigation
+        result = await full_investigation(
+            author_name=name or "",
+            openalex_id=openalex_id,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Author investigation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
