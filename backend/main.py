@@ -27,6 +27,7 @@ from backend.api.obsidian import router as obsidian_router
 from backend.api.active_learning import router as learning_router
 from backend.api.plugins import router as plugins_router
 from backend.api.admin import router as admin_router
+from backend.api.chappie import router as chappie_router
 from backend.middleware.rate_limiter import RateLimitMiddleware
 
 
@@ -49,7 +50,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -78,3 +79,4 @@ app.include_router(obsidian_router, prefix="/api/obsidian", tags=["obsidian"])
 app.include_router(learning_router, prefix="/api/learning", tags=["learning"])
 app.include_router(plugins_router, prefix="/api/plugins", tags=["plugins"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(chappie_router, prefix="/api/chappie", tags=["chappie"])

@@ -33,8 +33,16 @@ class Settings(BaseSettings):
     # OpenAlex
     openalex_email: str = ""  # Polite pool (faster rate limits)
 
-    # CORS
+    # CORS — frontend_url plus optional comma-separated extra origins
     frontend_url: str = "http://localhost:3000"
+    cors_origins: str = ""  # e.g. "https://korczak.vercel.app"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        origins = [self.frontend_url]
+        if self.cors_origins:
+            origins.extend(o.strip() for o in self.cors_origins.split(",") if o.strip())
+        return list(dict.fromkeys(origins))
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

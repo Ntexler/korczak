@@ -192,82 +192,103 @@ export default function ChappieLive({ onClose }: ChappieLiveProps) {
     setFeed(prev => [{ ...entry, time: now }, ...prev].slice(0, 50));
   };
 
-  // Start Chappie on a learning mission
+  // Start Chappie on a REAL deep-dive mission (SSE stream from backend)
+  const eventSourceRef = useRef<EventSource | null>(null);
+
   const startMission = async () => {
     setPaused(false);
     setChappieState("walking");
-    setCurrentSource("Starting exploration...");
-    addFeedEntry({ action: "started", detail: `Starting ${field} exploration`, type: "started" });
+    setCurrentSource("Starting deep dive...");
+    setProgress({ done: 0, total: 0 });
 
-    // In production: call the learning agent API and stream updates
-    // For now: simulate with API calls
     try {
-      setChappieState("thinking");
-      setCurrentSource("Analyzing knowledge gaps...");
+      const startRes = await fetch(`${API_BASE}/chappie/mission/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field, depth: 2, max_papers: 10 }),
+      });
+      if (!startRes.ok) throw new Error(`Mission start failed: ${startRes.status}`);
+      const { mission_id } = await startRes.json();
 
-      const weakRes = await fetch(`${API_BASE}/admin/consciousness/curiosities?field=${field}&limit=5`);
-      const weakData = weakRes.ok ? await weakRes.json() : { curiosities: [] };
+      addFeedEntry({ action: "Mission launched", detail: `Deep dive in ${field}`, type: "started" });
 
-      const questions = weakData.curiosities || [];
-      setProgress({ done: 0, total: Math.max(questions.length, 5) });
+      // Stream real events
+      const es = new EventSource(`${API_BASE}/chappie/stream/${mission_id}`);
+      eventSourceRef.current = es;
 
-      for (let i = 0; i < Math.min(questions.length, 5); i++) {
-        if (paused) break;
+      es.onmessage = (msg) => {
+        let event: any;
+        try { event = JSON.parse(msg.data); } catch { return; }
 
-        const q = questions[i];
-        setChappieState("walking");
-        setCurrentSource("Semantic Scholar");
-        setCurrentQuestion(q.question || `Exploring ${field} concept ${i + 1}`);
-        addFeedEntry({
-          action: `Searching for: ${(q.question || "").slice(0, 60)}...`,
-          detail: `Source: Semantic Scholar`,
-          type: "search",
-        });
-
-        // Actually search
-        try {
-          const searchRes = await fetch(
-            `${API_BASE}/plugins/search/multi?query=${encodeURIComponent(q.concept_name || field)}&limit=3`
-          );
-          if (searchRes.ok) {
-            const data = await searchRes.json();
+        switch (event.type) {
+          case "started":
+            setChappieState("walking");
+            setCurrentQuestion(event.message || "");
+            setCurrentSource(event.concept || field);
+            addFeedEntry({ action: event.message, detail: `Field: ${event.field || field}`, type: "started" });
+            break;
+          case "reading":
             setChappieState("reading");
-            addFeedEntry({
-              action: `Found ${data.total} papers`,
-              detail: `From: ${(data.sources_queried || []).join(", ")}`,
-              type: "found",
-            });
-
-            if (data.papers?.[0]) {
-              setPeekConversation({
-                q: q.question || `What do we know about ${q.concept_name}?`,
-                a: `Found: "${data.papers[0].title}" (${data.papers[0].publication_year || "?"}) — ${(data.papers[0].abstract || "").slice(0, 200)}...`,
-              });
-            }
-
-            // Brief pause to show reading state
-            await new Promise(r => setTimeout(r, 2000));
+            setCurrentSource(`Reading (hop ${event.hop ?? 0})`);
+            addFeedEntry({ action: event.message, detail: `Citation hop ${event.hop ?? 0}`, type: "found" });
+            break;
+          case "walking":
+            setChappieState("walking");
+            setCurrentSource("Following citations...");
+            addFeedEntry({ action: event.message, detail: `Hop ${event.hop ?? "?"}`, type: "search" });
+            setProgress(prev => ({ done: prev.done + 1, total: Math.max(prev.total, prev.done + 2) }));
+            break;
+          case "scibot":
+            setChappieState("thinking");
+            setCurrentSource("Sci-Bot (full-text)");
+            addFeedEntry({ action: event.message, detail: "Locked paper — full-text via Sci-Bot", type: "author" });
+            setPeekConversation({ q: event.message, a: "Waiting for Sci-Bot..." });
+            break;
+          case "thinking":
+            setChappieState("thinking");
+            setCurrentSource("Synthesizing...");
+            addFeedEntry({ action: event.message, detail: "Building understanding", type: "search" });
+            break;
+          case "contradiction":
             setChappieState("eureka");
-            await new Promise(r => setTimeout(r, 1000));
-          }
-        } catch { /* continue */ }
+            addFeedEntry({ action: event.message, detail: "Sources disagree!", type: "contradiction" });
+            break;
+          case "done":
+            setChappieState("returning");
+            setCurrentQuestion("");
+            setCurrentSource("Mission complete");
+            addFeedEntry({ action: event.message, detail: event.synthesis?.slice(0, 120) || "", type: "accepted" });
+            if (event.synthesis) {
+              setPeekConversation({ q: "What did you learn?", a: event.synthesis });
+            }
+            setTimeout(() => setChappieState("idle"), 3000);
+            break;
+          case "error":
+            setChappieState("idle");
+            addFeedEntry({ action: "Error", detail: event.message, type: "rejected" });
+            break;
+          case "close":
+            es.close();
+            eventSourceRef.current = null;
+            break;
+        }
+      };
 
-        setProgress(prev => ({ ...prev, done: i + 1 }));
-      }
-
-      setChappieState("returning");
-      setCurrentSource("Done!");
-      setCurrentQuestion("Mission complete");
-      addFeedEntry({ action: "Mission complete", detail: `Explored ${field}`, type: "accepted" });
-
-      await new Promise(r => setTimeout(r, 2000));
-      setChappieState("idle");
-
+      es.onerror = () => {
+        es.close();
+        eventSourceRef.current = null;
+        setChappieState("idle");
+      };
     } catch (e) {
       setChappieState("idle");
       addFeedEntry({ action: "Error", detail: String(e), type: "rejected" });
     }
   };
+
+  // Cleanup stream on unmount
+  useEffect(() => {
+    return () => { eventSourceRef.current?.close(); };
+  }, []);
 
   const sendCustomQuestion = () => {
     if (!customQuestion.trim()) return;
