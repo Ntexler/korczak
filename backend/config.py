@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # OpenAlex
     openalex_email: str = ""  # Polite pool (faster rate limits)
 
+    # Auth
+    admin_api_key: str = ""     # X-Admin-Key header for the admin surface
+    allow_anon: bool = True     # dev fallback; set ALLOW_ANON=false in production
+
     # CORS — frontend_url plus optional comma-separated extra origins
     frontend_url: str = "http://localhost:3000"
     cors_origins: str = ""  # e.g. "https://korczak.vercel.app"

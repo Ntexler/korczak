@@ -39,19 +39,14 @@ _windows: dict[str, list[float]] = defaultdict(list)
 
 
 def _get_user_id(request: Request) -> str:
-    """Extract user ID from request (query param, header, or IP fallback)."""
-    # Try query param
-    user_id = request.query_params.get("user_id")
-    if user_id:
-        return user_id
-
-    # Try header
-    user_id = request.headers.get("X-User-Id")
-    if user_id:
-        return user_id
-
-    # Fallback to IP
-    return request.client.host if request.client else "unknown"
+    """Rate-limit key. Client IP is the base — a caller-supplied user_id must
+    NOT be the key (rotating it would bypass the limiter entirely).
+    Verified identity (set by auth middleware) tightens the bucket per user
+    behind shared IPs, but the IP component always remains."""
+    fwd = request.headers.get("x-forwarded-for", "")
+    ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    verified = getattr(request.state, "verified_user_id", None)
+    return f"{ip}:{verified}" if verified else ip
 
 
 def _get_endpoint_group(path: str) -> str:

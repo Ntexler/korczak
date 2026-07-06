@@ -2,10 +2,12 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.config import settings
+from backend.auth import require_admin
 from backend.api.chat import router as chat_router
 from backend.api.graph import router as graph_router
 from backend.api.health import router as health_router
@@ -78,5 +80,29 @@ app.include_router(briefings_router, prefix="/api/briefings", tags=["briefings"]
 app.include_router(obsidian_router, prefix="/api/obsidian", tags=["obsidian"])
 app.include_router(learning_router, prefix="/api/learning", tags=["learning"])
 app.include_router(plugins_router, prefix="/api/plugins", tags=["plugins"])
-app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
-app.include_router(chappie_router, prefix="/api/chappie", tags=["chappie"])
+app.include_router(
+    admin_router, prefix="/api/admin", tags=["admin"],
+    dependencies=[Depends(require_admin)],
+)
+app.include_router(
+    chappie_router, prefix="/api/chappie", tags=["chappie"],
+    dependencies=[Depends(require_admin)],  # missions/consensus writes are admin-only
+)
+
+
+# ── Error sanitization: never leak internals on 500 in production ──
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    import logging
+    logging.getLogger("korczak").error(f"Unhandled error on {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    detail = exc.detail
+    if exc.status_code >= 500 and not settings.debug:
+        import logging
+        logging.getLogger("korczak").error(f"500 on {request.url.path}: {detail}")
+        detail = "Internal server error"
+    return JSONResponse(status_code=exc.status_code, content={"detail": detail})

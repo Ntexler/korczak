@@ -55,6 +55,17 @@ async def approve_enrichment(
                 "definition": content[:500],
             }).eq("id", concept_id).execute()
 
+            # Re-embed: a changed definition must refresh the vector,
+            # otherwise semantic search serves the OLD meaning forever
+            try:
+                concept_row = client.table("concepts").select("name").eq("id", concept_id).execute()
+                name = concept_row.data[0]["name"] if concept_row.data else ""
+                from backend.integrations.openai_client import get_embedding
+                emb = await get_embedding(f"{name}: {content[:500]}")
+                client.table("concepts").update({"embedding": emb}).eq("id", concept_id).execute()
+            except Exception as embed_err:
+                logger.warning(f"Re-embed after approval failed (non-fatal): {embed_err}")
+
         elif etype == "claim":
             # Add as a new claim (need a paper_id — use first reference if available)
             refs = enrichment.get("references") or []
@@ -165,7 +176,12 @@ class SourceSubmission(BaseModel):
 
 @router.post("/sources/url")
 async def add_manual_source(source: SourceSubmission):
-    """Add a URL for the learning agent to process."""
+    """Add a URL for the learning agent to process. URL is SSRF-validated."""
+    from backend.core.net_guard import is_safe_url
+    safe, reason = is_safe_url(source.url)
+    if not safe:
+        raise HTTPException(status_code=400, detail=f"URL rejected: {reason}")
+
     from backend.integrations.supabase_client import get_client
     client = get_client()
 
