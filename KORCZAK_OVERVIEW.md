@@ -230,3 +230,43 @@ Full Hebrew + English bilingual support throughout the application:
 - **10,400+ lines** of backend core + API code
 - **20 API routers** with 80+ endpoints
 - **7 integrations** (Obsidian, Anki, Zotero, Browser Extension, OpenAlex, Perplexity, Claude)
+
+
+---
+
+## Intelligence & Trust Layer (2026-05 upgrade)
+
+### The thinking graph
+- **Belief propagation** (`backend/graph/propagation.py`): trust flows along
+  edges. CONTRADICTS/WEAKENS penalize endpoints; penalties flow forward along
+  BUILDS_ON/EXTENDS (damped, 3 iterations); SUPPORTS lifts. A "consensus"
+  concept standing on contested foundations is demoted automatically.
+- **Consensus tiers**: consensus / emerging / contested / unverified.
+  Only academically-agreed knowledge is base. Wikipedia validates, never
+  establishes.
+- **Evidence trail** (`GET /api/graph/concepts/{id}/evidence-trail`):
+  "How do I know this?" — claims → papers → citations among them →
+  Chappie deep-dive journeys. Every belief traceable.
+
+### Real critical thinking
+- Concept-scoped semantic contradiction/support checks (Haiku pair-check),
+  not keyword heuristics. `supports` populates; "confirmed" log entries live.
+- Rejection learning loop: admin rejections penalize the source's future
+  credibility (up to -0.3), block re-proposals, and write 'corrected'
+  learning-log entries. Chappie learns from his mistakes.
+
+### Agents
+- **Chappie Deep Learner**: citation-walking deep dives, Sci-Bot for locked
+  papers, synthesis with consensus/contested/open-questions, nightly runs.
+- **Source Scout** (`backend/agents/source_scout.py`): hunts verified source
+  leads (own-graph journals, OpenAlex top sources, DOAJ OA journals),
+  SSRF-validated, admin-gated via manual_sources.
+
+### Security & performance baseline
+- Supabase JWT auth (`backend/auth.py`), admin surface behind X-Admin-Key,
+  IP-keyed rate limiting, SSRF guard, masked 500s.
+- Embeddings actually written (backfill CLI + re-embed on approval) —
+  semantic search is real, not ILIKE fallback.
+- Indexed `papers.field` column kills the 7-site full-table scan.
+- Retrieval attribution experiment (`backend/experiments/`) measures which
+  retrievers earn their cost before any tiering is built.

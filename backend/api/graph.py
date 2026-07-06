@@ -116,3 +116,86 @@ async def graph_stats():
     except Exception as e:
         logger.error(f"Graph stats error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/concepts/{concept_id}/evidence-trail")
+async def evidence_trail(concept_id: str):
+    """'How do I know this?' — the full evidence chain behind a concept.
+
+    Returns: claims → the papers asserting them → citation edges among
+    those papers → Chappie deep-dive journeys that walked this concept.
+    Epistemic transparency: every belief traceable to its sources.
+    """
+    try:
+        from backend.integrations.supabase_client import get_client
+        client = get_client()
+
+        concept = client.table("concepts").select(
+            "id, name, definition, consensus_status, consensus_score, definition_source"
+        ).eq("id", concept_id).execute()
+        if not concept.data:
+            raise HTTPException(status_code=404, detail="Concept not found")
+        c = concept.data[0]
+
+        # Papers behind the concept (with relevance)
+        pc = client.table("paper_concepts").select(
+            "paper_id, relevance"
+        ).eq("concept_id", concept_id).order("relevance", desc=True).limit(10).execute()
+        paper_ids = [r["paper_id"] for r in (pc.data or [])]
+        relevance = {r["paper_id"]: r.get("relevance") for r in (pc.data or [])}
+
+        papers = []
+        for i in range(0, len(paper_ids), 40):
+            rows = client.table("papers").select(
+                "id, title, publication_year, doi, cited_by_count"
+            ).in_("id", paper_ids[i:i + 40]).execute()
+            papers.extend(rows.data or [])
+        for p in papers:
+            p["relevance"] = relevance.get(p["id"])
+
+        # Claims those papers assert
+        claims = []
+        if paper_ids:
+            from backend.integrations.supabase_client import get_claims_for_papers
+            claims = await get_claims_for_papers([str(pid) for pid in paper_ids], limit=10)
+
+        # Citation edges AMONG these papers (who builds on whom)
+        citations = []
+        if paper_ids:
+            id_set = set(paper_ids)
+            rels = client.table("relationships").select(
+                "source_id, target_id"
+            ).eq("relationship_type", "CITES").in_("source_id", paper_ids).execute()
+            title_by_id = {p["id"]: p["title"] for p in papers}
+            for r in (rels.data or []):
+                if r["target_id"] in id_set:
+                    citations.append({
+                        "from": title_by_id.get(r["source_id"], r["source_id"]),
+                        "to": title_by_id.get(r["target_id"], r["target_id"]),
+                    })
+
+        # Chappie journeys that walked this concept
+        journeys = client.table("chappie_journeys").select(
+            "id, synthesis, hops, papers_read, consensus_found, contested_found, created_at"
+        ).ilike("start_concept", f"%{c['name']}%").order(
+            "created_at", desc=True
+        ).limit(3).execute()
+
+        return {
+            "concept": c,
+            "papers": papers,
+            "claims": claims,
+            "citations_among_papers": citations,
+            "chappie_journeys": journeys.data or [],
+            "trail_summary": {
+                "papers": len(papers),
+                "claims": len(claims),
+                "internal_citations": len(citations),
+                "deep_dives": len(journeys.data or []),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Evidence trail error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

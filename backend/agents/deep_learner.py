@@ -296,13 +296,18 @@ async def nightly_run(field: str, dives: int = 3, depth: int = 2) -> list[dict]:
             break
         await asyncio.sleep(2)
 
-    # Recompute consensus after learning
+    # Recompute consensus after learning, then propagate trust along edges —
+    # a contested foundation drags down whatever BUILDS_ON it
     try:
         from backend.agents.consensus import compute_consensus
         consensus = await compute_consensus()
         logger.info(f"Consensus refreshed: {consensus}")
+        from backend.graph.propagation import run_propagation
+        prop = await run_propagation(apply=True)
+        logger.info(f"Belief propagation: {prop.get('adjusted', 0)} adjusted, "
+                    f"{prop.get('demoted_from_consensus', 0)} demoted")
     except Exception as e:
-        logger.warning(f"Consensus refresh failed: {e}")
+        logger.warning(f"Consensus/propagation refresh failed: {e}")
 
     # Morning reflection
     try:

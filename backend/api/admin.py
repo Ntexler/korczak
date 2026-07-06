@@ -218,6 +218,16 @@ async def add_manual_source(source: SourceSubmission):
     return {"status": "added", "id": result.data[0]["id"] if result.data else None}
 
 
+@router.post("/scout/run")
+async def run_source_scout(field: str = Query(default="Anthropology"), limit: int = Query(default=8, le=20)):
+    """Send the Source Scout to find verified source leads for a field.
+
+    Leads land in manual_sources as pending — approve them like any source.
+    """
+    from backend.agents.source_scout import run_scout
+    return await run_scout(field=field, limit_per_source=limit, store=True)
+
+
 @router.get("/sources")
 async def list_manual_sources(status: str = "pending", limit: int = 20):
     """List manually submitted sources."""
