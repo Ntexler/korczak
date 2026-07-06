@@ -93,6 +93,7 @@ class SynthesisOutput(BaseModel):
     sources_cited: list[SourceCitation] = Field(default_factory=list)
     confidence: float = 0.8
     knowledge_gaps: list[str] = Field(default_factory=list)
+    used_chunk_ids: list[str] = Field(default_factory=list)  # attribution self-report
     token_count: int = 0
 
 

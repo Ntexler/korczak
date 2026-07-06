@@ -35,18 +35,25 @@ async def run_search_pipeline(
     level_description: str = "",
     socratic_level: int = 0,
     locale: str = "en",
+    query_type: str | None = None,
+    attribution_log_path: str | None = None,
 ) -> PipelineResult:
     """Main entry point: run the full 5-stage search pipeline.
 
     Falls back to a minimal result if early stages fail.
+    When attribution logging is enabled (param or ATTRIBUTION_LOG env),
+    the cache is bypassed and per-retriever usage is logged to JSONL.
     """
     start_time = time.time()
     token_usage = TokenUsage()
     stages_completed = []
 
-    # Check cache
+    from backend.search import attribution
+    attribution_path = attribution.enabled(attribution_log_path)
+
+    # Check cache (bypassed during attribution runs — we need real retrieval)
     cache_key = make_key(user_message, user_id or "", mode)
-    if cache_key in pipeline_cache:
+    if not attribution_path and cache_key in pipeline_cache:
         cached = pipeline_cache[cache_key]
         cached.stages_completed = ["cache_hit"]
         return cached
@@ -89,15 +96,25 @@ async def run_search_pipeline(
     if analysis.requires_controversy:
         retrieval_tasks.append(retrieve_controversies(analysis.concepts))
 
-    raw_results = await asyncio.gather(*retrieval_tasks, return_exceptions=True)
+    async def _timed(coro):
+        """Wrap a retriever with wall-clock timing — no internal changes."""
+        t0 = time.time()
+        try:
+            return await coro, (time.time() - t0) * 1000
+        except Exception as e:
+            return e, (time.time() - t0) * 1000
 
-    # Filter out exceptions
+    raw_results = await asyncio.gather(*[_timed(t) for t in retrieval_tasks])
+
+    # Filter out exceptions, keep per-retriever timings for attribution
     results = []
-    for r in raw_results:
+    retriever_timings_ms: dict[str, float] = {}
+    for r, elapsed_ms in raw_results:
         if isinstance(r, Exception):
             logger.warning(f"Retriever failed: {r}")
         else:
             results.append(r)
+            retriever_timings_ms[r.source] = elapsed_ms
 
     # Extract user context text
     user_context_text = ""
@@ -329,8 +346,31 @@ async def run_search_pipeline(
         f"confidence={result.confidence:.2f}"
     )
 
-    # Cache result
-    pipeline_cache[cache_key] = result
+    # ── Attribution logging (experiment instrumentation, off by default) ──
+    if attribution_path:
+        try:
+            chunks = attribution.chunks_from_results(bundle.results)
+            stats = attribution.retriever_stats(bundle.results, retriever_timings_ms)
+            judge_scores = await attribution.judge_chunks(
+                user_message, synthesis_output.response_text, chunks,
+            )
+            record = attribution.build_record(
+                query=user_message,
+                query_type=query_type or analysis.intent.value,
+                chunks=chunks,
+                stats=stats,
+                used_chunk_ids=synthesis_output.used_chunk_ids,
+                judge_scores=judge_scores,
+                answer=synthesis_output.response_text,
+            )
+            attribution.write_record(record, attribution_path)
+            stages_completed.append("attribution_logged")
+        except Exception as e:
+            logger.warning(f"Attribution logging failed (answer unaffected): {e}")
+
+    # Cache result (skip during attribution runs — they must not poison or read cache)
+    if not attribution_path:
+        pipeline_cache[cache_key] = result
 
     return result
 

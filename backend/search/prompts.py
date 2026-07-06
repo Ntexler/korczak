@@ -71,7 +71,8 @@ Return JSON:
   "response": "your full response text with [source_id] citations",
   "sources_cited": [{{"id": "...", "title": "...", "type": "..."}}],
   "confidence": 0.0-1.0,
-  "knowledge_gaps": ["gaps you noticed"]
+  "knowledge_gaps": ["gaps you noticed"],
+  "used_chunk_ids": ["ids (the [bracketed] ids) of ONLY the chunks whose content materially shaped this answer"]
 }}
 
 Return ONLY valid JSON.
@@ -108,7 +109,8 @@ Return JSON:
   "response": "your tutoring response",
   "sources_cited": [{{"id": "...", "title": "...", "type": "..."}}],
   "confidence": 0.0-1.0,
-  "knowledge_gaps": ["gaps you noticed"]
+  "knowledge_gaps": ["gaps you noticed"],
+  "used_chunk_ids": ["ids (the [bracketed] ids) of ONLY the chunks whose content materially shaped this answer"]
 }}
 
 Return ONLY valid JSON.
@@ -137,7 +139,8 @@ Return JSON:
   "response": "your structured briefing with [source_id] citations",
   "sources_cited": [{{"id": "...", "title": "...", "type": "..."}}],
   "confidence": 0.0-1.0,
-  "knowledge_gaps": ["gaps you noticed"]
+  "knowledge_gaps": ["gaps you noticed"],
+  "used_chunk_ids": ["ids (the [bracketed] ids) of ONLY the chunks whose content materially shaped this answer"]
 }}
 
 Return ONLY valid JSON.

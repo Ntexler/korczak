@@ -222,6 +222,7 @@ async def synthesize(
         sources_cited=sources,
         confidence=parsed.get("confidence", 0.7),
         knowledge_gaps=parsed.get("knowledge_gaps", []),
+        used_chunk_ids=[str(c) for c in (parsed.get("used_chunk_ids") or []) if c],
         token_count=response.total_tokens,
     ), response.total_tokens
 
