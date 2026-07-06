@@ -170,6 +170,71 @@ async def approve_batch(
     return {"results": results}
 
 
+@router.get("/enrichments/audit")
+async def audit_auto_decisions(limit: int = Query(default=10, le=50)):
+    """Spot-check the court's automatic decisions.
+
+    You audit the PROCESS, not the truth: each row carries its full
+    verification receipt (grounding, independent witnesses, refutation).
+    """
+    from backend.integrations.supabase_client import get_client
+    client = get_client()
+    rows = client.table("pending_enrichments").select(
+        "id, concept_name, field, enrichment_type, source, content, "
+        "verification, status, created_at"
+    ).in_("status", ["auto_applied", "auto_rejected"]).order(
+        "created_at", desc=True
+    ).limit(limit).execute()
+    return {"decisions": rows.data or []}
+
+
+@router.post("/enrichments/{enrichment_id}/revert")
+async def revert_auto_approved(
+    enrichment_id: str,
+    admin_id: str = Query(default="admin"),
+    note: str | None = None,
+):
+    """Revert an auto-applied enrichment. Counts as a rejection —
+    the source is penalized and the court's trust in it tightens."""
+    from backend.integrations.supabase_client import get_client
+    client = get_client()
+
+    row = client.table("pending_enrichments").select("*").eq("id", enrichment_id).execute()
+    if not row.data:
+        raise HTTPException(status_code=404, detail="Enrichment not found")
+    e = row.data[0]
+    if e["status"] != "auto_applied":
+        raise HTTPException(status_code=400, detail="Only auto_applied enrichments can be reverted")
+
+    # Undo the definition (best-effort: clear it so re-enrichment can happen)
+    if e.get("enrichment_type") == "definition" and e.get("concept_id"):
+        client.table("concepts").update({"definition": None}).eq(
+            "id", e["concept_id"]
+        ).execute()
+
+    client.table("pending_enrichments").update({
+        "status": "rejected",
+        "reviewed_by": admin_id,
+        "review_note": f"REVERTED auto-approval: {note or 'audit failure'}",
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", enrichment_id).execute()
+
+    # Feed the learning loop — this is the strongest correction signal
+    try:
+        from backend.agents.consciousness import log_learning
+        await log_learning(
+            entry_type="corrected",
+            summary=f"Admin REVERTED an auto-approved {e.get('source')} claim about "
+                    f"{e.get('concept_name')}: {note or 'audit failure'}",
+            concept_name=e.get("concept_name"), field=e.get("field"),
+            source=e.get("source"), confidence=0.1,
+        )
+    except Exception:
+        pass
+
+    return {"status": "reverted", "enrichment_id": enrichment_id}
+
+
 @router.get("/enrichments/stats")
 async def enrichment_stats():
     """Get enrichment queue statistics."""

@@ -299,15 +299,18 @@ async def parse_and_store_findings(
         if assessment.contradicts:
             priority += 20  # contradictions are interesting
 
-        # Store for admin review with critical assessment
-        client.table("pending_enrichments").insert({
-            "concept_id": concept_id,
-            "concept_name": finding.get("concept_name", ""),
-            "field": field_name,
-            "enrichment_type": enrichment_type,
-            "source": finding.get("source", "unknown"),
-            "content": answer[:2000],
-            "references": [
+        # Submit through the Verification Court — grounding, independent
+        # corroboration, adversarial refutation. Auto-routes to
+        # auto_applied / pending-with-receipt / auto_rejected.
+        from backend.agents.verification_court import submit_enrichment
+        court = await submit_enrichment(
+            concept_id=concept_id,
+            concept_name=finding.get("concept_name", ""),
+            field=field_name,
+            enrichment_type=enrichment_type,
+            source=finding.get("source", "unknown"),
+            content=answer[:2000],
+            references=[
                 *finding.get("references", [])[:10],
                 {"_critical_assessment": {
                     "verdict": assessment.verdict,
@@ -318,14 +321,13 @@ async def parse_and_store_findings(
                     "contradicts": assessment.contradicts,
                 }},
             ],
-            "question_asked": finding.get("question", ""),
-            "status": "pending",
-            "priority": priority,
-        }).execute()
+            question_asked=finding.get("question", ""),
+            priority=priority,
+        )
         stored += 1
         logger.info(
-            f"Stored enrichment for {finding['concept_name']} "
-            f"({assessment.verdict}, confidence={assessment.confidence:.2f})"
+            f"Court [{court['route']}] for {finding['concept_name']} "
+            f"(critical: {assessment.verdict}, confidence={assessment.confidence:.2f})"
         )
 
     return {"stored_for_review": stored, "skipped": skipped, "rejected": rejected, "total": len(findings)}

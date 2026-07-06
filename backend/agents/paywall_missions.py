@@ -149,22 +149,26 @@ async def interview_paper(paper: dict, field: str) -> dict:
                 references=a.get("references"),
             )
             if assessment.verdict != "reject":
-                client.table("pending_enrichments").insert({
-                    "concept_id": concept_id,
-                    "concept_name": concept_name or paper.get("title", "")[:100],
-                    "field": field,
-                    "enrichment_type": "claim" if a["purpose"] == "findings" else "definition",
-                    "source": "scibot",
-                    "content": a["answer"][:2000],
-                    "references": (a.get("references") or [])[:8] + [
+                # Through the court: grounding vs Sci-Bot's own answer text,
+                # independent corroboration, adversarial refutation
+                from backend.agents.verification_court import submit_enrichment
+                court = await submit_enrichment(
+                    concept_id=concept_id,
+                    concept_name=concept_name or paper.get("title", "")[:100],
+                    field=field,
+                    enrichment_type="claim" if a["purpose"] == "findings" else "definition",
+                    source="scibot",
+                    content=a["answer"][:2000],
+                    references=(a.get("references") or [])[:8] + [
                         {"paper": paper.get("title"), "doi": paper.get("doi"),
                          "interview_purpose": a["purpose"], "journey_id": journey_id}
                     ],
-                    "question_asked": a["question"][:400],
-                    "status": "pending",
-                    "priority": min(paper.get("cited_by_count", 0) // 10, 90),
-                }).execute()
-                stored += 1
+                    question_asked=a["question"][:400],
+                    priority=min(paper.get("cited_by_count", 0) // 10, 90),
+                    source_text=a["answer"],  # ground against what Sci-Bot actually said
+                )
+                if court["route"] != "auto_rejected":
+                    stored += 1
         except Exception as e:
             logger.warning(f"Interview answer processing failed: {e}")
 

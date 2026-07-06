@@ -241,18 +241,20 @@ async def deep_dive(
                 references=[{"title": p["paper"], "hop": p["hop"]} for p in path[:8]],
             )
             if assessment.verdict != "reject":
-                client.table("pending_enrichments").insert({
-                    "concept_id": concept_id,
-                    "concept_name": concept_name,
-                    "field": field,
-                    "enrichment_type": "definition",
-                    "source": "chappie_deep_dive",
-                    "content": synthesis_result["synthesis"][:2000],
-                    "references": [{"title": p["paper"], "hop": p["hop"]} for p in path[:10]],
-                    "question_asked": f"Deep dive walk: {concept_name}",
-                    "status": "pending",
-                    "priority": 30,
-                }).execute()
+                # Through the court — grounding vs Chappie's own reading notes
+                from backend.agents.verification_court import submit_enrichment
+                await submit_enrichment(
+                    concept_id=concept_id,
+                    concept_name=concept_name,
+                    field=field,
+                    enrichment_type="definition",
+                    source="chappie_deep_dive",
+                    content=synthesis_result["synthesis"][:2000],
+                    references=[{"title": p["paper"], "hop": p["hop"]} for p in path[:10]],
+                    question_asked=f"Deep dive walk: {concept_name}",
+                    priority=30,
+                    source_text="\n".join(notes[:12]),  # what he actually read
+                )
     except Exception as e:
         logger.warning(f"Feedback loop failed: {e}")
 
