@@ -302,14 +302,15 @@ async def export_field(field_name: str) -> bytes:
     from backend.api.features import _normalize_field
 
     # Get papers in this field
-    all_papers = client.table("papers").select(
-        "id, title, authors, publication_year, doi, abstract, cited_by_count, paper_type, subfield"
-    ).not_.is_("subfield", "null").execute()
-
-    field_papers = [
-        p for p in (all_papers.data or [])
-        if _normalize_field(p.get("subfield", "")) == field_name
-    ]
+    from backend.core.fields import get_field_paper_ids
+    ids = get_field_paper_ids(client, field_name)
+    field_papers = []
+    for i in range(0, len(ids), 40):
+        batch = ids[i:i + 40]
+        rows = client.table("papers").select(
+            "id, title, authors, publication_year, doi, abstract, cited_by_count, paper_type, subfield"
+        ).in_("id", batch).execute()
+        field_papers.extend(rows.data or [])
     field_paper_ids = {p["id"] for p in field_papers}
 
     # Get concept IDs for these papers

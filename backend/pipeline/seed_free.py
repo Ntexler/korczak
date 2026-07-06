@@ -131,6 +131,8 @@ def insert_paper_free(raw: dict) -> tuple[str | None, list[str]]:
         return None, refs  # already in — still return refs for edge-building
 
     abstract = reconstruct_abstract(raw.get("abstract_inverted_index"))
+    subfield = (raw.get("topics") or [{}])[0].get("display_name")
+    from backend.core.fields import normalize_field
     paper_row = {
         "openalex_id": openalex_id,
         "doi": raw.get("doi"),
@@ -138,7 +140,8 @@ def insert_paper_free(raw: dict) -> tuple[str | None, list[str]]:
         "authors": json.dumps(extract_authors(raw.get("authorships", []))),
         "publication_year": raw.get("publication_year"),
         "abstract": abstract,
-        "subfield": ((raw.get("topics") or [{}])[0].get("display_name")),
+        "subfield": subfield,
+        "field": normalize_field(subfield or "") or None,
         "source_journal": ((raw.get("primary_location") or {}).get("source") or {}).get("display_name"),
         "cited_by_count": raw.get("cited_by_count", 0),
         "analysis_model": "openalex_free",

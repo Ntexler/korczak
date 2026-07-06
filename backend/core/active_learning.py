@@ -276,13 +276,8 @@ async def generate_quiz(
         concept_list = concepts.data or []
     elif field_name:
         from backend.api.features import _normalize_field
-        all_papers = client.table("papers").select(
-            "id, subfield"
-        ).not_.is_("subfield", "null").execute()
-        field_paper_ids = [
-            p["id"] for p in (all_papers.data or [])
-            if _normalize_field(p.get("subfield", "")) == field_name
-        ]
+        from backend.core.fields import get_field_paper_ids
+        field_paper_ids = get_field_paper_ids(client, field_name)
         if not field_paper_ids:
             return []
 

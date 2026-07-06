@@ -129,6 +129,28 @@ async def reject_enrichment(
         "reviewed_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", enrichment_id).execute()
 
+    # Learning-from-rejection: record the correction so Chappie remembers.
+    # (The 'corrected' learning-log type existed but was never written — audit 1.3.)
+    try:
+        row = client.table("pending_enrichments").select(
+            "concept_name, field, source, content"
+        ).eq("id", enrichment_id).execute()
+        if row.data:
+            e = row.data[0]
+            from backend.agents.consciousness import log_learning
+            await log_learning(
+                entry_type="corrected",
+                summary=f"Admin rejected my {e.get('source', '?')} proposal about "
+                        f"{e.get('concept_name', '?')}" + (f": {note}" if note else ""),
+                concept_name=e.get("concept_name"),
+                field=e.get("field"),
+                source=e.get("source"),
+                confidence=0.2,
+                detail=(e.get("content") or "")[:500],
+            )
+    except Exception as log_err:
+        logger.debug(f"Rejection learning-log failed (non-fatal): {log_err}")
+
     return {"status": "rejected", "enrichment_id": enrichment_id}
 
 

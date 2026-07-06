@@ -47,11 +47,8 @@ async def find_weak_spots(field_name: str, limit: int = 20) -> list[dict]:
     from backend.api.features import _normalize_field
 
     # Get field papers
-    all_papers = client.table("papers").select("id, subfield").not_.is_("subfield", "null").execute()
-    field_paper_ids = [
-        p["id"] for p in (all_papers.data or [])
-        if _normalize_field(p.get("subfield", "")) == field_name
-    ]
+    from backend.core.fields import get_field_paper_ids
+    field_paper_ids = get_field_paper_ids(client, field_name)
 
     if not field_paper_ids:
         return []
@@ -286,6 +283,16 @@ async def parse_and_store_findings(
             "assess_confidence": "confidence_update",
             "find_connections": "connection",
         }.get(purpose, "definition")
+
+        # Rejection memory: don't re-propose what the admin already rejected
+        from backend.agents.critical_thinking import was_rejected_before
+        if await was_rejected_before(concept_id, enrichment_type):
+            skipped += 1
+            logger.info(
+                f"Suppressed re-proposal for {finding['concept_name']} "
+                f"({enrichment_type}) — previously rejected by admin"
+            )
+            continue
 
         # Priority based on concept importance + critical assessment
         priority = min(finding.get("paper_count", 0), 100)

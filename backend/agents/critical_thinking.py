@@ -69,9 +69,16 @@ async def evaluate_claim(
     """
     client = get_client()
 
-    # 1. Source Credibility
+    # 1. Source Credibility — base score adjusted by rejection history.
+    # A source whose proposals keep getting rejected by the admin loses
+    # credibility over time (the learning-from-rejection loop).
     credibility = SOURCE_CREDIBILITY.get(source, SOURCE_CREDIBILITY["unknown"])
     reasons = [f"Source credibility ({source}): {credibility:.1f}"]
+
+    penalty = await _source_rejection_penalty(source)
+    if penalty > 0:
+        credibility = max(0.05, credibility - penalty)
+        reasons.append(f"Rejection-history penalty for {source}: -{penalty:.2f}")
 
     # Boost if has references
     ref_count = len(references) if references else 0
@@ -82,49 +89,61 @@ async def evaluate_claim(
         credibility = max(0.1, credibility - 0.1)
         reasons.append("No references provided (-0.1)")
 
-    # 2. Internal Consistency — check against existing knowledge
+    # 2. Internal Consistency — SEMANTIC check against this concept's own claims.
+    # (The old version compared keywords against 20 random claims from the
+    # whole table and never populated `supports` — audit finding 1.1.)
     consistency = 1.0
     contradicts = []
     supports = []
 
     if concept_name:
-        # Get existing concept
         concept = client.table("concepts").select(
             "id, definition, confidence"
         ).ilike("name", f"%{concept_name}%").limit(1).execute()
 
         if concept.data:
-            existing_def = concept.data[0].get("definition", "")
-            existing_conf = concept.data[0].get("confidence", 0.5)
             concept_id = concept.data[0]["id"]
 
-            # Check for contradicting claims in the graph
-            existing_claims = client.table("claims").select(
-                "claim_text, strength, confidence"
-            ).limit(20).execute()
+            # Concept-SCOPED claims: this concept's papers → their claims
+            existing_claims: list[dict] = []
+            try:
+                from backend.integrations.supabase_client import (
+                    get_papers_for_concept, get_claims_for_papers,
+                )
+                papers = await get_papers_for_concept(concept_id, limit=10)
+                if papers:
+                    existing_claims = await get_claims_for_papers(
+                        [str(p["id"]) for p in papers], limit=10,
+                    )
+            except Exception as e:
+                logger.debug(f"Concept-scoped claim fetch failed: {e}")
 
-            # Simple keyword overlap check for contradictions
-            claim_lower = claim_text.lower()
-            negation_words = ["not", "never", "incorrect", "wrong", "false",
-                             "contradicts", "disproven", "rejected", "refuted"]
+            # Semantic pair-check with a single Haiku call
+            if existing_claims:
+                verdicts = await _semantic_claim_check(claim_text, existing_claims)
+                for idx in verdicts.get("contradicts", []):
+                    if 0 <= idx < len(existing_claims):
+                        contradicts.append(existing_claims[idx].get("claim_text", "")[:150])
+                        consistency -= 0.25
+                for idx in verdicts.get("supports", []):
+                    if 0 <= idx < len(existing_claims):
+                        supports.append(existing_claims[idx].get("claim_text", "")[:150])
+                        consistency = min(1.0, consistency + 0.05)
+                if contradicts:
+                    reasons.append(
+                        f"Semantically contradicts {len(contradicts)} existing claim(s) about {concept_name}"
+                    )
+                if supports:
+                    reasons.append(
+                        f"Corroborated by {len(supports)} existing claim(s) about {concept_name}"
+                    )
 
-            for ec in (existing_claims.data or []):
-                ec_text = (ec.get("claim_text") or "").lower()
-                # Check if the new claim negates an existing one
-                if any(neg in claim_lower for neg in negation_words):
-                    # Check for concept name overlap
-                    if concept_name.lower() in ec_text:
-                        contradicts.append(ec.get("claim_text", "")[:100])
-                        consistency -= 0.2
-                        reasons.append(f"Potentially contradicts existing claim")
-
-            # Check relationships for contradictions
+            # Known debates on this concept lower certainty, not consistency
             rels = client.table("relationships").select(
-                "relationship_type, explanation"
+                "relationship_type"
             ).eq("source_id", concept_id).eq(
                 "relationship_type", "CONTRADICTS"
             ).limit(5).execute()
-
             if rels.data:
                 reasons.append(f"Concept has {len(rels.data)} known contradictions — field is debated")
 
@@ -175,6 +194,96 @@ async def evaluate_claim(
         supports=supports,
         notes=f"Evaluated from {source} with {ref_count} references",
     )
+
+
+# Rejection-history cache: source -> (penalty, computed_at_monotonic)
+_penalty_cache: dict[str, tuple[float, float]] = {}
+_PENALTY_TTL = 300  # seconds
+
+
+async def _source_rejection_penalty(source: str) -> float:
+    """Credibility penalty from admin rejection history for this source.
+
+    penalty = 0.3 * rejection_rate, requiring >= 3 reviewed proposals.
+    Cached 5 minutes. Fail-open to 0.
+    """
+    import time as _time
+    now = _time.monotonic()
+    cached = _penalty_cache.get(source)
+    if cached and now - cached[1] < _PENALTY_TTL:
+        return cached[0]
+
+    penalty = 0.0
+    try:
+        client = get_client()
+        rows = client.table("pending_enrichments").select(
+            "status"
+        ).eq("source", source).in_("status", ["approved", "rejected"]).limit(200).execute()
+        reviewed = rows.data or []
+        if len(reviewed) >= 3:
+            rejected = sum(1 for r in reviewed if r["status"] == "rejected")
+            penalty = round(0.3 * (rejected / len(reviewed)), 2)
+    except Exception as e:
+        logger.debug(f"Rejection-penalty lookup failed: {e}")
+
+    _penalty_cache[source] = (penalty, now)
+    return penalty
+
+
+async def was_rejected_before(concept_id: str, enrichment_type: str) -> bool:
+    """Has the admin already rejected a proposal of this type for this concept?
+
+    Used to suppress re-proposing the same rejected content forever.
+    """
+    try:
+        client = get_client()
+        rows = client.table("pending_enrichments").select("id").eq(
+            "concept_id", concept_id
+        ).eq("enrichment_type", enrichment_type).eq(
+            "status", "rejected"
+        ).limit(1).execute()
+        return bool(rows.data)
+    except Exception:
+        return False
+
+
+async def _semantic_claim_check(new_claim: str, existing: list[dict]) -> dict:
+    """One Haiku call: does the new claim contradict or support each existing claim?
+
+    Returns {"contradicts": [indices], "supports": [indices]}. Empty on failure
+    (fail-open to 'unrelated' — never fabricates a contradiction).
+    """
+    lines = [
+        f"{i}. {(c.get('claim_text') or '')[:200]}"
+        for i, c in enumerate(existing[:10])
+    ]
+    prompt = (
+        "Compare a NEW claim against EXISTING claims about the same concept.\n\n"
+        f"NEW CLAIM: {new_claim[:400]}\n\n"
+        "EXISTING CLAIMS:\n" + "\n".join(lines) + "\n\n"
+        "For each existing claim decide: does the NEW claim CONTRADICT it "
+        "(they cannot both be true), SUPPORT it (they assert compatible/"
+        "overlapping propositions), or is it UNRELATED?\n"
+        'Return ONLY JSON: {"contradicts": [indices], "supports": [indices]}'
+    )
+    try:
+        import json as _json
+        from backend.config import settings
+        from backend.integrations.claude_client import _call_claude
+
+        resp = await _call_claude(prompt, model=settings.haiku_model, max_tokens=200, temperature=0.0)
+        text = resp.text
+        if "```" in text:
+            text = text.split("```")[1].removeprefix("json").strip()
+        start, end = text.find("{"), text.rfind("}")
+        parsed = _json.loads(text[start:end + 1])
+        return {
+            "contradicts": [int(i) for i in parsed.get("contradicts", []) if isinstance(i, (int, float, str)) and str(i).isdigit()],
+            "supports": [int(i) for i in parsed.get("supports", []) if isinstance(i, (int, float, str)) and str(i).isdigit()],
+        }
+    except Exception as e:
+        logger.debug(f"Semantic claim check failed (treating as unrelated): {e}")
+        return {}
 
 
 def _assess_evidence_quality(claim: str, references: list[dict] | None) -> str:

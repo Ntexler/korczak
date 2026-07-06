@@ -316,6 +316,7 @@ def insert_paper_and_analysis(paper: dict, analysis: dict, model_name: str = "cl
             "abstract": paper["abstract"],
             "paper_type": paper_type.get("type"),
             "subfield": paper_type.get("subfield"),
+            "field": __import__("backend.core.fields", fromlist=["normalize_field"]).normalize_field(paper_type.get("subfield") or "") or None,
             "source_journal": paper.get("source_journal"),
             "cited_by_count": paper["cited_by_count"],
             "analysis": json.dumps(analysis),
