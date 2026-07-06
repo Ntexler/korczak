@@ -9,6 +9,7 @@ import ChatInput from "@/components/Chat/ChatInput";
 import WelcomeScreen from "@/components/Welcome/WelcomeScreen";
 import KnowledgeSidebar from "@/components/Sidebar/KnowledgeSidebar";
 import FieldCatalog from "@/components/Home/FieldCatalog";
+import AtlasView from "@/components/Atlas/AtlasView";
 import FieldView from "@/components/Field/FieldView";
 import { useFieldStore } from "@/stores/fieldStore";
 import ConceptDetail from "@/components/ConceptPanel/ConceptDetail";
@@ -47,6 +48,7 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const [homeView, setHomeView] = useState<"atlas" | "catalog">("atlas");
 
   // Check localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -265,11 +267,36 @@ export default function Home() {
 
         {/* Center — Chat */}
         <main className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 relative">
             {messages.length === 0 ? (
-              <div className="max-w-[900px] mx-auto">
-                <FieldCatalog onSelectField={setField} />
-              </div>
+              homeView === "atlas" ? (
+                <div className="absolute inset-0">
+                  <AtlasView
+                    userId={userId || undefined}
+                    onOpenConcept={(fieldName) => fieldName && setField(fieldName)}
+                    onSend={handleSend}
+                  />
+                  <button
+                    onClick={() => setHomeView("catalog")}
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg
+                               bg-surface/85 border border-border backdrop-blur text-xs
+                               text-text-secondary hover:text-foreground transition-colors"
+                  >
+                    {locale === "he" ? "תצוגת קטלוג" : "Catalog view"}
+                  </button>
+                </div>
+              ) : (
+                <div className="max-w-[900px] mx-auto">
+                  <button
+                    onClick={() => setHomeView("atlas")}
+                    className="mb-3 px-3 py-1.5 rounded-lg bg-accent-gold/10 border border-accent-gold/20
+                               text-xs text-accent-gold hover:bg-accent-gold/20 transition-colors"
+                  >
+                    {locale === "he" ? "🗺️ חזרה לאטלס" : "🗺️ Back to Atlas"}
+                  </button>
+                  <FieldCatalog onSelectField={setField} />
+                </div>
+              )
             ) : (
               <div className="max-w-[760px] mx-auto">
                 {messages.map((msg) => (
