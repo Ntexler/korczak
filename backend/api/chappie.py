@@ -115,6 +115,69 @@ async def consensus_summary():
     return await get_consensus_summary()
 
 
+# ─── Paywall Missions (Sci-Bot interviews about locked papers) ──────────────
+
+@router.post("/paywall/run")
+async def run_paywall(
+    field: str = Query(default="Anthropology"),
+    papers: int = Query(default=5, le=15),
+):
+    """Send Chappie on a paywall shift: interview Sci-Bot about the
+    most-cited locked papers in a field. Answers pass critical thinking
+    and land in pending_enrichments."""
+    from backend.agents.paywall_missions import run_paywall_shift
+    return await run_paywall_shift(field=field, papers=papers)
+
+
+class ManualAnswer(BaseModel):
+    question: str
+    answer: str
+    concept_name: str | None = None
+    field: str = "Anthropology"
+    paper_title: str | None = None
+
+
+@router.post("/paywall/manual-answer")
+async def paste_scibot_answer(payload: ManualAnswer):
+    """Sci-Bot is web-only — when Chappie couldn't get an answer via API,
+    the interview logs a redirect URL. Ask Sci-Bot yourself, paste the
+    answer here, and it flows through the EXACT same critical-thinking
+    path as an automated answer."""
+    from backend.agents.critical_thinking import evaluate_and_log
+    from backend.integrations.supabase_client import get_client
+
+    assessment = await evaluate_and_log(
+        claim_text=payload.answer[:500],
+        source="scibot",
+        concept_name=payload.concept_name,
+        field_name=payload.field,
+        references=[{"title": payload.paper_title}] if payload.paper_title else None,
+    )
+
+    stored = False
+    if assessment.verdict != "reject":
+        client = get_client()
+        client.table("pending_enrichments").insert({
+            "concept_name": payload.concept_name or payload.paper_title or "manual scibot answer",
+            "field": payload.field,
+            "enrichment_type": "claim",
+            "source": "scibot",
+            "content": payload.answer[:2000],
+            "references": [{"paper": payload.paper_title, "via": "manual_paste"}],
+            "question_asked": payload.question[:400],
+            "status": "pending",
+            "priority": 40,
+        }).execute()
+        stored = True
+
+    return {
+        "verdict": assessment.verdict,
+        "confidence": assessment.confidence,
+        "reasons": assessment.reasons,
+        "stored_for_review": stored,
+    }
+
+
 @router.post("/consensus/recompute")
 async def recompute_consensus():
     """Recompute consensus tiers (run after seeding/enrichment)."""

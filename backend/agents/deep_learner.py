@@ -285,8 +285,9 @@ async def deep_dive(
     }
 
 
-async def nightly_run(field: str, dives: int = 3, depth: int = 2) -> list[dict]:
-    """Chappie's autonomous night shift: several deep dives + consensus refresh."""
+async def nightly_run(field: str, dives: int = 3, depth: int = 2, paywall_papers: int = 3) -> list[dict]:
+    """Chappie's autonomous night shift:
+    deep dives → paywall interviews (Sci-Bot) → consensus + propagation → reflection."""
     results = []
     for i in range(dives):
         logger.info(f"Night dive {i+1}/{dives} in {field}")
@@ -295,6 +296,17 @@ async def nightly_run(field: str, dives: int = 3, depth: int = 2) -> list[dict]:
         if result.get("status") == "nothing_to_learn":
             break
         await asyncio.sleep(2)
+
+    # Paywall shift: interview Sci-Bot about the most-cited locked papers
+    if paywall_papers > 0:
+        try:
+            from backend.agents.paywall_missions import run_paywall_shift
+            paywall = await run_paywall_shift(field, papers=paywall_papers)
+            logger.info(f"Paywall shift: {paywall.get('answers_received', 0)} answers "
+                        f"from {paywall.get('papers_interviewed', 0)} locked papers")
+            results.append({"paywall_shift": paywall})
+        except Exception as e:
+            logger.warning(f"Paywall shift failed: {e}")
 
     # Recompute consensus after learning, then propagate trust along edges —
     # a contested foundation drags down whatever BUILDS_ON it
