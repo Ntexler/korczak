@@ -283,6 +283,56 @@ async def add_manual_source(source: SourceSubmission):
     return {"status": "added", "id": result.data[0]["id"] if result.data else None}
 
 
+class TrustedSourceIn(BaseModel):
+    name: str
+    tier: int = 1
+    domain_area: str | None = None
+    notes: str | None = None
+
+
+@router.get("/trusted-sources")
+async def list_trusted_sources():
+    """The user-approved anchor list (tiers 1-3)."""
+    from backend.integrations.supabase_client import get_client
+    client = get_client()
+    rows = client.table("trusted_sources").select("*").order("tier").order("name").execute()
+    return {"sources": rows.data or []}
+
+
+@router.post("/trusted-sources")
+async def add_trusted_source(src: TrustedSourceIn):
+    """Add a source to the trusted registry (tier 1/2/3)."""
+    if src.tier not in (1, 2, 3):
+        raise HTTPException(status_code=400, detail="tier must be 1, 2, or 3")
+    from backend.integrations.supabase_client import get_client
+    from backend.core.trusted import invalidate_cache
+    client = get_client()
+    client.table("trusted_sources").upsert(
+        {"name": src.name, "tier": src.tier, "domain_area": src.domain_area, "notes": src.notes},
+        on_conflict="name",
+    ).execute()
+    invalidate_cache()
+    return {"status": "added", "name": src.name, "tier": src.tier}
+
+
+@router.delete("/trusted-sources/{name}")
+async def remove_trusted_source(name: str):
+    """Remove a source from the trusted registry."""
+    from backend.integrations.supabase_client import get_client
+    from backend.core.trusted import invalidate_cache
+    client = get_client()
+    client.table("trusted_sources").delete().eq("name", name).execute()
+    invalidate_cache()
+    return {"status": "removed", "name": name}
+
+
+@router.get("/belief-revisions")
+async def list_belief_revisions(field: str | None = None, limit: int = Query(default=20, le=100)):
+    """Korczak's intellectual biography — when and why the graph changed its mind."""
+    from backend.agents.belief_memory import get_revisions
+    return {"revisions": await get_revisions(field=field, limit=limit)}
+
+
 @router.post("/scout/run")
 async def run_source_scout(field: str = Query(default="Anthropology"), limit: int = Query(default=8, le=20)):
     """Send the Source Scout to find verified source leads for a field.

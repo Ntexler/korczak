@@ -31,7 +31,7 @@ async def search_semantic_scholar(
     params = {
         "query": query,
         "limit": min(limit, 100),
-        "fields": "title,authors,year,abstract,citationCount,externalIds,publicationTypes",
+        "fields": "title,authors,year,abstract,citationCount,externalIds,publicationTypes,venue",
     }
     if year_from:
         params["year"] = f"{year_from}-"
@@ -58,6 +58,7 @@ async def search_semantic_scholar(
                     "abstract": p.get("abstract") or "",
                     "cited_by_count": p.get("citationCount", 0),
                     "doi": ext.get("DOI"),
+                    "venue": p.get("venue", ""),
                     "source": "semantic_scholar",
                     "external_id": p.get("paperId", ""),
                 })
@@ -75,7 +76,7 @@ async def search_crossref(
     params = {
         "query": query,
         "rows": min(limit, 50),
-        "select": "DOI,title,author,published-print,abstract,is-referenced-by-count",
+        "select": "DOI,title,author,published-print,abstract,is-referenced-by-count,container-title",
     }
     email = os.getenv("OPENALEX_EMAIL")
     if email:
@@ -114,6 +115,7 @@ async def search_crossref(
                     "abstract": _clean_abstract(item.get("abstract", "")),
                     "cited_by_count": item.get("is-referenced-by-count", 0),
                     "doi": item.get("DOI"),
+                    "venue": (item.get("container-title") or [""])[0],
                     "source": "crossref",
                     "external_id": item.get("DOI", ""),
                 })
@@ -158,6 +160,7 @@ async def search_europe_pmc(
                     "abstract": r.get("abstractText", ""),
                     "cited_by_count": r.get("citedByCount", 0),
                     "doi": r.get("doi"),
+                    "venue": (r.get("journalInfo") or {}).get("journal", {}).get("title", "") if isinstance(r.get("journalInfo"), dict) else "",
                     "source": "europe_pmc",
                     "external_id": r.get("pmid") or r.get("id", ""),
                 })

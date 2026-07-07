@@ -126,12 +126,30 @@ async def run_propagation(apply: bool = True, limit: int = 2000) -> dict:
                 new_score = round(min(1.0, max(0.0, (c.get("consensus_score") or 0) + net)), 2)
                 patch = {"consensus_score": new_score}
                 # A "consensus" node standing on contested foundations is demoted
+                demoted_now = False
                 if (c.get("consensus_status") == "consensus"
                         and s["penalty"] >= DEMOTION_THRESHOLD):
                     patch["consensus_status"] = "emerging"
                     demoted += 1
+                    demoted_now = True
                 client.table("concepts").update(patch).eq("id", c["id"]).execute()
                 adjusted += 1
+                if demoted_now:
+                    try:
+                        cname = client.table("concepts").select("name, field_span").eq(
+                            "id", c["id"]).execute()
+                        nm = cname.data[0]["name"] if cname.data else c["id"]
+                        fld = (cname.data[0].get("field_span") or [None])[0] if cname.data else None
+                        from backend.agents.belief_memory import record_revision
+                        await record_revision(
+                            subject_type="concept", subject_id=c["id"], subject_name=nm,
+                            old_belief="consensus", new_belief="emerging",
+                            reason=f"A foundation it builds on became contested "
+                                   f"(inherited penalty {s['penalty']:.2f}).",
+                            trigger_source="propagation", field=fld,
+                        )
+                    except Exception:
+                        pass
 
     top = sorted(scores.items(), key=lambda kv: -kv[1]["penalty"])[:10]
     return {

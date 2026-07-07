@@ -199,3 +199,20 @@ async def evidence_trail(concept_id: str):
     except Exception as e:
         logger.error(f"Evidence trail error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/revisions")
+async def belief_revisions(field: str | None = None, limit: int = 20):
+    """Public: Korczak's changes of mind — the intellectual biography.
+
+    A teaching artifact: changing your mind on evidence is an achievement.
+    """
+    from backend.agents.belief_memory import get_revisions
+    return {"revisions": await get_revisions(field=field, limit=min(limit, 50))}
+
+
+@router.get("/concepts/{concept_id}/revisions")
+async def concept_revision_history(concept_id: str):
+    """The full 'how my understanding of this evolved' story for one concept."""
+    from backend.agents.belief_memory import get_subject_history
+    return {"history": await get_subject_history(concept_id)}

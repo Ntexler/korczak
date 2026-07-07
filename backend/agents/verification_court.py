@@ -108,6 +108,7 @@ async def corroborate(claim_text: str, concept_name: str | None) -> dict:
     )
     try:
         from backend.config import settings
+        from backend.core.trusted import trust_tier
         from backend.integrations.claude_client import _call_claude
         resp = await _call_claude(prompt, model=settings.haiku_model, max_tokens=120, temperature=0.0)
         text = resp.text
@@ -116,15 +117,32 @@ async def corroborate(claim_text: str, concept_name: str | None) -> dict:
         parsed = json.loads(text[text.find("{"):text.rfind("}") + 1])
         supports = [i for i in parsed.get("supports", []) if isinstance(i, int) and i < len(with_abstracts)]
         contradicts = [i for i in parsed.get("contradicts", []) if isinstance(i, int) and i < len(with_abstracts)]
+
+        # Trusted-source weighting: a Tier-1 anchor (Science, Nature, Lancet…)
+        # counts as TWO independent witnesses.
+        weighted_support = 0
+        trusted_hits = []
+        for i in supports:
+            venue = with_abstracts[i].get("venue", "")
+            tier = trust_tier(venue)
+            weight = 2 if tier == 1 else 1
+            weighted_support += weight
+            if tier:
+                trusted_hits.append({"venue": venue, "tier": tier})
+
         return {
-            "independent_supports": len(supports),
+            "independent_supports": weighted_support,   # trust-weighted
+            "raw_support_count": len(supports),
             "contradicts": len(contradicts),
+            "trusted_witnesses": trusted_hits,
             "sources": [
                 {"title": with_abstracts[i].get("title", "")[:100],
+                 "venue": with_abstracts[i].get("venue", ""),
                  "doi": with_abstracts[i].get("doi"), "stance": "supports"}
                 for i in supports
             ] + [
                 {"title": with_abstracts[i].get("title", "")[:100],
+                 "venue": with_abstracts[i].get("venue", ""),
                  "doi": with_abstracts[i].get("doi"), "stance": "contradicts"}
                 for i in contradicts
             ],
@@ -202,29 +220,38 @@ async def try_verify(
     else:
         verification["grounding"] = {"passed": None, "reason": "no source text available"}
 
-    # Witness 2: independent corroboration
+    # Witness 2: independent corroboration.
+    # Contradictions DON'T reject — a contested claim is knowledge ABOUT a
+    # debate, which is exactly Korczak's value. It's flagged 'contested' so
+    # the complex picture is preserved, both sides in the receipt.
     corr = await corroborate(claim_text, concept_name)
     verification["corroboration"] = corr
-    if corr.get("contradicts", 0) >= 2:
-        verification["verdict"] = "independent sources contradict"
-        return {"route": "pending", "verification": verification}  # contested — human sees the receipt
+    is_contested = corr.get("contradicts", 0) >= 2
+    if is_contested:
+        verification["contested"] = True
 
-    # Witness 3: refutation
+    # Witness 3: refutation — an ADVISOR, not a judge. Its objections are
+    # attached as annotations to the receipt; they never auto-reject
+    # (a refutable-but-debated claim is legitimate knowledge). Only a
+    # fabricated (ungrounded) quote is auto-rejected, and that already
+    # happened in Witness 1.
     ref = await refute(claim_text, evidence_summary or claim_text)
-    verification["refutation"] = ref
-    if not ref["survived"] and ref.get("severity") == "fatal":
-        verification["verdict"] = "refuted decisively"
-        return {"route": "auto_rejected", "verification": verification}
+    verification["refutation_notes"] = {
+        "severity": ref.get("severity"),
+        "objections": ref.get("objections", []),
+    }
 
-    # Conservative auto-approve: only well-witnessed DEFINITIONS for
-    # concepts that don't have a real definition yet
+    # Conservative auto-approve: only well-witnessed DEFINITIONS, with
+    # 2+ independent (trust-weighted) witnesses, NOT contested, for a
+    # concept with no real definition yet. Refutation severity 'fatal'
+    # blocks auto-approval (stays pending) but never auto-rejects.
     can_auto = (
         AUTO_APPROVE_ENABLED
         and enrichment_type == "definition"
+        and not is_contested
         and verification["grounding"].get("passed") is not False
         and corr.get("independent_supports", 0) >= 2
-        and corr.get("contradicts", 0) == 0
-        and ref["survived"] and ref.get("severity") in ("none", "minor")
+        and ref.get("severity") != "fatal"
     )
     if can_auto and concept_id:
         try:
@@ -233,12 +260,19 @@ async def try_verify(
             row = client.table("concepts").select("definition").eq("id", concept_id).execute()
             existing = (row.data[0].get("definition") or "") if row.data else ""
             if len(existing) < 60:
-                verification["verdict"] = "grounded + 2 independent witnesses + survived refutation"
+                verification["verdict"] = (
+                    "grounded + 2 independent witnesses"
+                    + (f" (incl. {len(corr.get('trusted_witnesses', []))} trusted)"
+                       if corr.get("trusted_witnesses") else "")
+                )
                 return {"route": "auto_applied", "verification": verification}
         except Exception:
             pass
 
-    verification["verdict"] = "verified receipt attached — human reviews process, not truth"
+    verification["verdict"] = (
+        "contested — both sides in the receipt" if is_contested
+        else "verified receipt attached — you review process, not truth"
+    )
     return {"route": "pending", "verification": verification}
 
 

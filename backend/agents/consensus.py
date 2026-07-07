@@ -91,12 +91,22 @@ async def compute_consensus(field: str | None = None, limit: int = 500) -> dict:
             wiki_validated=wiki_validated,
         )
         counts[status] += 1
+        prev_status = c.get("consensus_status")
         try:
             client.table("concepts").update({
                 "consensus_status": status,
                 "consensus_score": score,
             }).eq("id", c["id"]).execute()
             updated += 1
+            # Remember the change of mind
+            if prev_status and prev_status != status:
+                from backend.agents.belief_memory import record_revision
+                await record_revision(
+                    subject_type="concept", subject_id=c["id"], subject_name=c["name"],
+                    old_belief=prev_status, new_belief=status,
+                    reason="Evidence balance shifted after new learning.",
+                    trigger_source="consensus_recompute", field=field,
+                )
         except Exception as e:
             logger.warning(f"Consensus update failed for {c['name']}: {e}")
 
