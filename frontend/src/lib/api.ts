@@ -100,6 +100,38 @@ export async function discoverConceptMedia(conceptId: string): Promise<MediaEvid
   return data.media || [];
 }
 
+// --- Echo layer: a moment's textual wake --------------------------------
+
+export interface EchoItem {
+  id: string;
+  kind: "news_volume" | "tv_replay" | "attention_spike" | "rising_query" | "analysis";
+  source?: string;
+  moment_date?: string;
+  signal_strength: number;
+  headline?: string;
+  url?: string;
+  excerpt?: string;
+  term?: string;
+}
+
+export async function getConceptEchoes(conceptId: string): Promise<EchoItem[]> {
+  const res = await fetchWithTimeout(`${API_BASE}/echo/concepts/${conceptId}`, undefined, 12000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  return data.echoes || [];
+}
+
+export async function analyzeConceptEchoes(conceptId: string): Promise<EchoItem[]> {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/echo/concepts/${conceptId}/analyze`,
+    { method: "POST", headers: { "Content-Type": "application/json" } },
+    45000
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  return data.items || [];
+}
+
 export async function contributeMedia(conceptId: string, url: string, note?: string) {
   const res = await fetchWithTimeout(
     `${API_BASE}/media/contribute`,

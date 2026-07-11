@@ -32,6 +32,7 @@ from backend.api.admin import router as admin_router
 from backend.api.chappie import router as chappie_router
 from backend.api.atlas import router as atlas_router
 from backend.api.media import router as media_router
+from backend.api.echo import router as echo_router
 from backend.middleware.rate_limiter import RateLimitMiddleware
 
 
@@ -88,6 +89,7 @@ app.include_router(
 )
 app.include_router(atlas_router, prefix="/api/atlas", tags=["atlas"])
 app.include_router(media_router, prefix="/api/media", tags=["media"])
+app.include_router(echo_router, prefix="/api/echo", tags=["echo"])
 app.include_router(
     chappie_router, prefix="/api/chappie", tags=["chappie"],
     dependencies=[Depends(require_admin)],  # missions/consensus writes are admin-only

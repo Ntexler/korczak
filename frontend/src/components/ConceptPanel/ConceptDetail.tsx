@@ -20,6 +20,7 @@ import { getConceptDetail, getConceptNeighbors, exportConceptToObsidian } from "
 import ConceptSummaries from "@/components/Social/ConceptSummaries";
 import DiscussionThread from "@/components/Social/DiscussionThread";
 import MediaEvidence from "@/components/ConceptPanel/MediaEvidence";
+import ConceptEchoes from "@/components/ConceptPanel/ConceptEchoes";
 
 interface KeyPaper {
   id: string;
@@ -373,6 +374,9 @@ export default function ConceptDetail({ researcherId }: { researcherId?: string 
                 </div>
               </section>
             )}
+
+            {/* The moment's wake — when/why it echoed, before the footage */}
+            <ConceptEchoes conceptId={concept.id} />
 
             {/* Media as evidence — clips interpreted in front of the eyes */}
             <MediaEvidence conceptId={concept.id} />
