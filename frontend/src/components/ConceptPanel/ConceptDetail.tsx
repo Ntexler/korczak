@@ -19,6 +19,7 @@ import { useLocaleStore } from "@/stores/localeStore";
 import { getConceptDetail, getConceptNeighbors, exportConceptToObsidian } from "@/lib/api";
 import ConceptSummaries from "@/components/Social/ConceptSummaries";
 import DiscussionThread from "@/components/Social/DiscussionThread";
+import MediaEvidence from "@/components/ConceptPanel/MediaEvidence";
 
 interface KeyPaper {
   id: string;
@@ -372,6 +373,9 @@ export default function ConceptDetail({ researcherId }: { researcherId?: string 
                 </div>
               </section>
             )}
+
+            {/* Media as evidence — clips interpreted in front of the eyes */}
+            <MediaEvidence conceptId={concept.id} />
 
             {/* Community Summaries */}
             <ConceptSummaries conceptId={concept.id} researcherId={researcherId} />

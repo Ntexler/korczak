@@ -63,6 +63,60 @@ export async function getConceptNeighbors(id: string, depth: number = 1) {
   return res.json();
 }
 
+// --- Media as evidence ------------------------------------------------------
+
+export interface MediaEvidenceItem {
+  id: string;
+  source: string;
+  media_kind: "video" | "image" | "audio";
+  title?: string;
+  embed_url?: string;
+  page_url?: string;
+  thumbnail_url?: string;
+  interpretation?: string;
+  subtext?: string;
+  subtext_basis?: string;
+  grounding_quote?: string;
+  consensus_status: string;
+  relevance: number;
+  brought_by?: string;
+}
+
+export async function getConceptMedia(conceptId: string): Promise<MediaEvidenceItem[]> {
+  const res = await fetchWithTimeout(`${API_BASE}/media/concepts/${conceptId}`, undefined, 12000);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  return data.media || [];
+}
+
+export async function discoverConceptMedia(conceptId: string): Promise<MediaEvidenceItem[]> {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/media/concepts/${conceptId}/discover`,
+    { method: "POST", headers: { "Content-Type": "application/json" } },
+    60000
+  );
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const data = await res.json();
+  return data.media || [];
+}
+
+export async function contributeMedia(conceptId: string, url: string, note?: string) {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/media/contribute`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ concept_id: conceptId, url, note }),
+    },
+    60000
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function healthCheck() {
   const res = await fetchWithTimeout(`${API_BASE}/health`);
   return res.ok;
