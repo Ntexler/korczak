@@ -220,11 +220,17 @@ async def multi_source_search(
     """
     import asyncio
 
+    async def _archive(q: str, n: int):
+        from backend.integrations.archive_org import search_archive
+        return await search_archive(q, limit=n, media_type="texts")
+
     available_sources = {
         "semantic_scholar": lambda: search_semantic_scholar(query, limit_per_source, year_from),
         "crossref": lambda: search_crossref(query, limit_per_source, year_from),
         "europe_pmc": lambda: search_europe_pmc(query, limit_per_source),
         "core": lambda: search_core(query, limit_per_source),
+        # Cultural record — books, primary texts, historical documents
+        "internet_archive": lambda: _archive(query, limit_per_source),
     }
 
     # Select sources

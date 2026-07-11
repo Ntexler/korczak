@@ -216,3 +216,43 @@ async def concept_revision_history(concept_id: str):
     """The full 'how my understanding of this evolved' story for one concept."""
     from backend.agents.belief_memory import get_subject_history
     return {"history": await get_subject_history(concept_id)}
+
+
+@router.get("/failures")
+async def knowledge_failures(field: str | None = None, limit: int = 20):
+    """The memory of failure — how knowledge went wrong before.
+
+    Phlogiston, N-rays, the replication crisis. A system that remembers
+    how knowledge broke in the past recognizes it breaking in the present.
+    """
+    from backend.integrations.supabase_client import get_client
+    client = get_client()
+    q = client.table("knowledge_failures").select("*")
+    if field:
+        q = q.eq("field", field)
+    rows = q.order("created_at", desc=True).limit(min(limit, 50)).execute()
+    return {"failures": rows.data or []}
+
+
+@router.get("/concepts/{concept_id}/cautionary")
+async def cautionary_tales(concept_id: str):
+    """Relevant 'here's how similar ideas went wrong' warnings for a concept.
+
+    Matches the concept's name/field against known knowledge failures —
+    a knowledge vaccine: shows learners the failure modes of the neighborhood.
+    """
+    from backend.integrations.supabase_client import get_client
+    client = get_client()
+    c = client.table("concepts").select("name, field_span").eq("id", concept_id).execute()
+    if not c.data:
+        raise HTTPException(status_code=404, detail="Concept not found")
+    fields = c.data[0].get("field_span") or []
+
+    failures = client.table("knowledge_failures").select("*").execute()
+    relevant = []
+    for f in (failures.data or []):
+        if f.get("field") in fields or any(
+            f.get("field", "").lower() in fld.lower() for fld in fields
+        ):
+            relevant.append(f)
+    return {"concept": c.data[0]["name"], "cautionary_tales": relevant[:5]}
