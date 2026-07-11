@@ -482,7 +482,7 @@ export default function ContentPanel({
                 {he ? "כל המושגים בתחום" : "All concepts in this field"}
               </h3>
               <div className="space-y-1.5">
-                {overview.top_concepts.map((c, i) => (
+                {(overview.top_concepts ?? []).map((c, i) => (
                   <button
                     key={c.id}
                     onClick={() => handleSelectConcept(c.id)}
