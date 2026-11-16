@@ -7,3 +7,13 @@
 [proper] step=117608 val_bpc=2.5945 elapsed=4200s
 [proper] step=127605 val_bpc=2.5774 elapsed=4800s
 [proper] step=141958 val_bpc=2.5753 elapsed=5400s
+[proper] step=158614 val_bpc=2.5497 elapsed=6000s
+[proper] step=178888 val_bpc=2.5193 elapsed=6600s
+[proper] step=197980 val_bpc=2.4802 elapsed=7200s
+[proper] step=216912 val_bpc=2.4545 elapsed=7800s
+[proper] step=236281 val_bpc=2.4220 elapsed=8400s
+[proper] step=256625 val_bpc=2.4046 elapsed=9000s
+[proper] step=277380 val_bpc=2.4108 elapsed=9600s
+[proper] step=298051 val_bpc=2.3586 elapsed=10200s
+[proper] step=300001 val_bpc=2.3656 elapsed=10268s
+[proper] FINAL test bpc (last 5MB of enwik8, 10000 positions) = 2.4383 after 300002 steps

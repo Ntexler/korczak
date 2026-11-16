@@ -22,13 +22,18 @@ Same model, same machine, 2 threads each, same step counts:
 | ~60k | 2.06 | 2.76 |
 | ~100k | 1.92 | 2.64 |
 | ~140k | 1.86 | 2.58 |
+| ~200k | 1.77 | 2.48 |
+| 300k (final validation) | 1.71 | 2.37 |
+| **300k, held-out test** | **1.79** | **2.44** |
 
-(Interim: runs continue to 300k steps / 3 h; see `results/snn_*/curve.csv`. Final held-out test numbers
-are appended to `log.txt` when they finish.)
+Test = 10,000 positions in bytes [95M, 100M) of each file, never trained on. For DAIGT that slice still
+holds essays on the same 15 prompts as the training text, so it remains an easy test. (The `log.txt` of
+these runs labels the test as "enwik8" for both runs; that was a label bug in the print, fixed in
+`snn_hw.c`.) Full curves: `results/snn_*/curve.csv`.
 
 Paper Fig. 13a (its data, its protocol) shows ~1.9 bpc at ~1e5 examples, consistent with our DAIGT run,
 so the replication is faithful. On enwik8 with a held-out split the same model is ~0.7 bpc worse at
-every point. The paper's Table II compares its number with 2016 LSTMs measured on enwik8/text8, which
+every point (0.65 bpc on the final held-out test). The paper's Table II compares its number with 2016 LSTMs measured on enwik8/text8, which
 is not a like-for-like comparison. The model does learn; the "competitive with SOTA LSTMs" claim is not
 supported by this evidence.
 

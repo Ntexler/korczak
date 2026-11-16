@@ -501,7 +501,7 @@ int main(int argc, char** argv) {
     stop_flag = 1; for (int k = 0; k < TH; k++) pthread_join(th[k], NULL);
     memcpy(ev, master, sizeof(Model));
     double te = evaluate(ev, &test, tidx, NT) / log(2);
-    printf("[%s] FINAL test bpc (last 5MB of enwik8, %d positions) = %.4f after %ld steps\n", mode, NT, te, (long)global_t);
+    printf("[%s] FINAL test bpc (bytes [95M,100M) of the data file, %d positions) = %.4f after %ld steps\n", mode, NT, te, (long)global_t);
     f = fopen(out, "a"); fprintf(f, "# final_test_bpc=%f steps=%ld\n", te, (long)global_t); fclose(f);
     return 0;
 }

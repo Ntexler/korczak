@@ -7,3 +7,13 @@
 [leaky] step=116651 val_bpc=1.8766 elapsed=4200s
 [leaky] step=126612 val_bpc=1.8855 elapsed=4800s
 [leaky] step=140657 val_bpc=1.8593 elapsed=5400s
+[leaky] step=157175 val_bpc=1.8280 elapsed=6000s
+[leaky] step=177394 val_bpc=1.7986 elapsed=6600s
+[leaky] step=196416 val_bpc=1.7663 elapsed=7200s
+[leaky] step=215149 val_bpc=1.7663 elapsed=7800s
+[leaky] step=234291 val_bpc=1.7497 elapsed=8400s
+[leaky] step=254465 val_bpc=1.7238 elapsed=9000s
+[leaky] step=275040 val_bpc=1.7052 elapsed=9600s
+[leaky] step=295429 val_bpc=1.6825 elapsed=10200s
+[leaky] step=300002 val_bpc=1.7084 elapsed=10341s
+[leaky] FINAL test bpc (last 5MB of enwik8, 10000 positions) = 1.7895 after 300002 steps
