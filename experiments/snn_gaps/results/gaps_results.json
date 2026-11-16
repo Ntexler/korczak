@@ -1,0 +1,401 @@
+{
+ "setup": {
+  "papers_train": 34981,
+  "papers_future": 39329,
+  "concepts": 3000,
+  "train_edges": 93940,
+  "candidate_gaps": 4404560,
+  "filled_gaps": 12674,
+  "base_rate": 0.0028774724376555206,
+  "train_end": 2019,
+  "min_future_cooc": 2,
+  "mlp_params": 590720,
+  "mlp_train_s": 1311.8,
+  "lut_params": 25165824,
+  "lut_train_s": 888.6,
+  "lut_active_values_per_query": 25856
+ },
+ "methods": {
+  "preferential_attachment": {
+   "AUC": 0.824,
+   "P@100": 0.18,
+   "lift@100": 62.5549,
+   "P@1000": 0.139,
+   "lift@1000": 48.3063,
+   "P@10000": 0.0683,
+   "lift@10000": 23.7361
+  },
+  "common_neighbours": {
+   "AUC": 0.9201,
+   "P@100": 0.35,
+   "lift@100": 121.6345,
+   "P@1000": 0.286,
+   "lift@1000": 99.3928,
+   "P@10000": 0.1635,
+   "lift@10000": 56.8207
+  },
+  "adamic_adar": {
+   "AUC": 0.9229,
+   "P@100": 0.39,
+   "lift@100": 135.5356,
+   "P@1000": 0.299,
+   "lift@1000": 103.9106,
+   "P@10000": 0.1663,
+   "lift@10000": 57.7938
+  },
+  "embedding_similarity": {
+   "AUC": 0.7662,
+   "P@100": 0.08,
+   "lift@100": 27.8022,
+   "P@1000": 0.091,
+   "lift@1000": 31.625,
+   "P@10000": 0.0512,
+   "lift@10000": 17.7934
+  },
+  "jepa_predictor_mlp": {
+   "AUC": 0.8277,
+   "P@100": 0.09,
+   "lift@100": 31.2774,
+   "P@1000": 0.07,
+   "lift@1000": 24.3269,
+   "P@10000": 0.0481,
+   "lift@10000": 16.7161
+  },
+  "jepa_predictor_LUT": {
+   "AUC": 0.6997,
+   "P@100": 0.0,
+   "lift@100": 0.0,
+   "P@1000": 0.013,
+   "lift@1000": 4.5179,
+   "P@10000": 0.0208,
+   "lift@10000": 7.2286
+  },
+  "fusion_adamic_adar+jepa_mlp": {
+   "AUC": 0.9068,
+   "P@100": 0.39,
+   "lift@100": 135.5356,
+   "P@1000": 0.301,
+   "lift@1000": 104.6057,
+   "P@10000": 0.1527,
+   "lift@10000": 53.0674
+  },
+  "fusion_adamic_adar+jepa_LUT": {
+   "AUC": 0.8548,
+   "P@100": 0.23,
+   "lift@100": 79.9313,
+   "P@1000": 0.174,
+   "lift@1000": 60.4697,
+   "P@10000": 0.0973,
+   "lift@10000": 33.8144
+  }
+ },
+ "top_predicted_gaps": [
+  {
+   "a": "teacher perceptions",
+   "b": "teachers",
+   "filled_later": false
+  },
+  {
+   "a": "democracy",
+   "b": "governmentality",
+   "filled_later": false
+  },
+  {
+   "a": "learning outcomes",
+   "b": "university teaching",
+   "filled_later": true
+  },
+  {
+   "a": "teacher perceptions",
+   "b": "classroom management",
+   "filled_later": false
+  },
+  {
+   "a": "teaching practice",
+   "b": "student-centered learning",
+   "filled_later": false
+  },
+  {
+   "a": "student perceptions",
+   "b": "student experience",
+   "filled_later": false
+  },
+  {
+   "a": "democracy",
+   "b": "political reform",
+   "filled_later": false
+  },
+  {
+   "a": "democracy",
+   "b": "political parties",
+   "filled_later": true
+  },
+  {
+   "a": "science education",
+   "b": "university teaching",
+   "filled_later": false
+  },
+  {
+   "a": "student perceptions",
+   "b": "student response",
+   "filled_later": false
+  },
+  {
+   "a": "higher education institutions",
+   "b": "higher education policy",
+   "filled_later": false
+  },
+  {
+   "a": "education policy",
+   "b": "educational technology",
+   "filled_later": true
+  },
+  {
+   "a": "educational technology",
+   "b": "lesson planning",
+   "filled_later": false
+  },
+  {
+   "a": "student engagement",
+   "b": "student reflection",
+   "filled_later": true
+  },
+  {
+   "a": "educational reform",
+   "b": "public schools",
+   "filled_later": true
+  },
+  {
+   "a": "elementary school",
+   "b": "secondary education",
+   "filled_later": false
+  },
+  {
+   "a": "secondary education",
+   "b": "teachers",
+   "filled_later": true
+  },
+  {
+   "a": "tourism",
+   "b": "cultural tourism",
+   "filled_later": false
+  },
+  {
+   "a": "teacher competence",
+   "b": "teachers",
+   "filled_later": false
+  },
+  {
+   "a": "university teaching",
+   "b": "lesson planning",
+   "filled_later": false
+  },
+  {
+   "a": "teacher perceptions",
+   "b": "teacher knowledge",
+   "filled_later": true
+  },
+  {
+   "a": "initial teacher education",
+   "b": "teaching materials",
+   "filled_later": false
+  },
+  {
+   "a": "university teaching",
+   "b": "initial teacher education",
+   "filled_later": false
+  },
+  {
+   "a": "tourism development",
+   "b": "tourism management",
+   "filled_later": true
+  },
+  {
+   "a": "democratization",
+   "b": "political representation",
+   "filled_later": true
+  },
+  {
+   "a": "higher education",
+   "b": "educational change",
+   "filled_later": false
+  },
+  {
+   "a": "educational technology",
+   "b": "secondary school teachers",
+   "filled_later": true
+  },
+  {
+   "a": "teaching methods",
+   "b": "primary education",
+   "filled_later": true
+  },
+  {
+   "a": "state sovereignty",
+   "b": "sovereignty",
+   "filled_later": false
+  },
+  {
+   "a": "learning outcomes",
+   "b": "lesson planning",
+   "filled_later": true
+  },
+  {
+   "a": "academic performance",
+   "b": "student learning",
+   "filled_later": true
+  },
+  {
+   "a": "student perceptions",
+   "b": "student reflection",
+   "filled_later": false
+  },
+  {
+   "a": "teacher perceptions",
+   "b": "lesson planning",
+   "filled_later": true
+  },
+  {
+   "a": "student perceptions",
+   "b": "engineering students",
+   "filled_later": true
+  },
+  {
+   "a": "education policy",
+   "b": "parental education",
+   "filled_later": true
+  },
+  {
+   "a": "educational reform",
+   "b": "secondary education",
+   "filled_later": false
+  },
+  {
+   "a": "teaching practice",
+   "b": "instructional design",
+   "filled_later": false
+  },
+  {
+   "a": "learning outcomes",
+   "b": "student reflection",
+   "filled_later": true
+  },
+  {
+   "a": "education policy",
+   "b": "school education",
+   "filled_later": false
+  },
+  {
+   "a": "social change",
+   "b": "socialization",
+   "filled_later": true
+  }
+ ],
+ "jepa_only_gaps": {
+  "pairs_with_zero_common_neighbours": 1810240,
+  "filled_rate_overall": 0.0001204260208591126,
+  "filled_rate_top1000_by_jepa": 0.0,
+  "examples": [
+   {
+    "a": "education",
+    "b": "teaching",
+    "filled_later": false
+   },
+   {
+    "a": "teaching",
+    "b": "teacher preparation",
+    "filled_later": false
+   },
+   {
+    "a": "corporate law",
+    "b": "public law",
+    "filled_later": false
+   },
+   {
+    "a": "jurisdiction",
+    "b": "public law",
+    "filled_later": false
+   },
+   {
+    "a": "student government",
+    "b": "university education",
+    "filled_later": false
+   },
+   {
+    "a": "university education",
+    "b": "teaching excellence",
+    "filled_later": false
+   },
+   {
+    "a": "Curriculum 2013",
+    "b": "teaching",
+    "filled_later": false
+   },
+   {
+    "a": "legal regulation",
+    "b": "public law",
+    "filled_later": false
+   },
+   {
+    "a": "student response",
+    "b": "students",
+    "filled_later": false
+   },
+   {
+    "a": "politics",
+    "b": "fascism",
+    "filled_later": false
+   },
+   {
+    "a": "educational institutions",
+    "b": "higher education system",
+    "filled_later": false
+   },
+   {
+    "a": "jurisdiction",
+    "b": "private law",
+    "filled_later": false
+   },
+   {
+    "a": "hands-on learning",
+    "b": "teaching",
+    "filled_later": false
+   },
+   {
+    "a": "school education",
+    "b": "school desegregation",
+    "filled_later": false
+   },
+   {
+    "a": "university education",
+    "b": "academic disciplines",
+    "filled_later": false
+   },
+   {
+    "a": "teaching",
+    "b": "classroom assessment",
+    "filled_later": false
+   },
+   {
+    "a": "teacher performance",
+    "b": "teaching",
+    "filled_later": false
+   },
+   {
+    "a": "judiciary",
+    "b": "jurisdiction",
+    "filled_later": false
+   },
+   {
+    "a": "undergraduate education",
+    "b": "teaching",
+    "filled_later": false
+   },
+   {
+    "a": "student reflection",
+    "b": "teaching",
+    "filled_later": false
+   }
+  ]
+ }
+}

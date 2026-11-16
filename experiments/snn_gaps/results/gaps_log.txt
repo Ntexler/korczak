@@ -1,0 +1,119 @@
+papers train=34981 future=39329 | concepts=3000 train_edges=93940 candidates=4404560 filled_gaps=12674 (0.29%)
+JEPA training pairs: 187879
+MLP predictor trained in 1312s, final loss 0.512
+LUT predictor trained in 889s, final loss 0.548
+preferential_attachment          AUC=0.824  P@100=0.180  P@1000=0.139  lift@1000=48.3x
+common_neighbours                AUC=0.920  P@100=0.350  P@1000=0.286  lift@1000=99.4x
+adamic_adar                      AUC=0.923  P@100=0.390  P@1000=0.299  lift@1000=103.9x
+embedding_similarity             AUC=0.766  P@100=0.080  P@1000=0.091  lift@1000=31.6x
+jepa_predictor_mlp               AUC=0.828  P@100=0.090  P@1000=0.070  lift@1000=24.3x
+jepa_predictor_LUT               AUC=0.700  P@100=0.000  P@1000=0.013  lift@1000=4.5x
+fusion_adamic_adar+jepa_mlp      AUC=0.907  P@100=0.390  P@1000=0.301  lift@1000=104.6x
+fusion_adamic_adar+jepa_LUT      AUC=0.855  P@100=0.230  P@1000=0.174  lift@1000=60.5x
+{
+ "pairs_with_zero_common_neighbours": 1810240,
+ "filled_rate_overall": 0.0001204260208591126,
+ "filled_rate_top1000_by_jepa": 0.0,
+ "examples": [
+  {
+   "a": "education",
+   "b": "teaching",
+   "filled_later": false
+  },
+  {
+   "a": "teaching",
+   "b": "teacher preparation",
+   "filled_later": false
+  },
+  {
+   "a": "corporate law",
+   "b": "public law",
+   "filled_later": false
+  },
+  {
+   "a": "jurisdiction",
+   "b": "public law",
+   "filled_later": false
+  },
+  {
+   "a": "student government",
+   "b": "university education",
+   "filled_later": false
+  },
+  {
+   "a": "university education",
+   "b": "teaching excellence",
+   "filled_later": false
+  },
+  {
+   "a": "Curriculum 2013",
+   "b": "teaching",
+   "filled_later": false
+  },
+  {
+   "a": "legal regulation",
+   "b": "public law",
+   "filled_later": false
+  },
+  {
+   "a": "student response",
+   "b": "students",
+   "filled_later": false
+  },
+  {
+   "a": "politics",
+   "b": "fascism",
+   "filled_later": false
+  },
+  {
+   "a": "educational institutions",
+   "b": "higher education system",
+   "filled_later": false
+  },
+  {
+   "a": "jurisdiction",
+   "b": "private law",
+   "filled_later": false
+  },
+  {
+   "a": "hands-on learning",
+   "b": "teaching",
+   "filled_later": false
+  },
+  {
+   "a": "school education",
+   "b": "school desegregation",
+   "filled_later": false
+  },
+  {
+   "a": "university education",
+   "b": "academic disciplines",
+   "filled_later": false
+  },
+  {
+   "a": "teaching",
+   "b": "classroom assessment",
+   "filled_later": false
+  },
+  {
+   "a": "teacher performance",
+   "b": "teaching",
+   "filled_later": false
+  },
+  {
+   "a": "judiciary",
+   "b": "jurisdiction",
+   "filled_later": false
+  },
+  {
+   "a": "undergraduate education",
+   "b": "teaching",
+   "filled_later": false
+  },
+  {
+   "a": "student reflection",
+   "b": "teaching",
+   "filled_later": false
+  }
+ ]
+}

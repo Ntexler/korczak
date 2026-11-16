@@ -1,0 +1,228 @@
+{
+ "eval1_balanced_sample": {
+  "n": 1000,
+  "AUC": {
+   "preferential_attachment": 0.8291,
+   "common_neighbours": 0.915,
+   "adamic_adar": 0.9178,
+   "embedding_similarity": 0.7508,
+   "jepa_predictor_mlp": 0.8171,
+   "jepa_predictor_LUT": 0.6803,
+   "fusion_adamic_adar+jepa_mlp": 0.9035,
+   "fusion_adamic_adar+jepa_LUT": 0.8474,
+   "jev_studied_together": 0.8835,
+   "jev_together_minus_same": 0.7812,
+   "fusion+jev": 0.916
+  },
+  "decision_rule": {
+   "flagged_promising": 685,
+   "filled_rate_flagged": 0.6482,
+   "filled_rate_not_flagged": 0.1778
+  },
+  "same_thing_flagged": 9,
+  "same_thing_examples": [
+   [
+    "student assessment",
+    "student self-assessment",
+    0.88
+   ],
+   [
+    "good governance",
+    "government transparency",
+    0.79
+   ],
+   [
+    "Bangladesh",
+    "South Asia",
+    0.94
+   ],
+   [
+    "Thailand",
+    "Asia",
+    0.95
+   ],
+   [
+    "digital technologies",
+    "virtual reality",
+    0.86
+   ],
+   [
+    "political corruption",
+    "bribery",
+    0.93
+   ],
+   [
+    "Middle East",
+    "Saudi Arabia",
+    0.92
+   ],
+   [
+    "political ideology",
+    "political attitudes",
+    0.7
+   ],
+   [
+    "good governance",
+    "democratic governance",
+    0.77
+   ]
+  ]
+ },
+ "eval2_rerank_topN": {
+  "N": 2000,
+  "base_rate_in_topN": 0.253,
+  "graph+jepa (original order)": {
+   "P@50": 0.46,
+   "P@200": 0.365,
+   "P@500": 0.296
+  },
+  "jev only": {
+   "P@50": 0.24,
+   "P@200": 0.28,
+   "P@500": 0.302
+  },
+  "graph+jepa + jev": {
+   "P@50": 0.42,
+   "P@200": 0.35,
+   "P@500": 0.298
+  },
+  "graph+jepa, drop jev duplicates": {
+   "P@50": 0.52,
+   "P@200": 0.36,
+   "P@500": 0.302
+  }
+ },
+ "promising_open_gaps": [
+  [
+   "teaching practice",
+   "student learning",
+   0.97
+  ],
+  [
+   "ethnicity",
+   "discrimination",
+   0.96
+  ],
+  [
+   "high school students",
+   "teachers",
+   0.96
+  ],
+  [
+   "elementary school students",
+   "teachers",
+   0.96
+  ],
+  [
+   "authoritarian regimes",
+   "political opposition",
+   0.96
+  ],
+  [
+   "learning outcomes",
+   "teaching quality",
+   0.96
+  ],
+  [
+   "educational technology",
+   "student performance",
+   0.96
+  ],
+  [
+   "instructional design",
+   "student learning",
+   0.96
+  ],
+  [
+   "race",
+   "discrimination",
+   0.96
+  ],
+  [
+   "teachers",
+   "teaching-learning process",
+   0.96
+  ],
+  [
+   "social movements",
+   "political power",
+   0.95
+  ],
+  [
+   "teaching practice",
+   "student participation",
+   0.95
+  ],
+  [
+   "teaching practice",
+   "secondary schools",
+   0.95
+  ],
+  [
+   "democratic transition",
+   "authoritarian regimes",
+   0.95
+  ],
+  [
+   "professional development",
+   "teachers",
+   0.95
+  ],
+  [
+   "student perceptions",
+   "teachers",
+   0.95
+  ],
+  [
+   "teaching practice",
+   "student assessment",
+   0.95
+  ],
+  [
+   "teachers",
+   "mentoring",
+   0.95
+  ],
+  [
+   "science education",
+   "teacher knowledge",
+   0.95
+  ],
+  [
+   "teacher competence",
+   "teaching-learning process",
+   0.95
+  ],
+  [
+   "learning outcomes",
+   "classroom interaction",
+   0.95
+  ],
+  [
+   "student satisfaction",
+   "teaching-learning process",
+   0.95
+  ],
+  [
+   "teaching practice",
+   "educational assessment",
+   0.95
+  ],
+  [
+   "political transition",
+   "governance",
+   0.95
+  ],
+  [
+   "student-centered learning",
+   "student performance",
+   0.95
+  ]
+ ],
+ "cost": {
+  "requests": 3000,
+  "input_tokens": 1688729,
+  "usd": 0.0709,
+  "seconds": 65.8
+ }
+}
